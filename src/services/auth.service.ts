@@ -27,4 +27,9 @@ export const authService = {
         const response = await axiosInstance.get('/auth/me');
         return response.data;
     },
+
+    updateProfile: async (data: { full_name: string; phone: string }): Promise<ApiResponse<any>> => {
+        const response = await axiosInstance.patch('/users/profile', data);
+        return response.data;
+    },
 };
