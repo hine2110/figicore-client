@@ -1,6 +1,6 @@
 import { axiosInstance } from '@/lib/axiosInstance';
 import { ApiResponse } from '@/types/common.types';
-import { LoginPayload, RegisterPayload, AuthResponse } from '@/types/auth.types';
+import { LoginPayload, RegisterPayload, AuthResponse, VerifyOtpPayload } from '@/types/auth.types';
 
 export const authService = {
     login: async (payload: LoginPayload): Promise<ApiResponse<AuthResponse>> => {
@@ -8,7 +8,12 @@ export const authService = {
         return response.data;
     },
 
-    register: async (payload: RegisterPayload): Promise<ApiResponse<AuthResponse>> => {
+    sendOtp: async (payload: RegisterPayload): Promise<ApiResponse<any>> => {
+        const response = await axiosInstance.post('/auth/send-otp', payload);
+        return response.data;
+    },
+
+    register: async (payload: VerifyOtpPayload): Promise<ApiResponse<AuthResponse>> => {
         const response = await axiosInstance.post('/auth/register', payload);
         return response.data;
     },

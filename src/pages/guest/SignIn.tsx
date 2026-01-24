@@ -1,22 +1,88 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuthStore } from "@/store/useAuthStore";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { authService } from "@/services/auth.service";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function SignIn() {
     const navigate = useNavigate();
-    const { login } = useAuthStore();
+    const [searchParams] = useSearchParams();
+    const redirectUrl = searchParams.get('redirect') || '/';
+    // const { login } = useAuthStore();
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [message, setMessage] = useState<string | null>(null);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const [formData, setFormData] = useState({
+        email: '',
+        password: ''
+    });
+
+
+
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
         setIsLoading(true);
 
-        // Simulation
-        setTimeout(() => {
-            login('customer');
-            navigate('/customer/home');
-        }, 1500);
+        try {
+            const response = await authService.login({
+                email: formData.email,
+                password: formData.password
+            });
+
+            const responseData = (response as any).data || response;
+            const accessToken = responseData.access_token || responseData.token;
+            const user = responseData.user;
+
+            // Save token and user info
+            localStorage.setItem('accessToken', accessToken);
+            localStorage.setItem('user', JSON.stringify(user));
+
+            // Sync with Global State
+            useAuthStore.getState().setUser(user);
+
+            // Smart Redirect Logic
+
+
+            // Smart Redirect Logic
+            const userRole = user?.role_code;
+            console.log('Login Role:', userRole);
+
+            let target = redirectUrl;
+
+            // Defined from Server Seed
+            const ADMIN_ROLES = ['SUPER_ADMIN', 'MANAGER', 'STAFF_POS', 'STAFF_INVENTORY'];
+
+            // RULE 1: If user is CUSTOMER
+            if (userRole === 'CUSTOMER') {
+                // Security: Prevent Admin access
+                if (target.startsWith('/admin')) {
+                    target = '/customer/home';
+                }
+                // Default: Go to Customer Home instead of landing page
+                if (target === '/') {
+                    target = '/customer/home';
+                }
+            }
+
+            // RULE 2: If user is ANY ADMIN ROLE and target is '/' (default) -> Send to Dashboard
+            if (ADMIN_ROLES.includes(userRole) && target === '/') {
+                target = '/admin/dashboard';
+            }
+
+            // RULE 3: Execute Redirect
+            console.log('Redirecting to:', target);
+            setMessage('Login successful! Redirecting...');
+            setTimeout(() => {
+                navigate(target);
+            }, 1000);
+
+        } catch (err: any) {
+            console.error(err);
+            setError(err.response?.data?.message || 'Invalid email or password');
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -43,10 +109,15 @@ export default function SignIn() {
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-6">
+                        {error && <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">{error}</div>}
+                        {message && <div className="bg-green-50 text-green-600 p-3 rounded-md text-sm">{message}</div>}
+
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-neutral-900">Email</label>
                             <input
                                 type="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 required
                                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                                 placeholder="m@example.com"
@@ -59,6 +130,8 @@ export default function SignIn() {
                             </div>
                             <input
                                 type="password"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 required
                                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                             />
@@ -88,9 +161,12 @@ export default function SignIn() {
 
                     <p className="text-center text-sm text-neutral-600">
                         Don't have an account?{" "}
-                        <Link to="/guest/signup" className="font-semibold text-blue-600 hover:underline">
+                        <span
+                            onClick={() => navigate(redirectUrl === '/' ? '/guest/signup' : `/guest/signup?redirect=${encodeURIComponent(redirectUrl)}`)}
+                            className="font-semibold text-blue-600 hover:underline cursor-pointer"
+                        >
                             Sign up
-                        </Link>
+                        </span>
                     </p>
                 </div>
             </div>

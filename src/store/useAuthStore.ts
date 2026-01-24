@@ -1,59 +1,42 @@
 import { create } from 'zustand';
 import { AuthState, User, UserRole } from '@/types/auth.types';
 
-// Mock users for different roles
-const MOCK_USERS: Record<UserRole, User> = {
-    admin: {
-        id: 'admin-1',
-        name: 'System Admin',
-        email: 'admin@figicore.com',
-        role: 'admin',
-        avatarUrl: 'https://github.com/shadcn.png',
-    },
-    manager: {
-        id: 'manager-1',
-        name: 'Store Manager',
-        email: 'manager@figicore.com',
-        role: 'manager',
-    },
-    staff: {
-        id: 'staff-1',
-        name: 'Staff Member',
-        email: 'staff@figicore.com',
-        role: 'staff',
-    },
-    customer: {
-        id: 'cust-1',
-        name: 'Loyal Customer',
-        email: 'customer@gmail.com',
-        role: 'customer',
-    },
-    guest: {
-        id: 'guest-0',
-        name: 'Guest User',
-        email: '',
-        role: 'guest',
-    },
-};
+// Helper to safely parse user from local storage
+const getInitialUser = (): User | null => {
+    try {
+        const storedUser = localStorage.getItem('user');
+        return storedUser ? JSON.parse(storedUser) : null;
+    } catch (e) {
+        console.error("Failed to parse user from local storage", e);
+        return null;
+    }
+}
 
-// Initialize state from local storage to persist role across reloads
-const storedRole = localStorage.getItem('figi_role') as UserRole | null;
-const initialRole = storedRole || 'guest';
-const initialUser = initialRole !== 'guest' ? MOCK_USERS[initialRole] : null;
+const initialUser = getInitialUser();
+const initialRole = initialUser?.role_code || 'guest';
 
 export const useAuthStore = create<AuthState>((set) => ({
-    isAuthenticated: initialRole !== 'guest',
+    isAuthenticated: !!initialUser,
     user: initialUser,
     currentRole: initialRole,
 
+    // Login now expects a real User object
     login: (role: UserRole) => {
-        const user = MOCK_USERS[role];
+        // This 'login' signature in AuthState might need changing if we want to pass the whole user
+        // But for now, let's keep it simple or just rely on 'user' being set by SignIn.tsx
+        // Actually, SignIn.tsx sets localStorage, but doesn't call store.login()!
+        // We should just reload from localStorage or provide a setUser action.
+        // For strictly following the interface:
+        console.warn("useAuthStore.login(role) is deprecated. Use syncWithLocalStorage or reload page.");
+    },
+
+    // New action to sync state after component login
+    setUser: (user: User) => {
         set({
-            isAuthenticated: role !== 'guest',
-            user: role !== 'guest' ? user : null,
-            currentRole: role,
+            isAuthenticated: true,
+            user: user,
+            currentRole: user.role_code
         });
-        localStorage.setItem('figi_role', role);
     },
 
     logout: () => {
@@ -62,16 +45,11 @@ export const useAuthStore = create<AuthState>((set) => ({
             user: null,
             currentRole: 'guest',
         });
-        localStorage.removeItem('figi_role');
+        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
     },
 
     switchRole: (role: UserRole) => {
-        const user = MOCK_USERS[role];
-        set({
-            isAuthenticated: role !== 'guest',
-            user: role !== 'guest' ? user : null,
-            currentRole: role,
-        });
-        localStorage.setItem('figi_role', role);
+        console.warn("Dev Switch Role is disabled in production mode.");
     }
 }));

@@ -1,20 +1,21 @@
-export type UserRole = 'admin' | 'manager' | 'staff' | 'customer' | 'guest';
+export type UserRole = 'SUPER_ADMIN' | 'MANAGER' | 'STAFF_POS' | 'STAFF_INVENTORY' | 'CUSTOMER';
 
 export interface User {
-    id: string;
-    name: string;
+    id: number;
+    fullName: string;
     email: string;
-    role: UserRole;
-    avatarUrl?: string;
+    role_code: UserRole;
+    avatarUrl?: string; // Optional, might come from google
 }
 
 export interface AuthState {
     isAuthenticated: boolean;
     user: User | null;
-    currentRole: UserRole;
-    login: (role: UserRole) => void;
+    currentRole: UserRole | 'guest';
+    setUser: (user: User) => void;
+    login: (role: UserRole | 'guest') => void; // Deprecated
     logout: () => void;
-    switchRole: (role: UserRole) => void;
+    switchRole: (role: UserRole | 'guest') => void;
 }
 
 export interface LoginPayload {
@@ -25,11 +26,21 @@ export interface LoginPayload {
 export interface RegisterPayload {
     email: string;
     password?: string;
-    firstName?: string;
-    lastName?: string;
+    fullName: string;
+    phone: string;
+}
+
+export interface VerifyOtpPayload {
+    email: string;
+    otp: string;
 }
 
 export interface AuthResponse {
-    token: string;
-    user: User;
+    access_token: string;
+    user: {
+        id: number;
+        email: string;
+        fullName: string;
+        role_code: string;
+    };
 }
