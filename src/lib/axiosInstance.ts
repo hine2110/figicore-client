@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Định nghĩa base URL từ biến môi trường
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 /**
  * Axios Instance chuẩn cho toàn bộ ứng dụng.
