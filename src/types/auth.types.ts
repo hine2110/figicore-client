@@ -1,11 +1,20 @@
 export type UserRole = 'SUPER_ADMIN' | 'MANAGER' | 'STAFF_POS' | 'STAFF_INVENTORY' | 'CUSTOMER';
 
 export interface User {
-    id: number;
-    fullName: string;
+    user_id: number;
     email: string;
+    full_name: string;
+    phone: string | null;
+    avatar_url: string | null;
     role_code: UserRole;
-    avatarUrl?: string; // Optional, might come from google
+    status_code?: string;
+    is_verified?: boolean;
+    google_id?: string;
+    customers?: {
+        current_rank_code: string;
+        total_spent: string | number;
+        loyalty_points: number;
+    } | null;
 }
 
 export interface AuthState {
@@ -37,10 +46,5 @@ export interface VerifyOtpPayload {
 
 export interface AuthResponse {
     access_token: string;
-    user: {
-        id: number;
-        email: string;
-        fullName: string;
-        role_code: string;
-    };
+    user: User;
 }

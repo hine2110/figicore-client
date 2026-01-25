@@ -59,10 +59,13 @@ import SignIn from "@/pages/guest/SignIn";
 import { SignUp } from "@/pages/guest/SignUp";
 import ForgotPassword from "@/pages/guest/ForgotPassword";
 import ResetPassword from "@/pages/guest/ResetPassword";
+import AuthSuccess from "@/pages/guest/AuthSuccess";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function App() {
     return (
         <BrowserRouter>
+            <Toaster />
             <Routes>
                 {/* Default Redirect handled by RoleBasedRedirect, but keep fallback */}
                 <Route path="/" element={<Navigate to="/guest/home" replace />} />
@@ -79,6 +82,9 @@ export default function App() {
                     <Route path="forgot-password" element={<ForgotPassword />} />
                     <Route path="reset-password" element={<ResetPassword />} />
                 </Route>
+
+                {/* 1.5. AUTH CALLBACK */}
+                <Route path="/auth/success" element={<AuthSuccess />} />
 
                 {/* 2. PROTECTED ROUTES */}
                 <Route element={<ProtectedRoute />}>
