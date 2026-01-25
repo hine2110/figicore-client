@@ -57,8 +57,9 @@ import ProductDetail from "@/pages/guest/ProductDetail";
 import { About } from "@/pages/guest/About";
 import SignIn from "@/pages/guest/SignIn";
 import { SignUp } from "@/pages/guest/SignUp";
+import ForgotPassword from "@/pages/guest/ForgotPassword";
+import ResetPassword from "@/pages/guest/ResetPassword";
 import AuthSuccess from "@/pages/guest/AuthSuccess";
-
 import { Toaster } from "@/components/ui/toaster";
 
 export default function App() {
@@ -78,6 +79,8 @@ export default function App() {
                     <Route path="about" element={<About />} />
                     <Route path="login" element={<SignIn />} />
                     <Route path="signup" element={<SignUp />} />
+                    <Route path="forgot-password" element={<ForgotPassword />} />
+                    <Route path="reset-password" element={<ResetPassword />} />
                 </Route>
 
                 {/* 1.5. AUTH CALLBACK */}
