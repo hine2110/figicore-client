@@ -126,7 +126,7 @@ export default function SignIn() {
                         <div className="space-y-2">
                             <div className="flex justify-between">
                                 <label className="text-sm font-medium text-neutral-900">Password</label>
-                                <Link to="#" className="text-sm text-blue-600 hover:underline">Forgot password?</Link>
+                                <Link to="/guest/forgot-password" className="text-sm text-blue-600 hover:underline">Forgot password?</Link>
                             </div>
                             <input
                                 type="password"
