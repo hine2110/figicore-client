@@ -7,7 +7,8 @@ import RoleGuard from "@/guards/RoleGuard";
 // Layouts
 import AdminLayout from "@/layouts/AdminLayout";
 import ManagerLayout from "@/layouts/ManagerLayout";
-import StaffLayout from "@/layouts/StaffLayout";
+import WarehouseLayout from "@/layouts/WarehouseLayout";
+import PosLayout from "@/layouts/PosLayout";
 
 // Pages
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -28,7 +29,7 @@ import MarketingCampaigns from "@/pages/manager/MarketingCampaigns";
 import ReturnApprovals from "@/pages/manager/ReturnApprovals";
 import ShiftManagement from "@/pages/manager/ShiftManagement";
 import CustomerFeedback from "@/pages/manager/CustomerFeedback";
-import StaffDashboard from "@/pages/staff/StaffDashboard";
+// import StaffDashboard from "@/pages/staff/StaffDashboard"; // Deprecated
 
 // Customer Pages
 import CustomerHome from "@/pages/customer/CustomerHome";
@@ -42,13 +43,18 @@ import CustomerAuctions from "@/pages/customer/Auctions";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
 
 // Staff Pages
-import OrderProcessing from "@/pages/staff/OrderProcessing";
-import Inventory from "@/pages/staff/Inventory";
-import PackingFulfillment from "@/pages/staff/PackingFulfillment";
-import StaffPOS from "@/pages/staff/StaffPOS";
-import StaffSchedule from "@/pages/staff/StaffSchedule";
-import GoodsReceipt from "@/pages/staff/GoodsReceipt";
-import ReturnInspection from "@/pages/staff/ReturnInspection";
+// Warehouse Pages
+import Inventory from "@/pages/warehouse/Inventory";
+import PackingFulfillment from "@/pages/warehouse/PackingFulfillment";
+import GoodsReceipt from "@/pages/warehouse/GoodsReceipt";
+import ReturnInspection from "@/pages/warehouse/ReturnInspection";
+import WarehouseDashboard from "@/pages/warehouse/WarehouseDashboard";
+
+// POS Pages
+import OrderProcessing from "@/pages/pos/OrderProcessing";
+import PosSystem from "@/pages/pos/PosSystem";
+import PosDashboard from "@/pages/pos/PosDashboard";
+import PosSchedule from "@/pages/pos/PosSchedule";
 
 // Guest Pages
 import { GuestHome } from "@/pages/guest/GuestHome";
@@ -118,18 +124,26 @@ export default function App() {
                         </Route>
                     </Route>
 
-                    {/* STAFF Routes */}
-                    <Route element={<RoleGuard allowedRoles={['STAFF_POS', 'STAFF_INVENTORY', 'MANAGER', 'SUPER_ADMIN']} />}>
-                        <Route path="/staff" element={<StaffLayout />}>
-                            <Route index element={<Navigate to="/staff/dashboard" replace />} />
-                            <Route path="dashboard" element={<StaffDashboard />} />
-                            <Route path="orders" element={<OrderProcessing />} />
+                    {/* WAREHOUSE Routes */}
+                    <Route element={<RoleGuard allowedRoles={['STAFF_INVENTORY', 'MANAGER', 'SUPER_ADMIN']} />}>
+                        <Route path="/warehouse" element={<WarehouseLayout />}>
+                            <Route index element={<Navigate to="/warehouse/dashboard" replace />} />
+                            <Route path="dashboard" element={<WarehouseDashboard />} />
                             <Route path="inventory" element={<Inventory />} />
                             <Route path="packing" element={<PackingFulfillment />} />
-                            <Route path="pos" element={<StaffPOS />} />
-                            <Route path="receipt" element={<GoodsReceipt />} />
+                            <Route path="imports" element={<GoodsReceipt />} />
                             <Route path="returns" element={<ReturnInspection />} />
-                            <Route path="schedule" element={<StaffSchedule />} />
+                        </Route>
+                    </Route>
+
+                    {/* POS Routes */}
+                    <Route element={<RoleGuard allowedRoles={['STAFF_POS', 'MANAGER', 'SUPER_ADMIN']} />}>
+                        <Route path="/pos" element={<PosLayout />}>
+                            <Route index element={<Navigate to="/pos/counter" replace />} />
+                            <Route path="dashboard" element={<PosDashboard />} />
+                            <Route path="counter" element={<PosSystem />} />
+                            <Route path="orders" element={<OrderProcessing />} />
+                            <Route path="schedule" element={<PosSchedule />} />
                         </Route>
                     </Route>
 

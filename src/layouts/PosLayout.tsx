@@ -2,12 +2,8 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import {
     LayoutDashboard,
     ClipboardList,
-    Box,
-    PackageCheck,
-    RotateCcw,
     CalendarDays,
     LogOut,
-    Truck,
     Menu,
     X,
     ScanBarcode
@@ -17,20 +13,16 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export default function StaffLayout() {
+export default function PosLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const location = useLocation();
     const { user, logout } = useAuthStore();
 
     const navItems = [
-        { name: 'Dashboard', path: '/staff/dashboard', icon: LayoutDashboard },
-        { name: 'POS System', path: '/staff/pos', icon: ScanBarcode },
-        { name: 'Order Queue', path: '/staff/orders', icon: ClipboardList },
-        { name: 'Packing', path: '/staff/packing', icon: PackageCheck },
-        { name: 'Inventory', path: '/staff/inventory', icon: Box },
-        { name: 'Goods Receipt', path: '/staff/receipt', icon: Truck },
-        { name: 'Returns', path: '/staff/returns', icon: RotateCcw },
-        { name: 'Schedule', path: '/staff/schedule', icon: CalendarDays },
+        { name: 'Dashboard', path: '/pos/dashboard', icon: LayoutDashboard },
+        { name: 'Sales Counter', path: '/pos/counter', icon: ScanBarcode },
+        { name: 'Order Queue', path: '/pos/orders', icon: ClipboardList },
+        { name: 'Schedule', path: '/pos/schedule', icon: CalendarDays },
     ];
 
     const isActive = (path: string) => location.pathname === path;
@@ -53,22 +45,22 @@ export default function StaffLayout() {
                 <div className="h-full flex flex-col">
                     {/* Brand */}
                     <div className="h-14 flex items-center px-6 border-b border-neutral-800">
-                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold mr-3">F</div>
-                        <span className="font-bold text-lg text-white">FigiStaff</span>
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold mr-3">P</div>
+                        <span className="font-bold text-lg text-white">POS System</span>
                     </div>
 
                     {/* User Info */}
                     <div className="p-4 border-b border-neutral-800">
                         <div className="flex items-center gap-3">
                             <Avatar>
-                                <AvatarImage src={user?.avatarUrl} />
+                                <AvatarImage src={user?.avatar_url || undefined} />
                                 <AvatarFallback className="bg-blue-600 text-white">
-                                    {user?.name?.charAt(0)}
+                                    {user?.full_name?.charAt(0)}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="overflow-hidden">
-                                <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-                                <p className="text-xs text-neutral-500 capitalize">{user?.role}</p>
+                                <p className="text-sm font-medium text-white truncate">{user?.full_name}</p>
+                                <p className="text-xs text-neutral-500 capitalize">{user?.role_code}</p>
                             </div>
                         </div>
                     </div>
@@ -122,7 +114,7 @@ export default function StaffLayout() {
                 <header className="bg-white border-b border-neutral-200 h-14 flex items-center px-8 justify-between lg:justify-end">
                     <div className="lg:hidden w-8"></div> {/* Spacer for toggle button */}
                     <div className="text-sm text-neutral-500">
-                        Work Shift: <span className="font-semibold text-green-600">Active</span> • Store: <span className="font-semibold text-neutral-900">Main Branch</span>
+                        Terminal: <span className="font-semibold text-blue-600">Active</span>
                     </div>
                 </header>
 
