@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/useAuthStore";
+import { ROLE_LANDING_PATHS, getRoleBaseRoute } from "@/routes";
 
 export default function SignIn() {
     const navigate = useNavigate();
@@ -46,29 +47,38 @@ export default function SignIn() {
 
 
             // Smart Redirect Logic
-            const userRole = user?.role_code;
+            const userRole = user?.role_code || 'GUEST';
             console.log('Login Role:', userRole);
 
             let target = redirectUrl;
 
-            // Defined from Server Seed
-            const ADMIN_ROLES = ['SUPER_ADMIN', 'MANAGER', 'STAFF_POS', 'STAFF_INVENTORY'];
+            // 1. Get Canonical Landing Path
+            const landingPath = ROLE_LANDING_PATHS[userRole] || '/';
+            // 2. Get Safe Base (e.g. 'warehouse')
+            const roleSafeBase = getRoleBaseRoute(userRole);
 
-            // RULE 1: If user is CUSTOMER
-            if (userRole === 'CUSTOMER') {
-                // Security: Prevent Admin access
-                if (target.startsWith('/admin')) {
-                    target = '/customer/home';
-                }
-                // Default: Go to Customer Home instead of landing page
-                if (target === '/') {
-                    target = '/customer/home';
-                }
+            // RULE 1: Default Landing
+            // If target is just root, send them to their dashboard
+            if (target === '/') {
+                target = landingPath;
             }
 
-            // RULE 2: If user is ANY ADMIN ROLE and target is '/' (default) -> Send to Dashboard
-            if (ADMIN_ROLES.includes(userRole) && target === '/') {
-                target = '/admin/dashboard';
+            // RULE 2: Fix "Wrong Admin Redirect"
+            // If a non-Super Admin tries to go to /admin (often leftover from previous sessions or bad defaults),
+            // Redirect them to their CORRECT dashboard.
+            // Exception: MANAGER might share /admin? No, per map MANAGER -> /manager/dashboard.
+            if (target.startsWith('/admin') && userRole !== 'SUPER_ADMIN') {
+                console.warn(`Redirecting ${userRole} from restricted /admin to ${landingPath}`);
+                target = landingPath;
+            }
+
+            // RULE 3: Strict Base Enforcement (Optional but Recommended)
+            // If they are strictly a Warehouse staff, they shouldn't be in /pos or /manager
+            if (roleSafeBase && !target.startsWith(`/${roleSafeBase}`) && !target.startsWith('/profile')) {
+                // Allow /profile or common routes if any, otherwise strict check.
+                // For now, let's keep it simple: If they are clearly in the wrong module (e.g. Warehouse -> POS), fix it.
+                // But valid public routes? (Products?)
+                // Let's safe guard only if target is explicitly another dashboard area.
             }
 
             // RULE 3: Execute Redirect

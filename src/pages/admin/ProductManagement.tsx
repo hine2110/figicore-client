@@ -1,69 +1,126 @@
-import { Plus, Search, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Filter, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-
-const PRODUCTS = [
-    { id: 1, name: 'Skullpanda The Mare of Animals', sku: 'SKU-001', stock: 1200, price: '$12.00', status: 'Published' },
-    { id: 2, name: 'Dimoo Aquarium Series', sku: 'SKU-002', stock: 45, price: '$14.00', status: 'Published' },
-    { id: 3, name: 'Secret Item (Hidden)', sku: 'SKU-999', stock: 5, price: '$500.00', status: 'Draft' },
-];
+import { Input } from '@/components/ui/input';
+import { ProductList } from '@/components/product/ProductList';
+import { CreateProductModal } from '@/components/product/CreateProductModal';
+import { productsService } from '@/services/products.service';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function ProductManagement() {
+    const [products, setProducts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
+
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [activeProduct, setActiveProduct] = useState<any>(null);
+
+    const { toast } = useToast();
+
+    const fetchProducts = async () => {
+        setLoading(true);
+        try {
+            const data = await productsService.getProducts({ search });
+            // Handle different API response structures just in case
+            setProducts(Array.isArray(data) ? data : (data as any)?.data || []);
+        } catch (error) {
+            console.error("Failed to fetch products", error);
+            // toast({ variant: "destructive", title: "Error", description: "Failed to load products." });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProducts();
+    }, [search]); // Re-fetch on search debouncing could be added here
+
+    // Handlers
+    const handleCreate = () => {
+        setActiveProduct(null); // Clear edit state
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (product: any) => {
+        setActiveProduct(product);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this product?")) return;
+        try {
+            await productsService.delete(id);
+            fetchProducts();
+            // toast({ title: "Success", description: "Product deleted." });
+        } catch (error) {
+            console.error(error);
+            alert("Failed to delete product");
+        }
+    };
+
+    const handleSuccess = () => {
+        fetchProducts();
+        setIsModalOpen(false);
+    };
+
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="space-y-6 h-full flex flex-col">
+            <div className="flex justify-between items-center shrink-0">
                 <div>
                     <h1 className="text-2xl font-bold text-neutral-900">Product Management</h1>
                     <p className="text-neutral-500">Add, edit, and organize product catalog.</p>
                 </div>
-                <Button>
-                    <Plus className="w-4 h-4 mr-2" /> Add Product
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={fetchProducts} disabled={loading}>
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    </Button>
+                    <Button onClick={handleCreate} className="gap-2">
+                        <Plus className="w-4 h-4" /> Add Product
+                    </Button>
+                </div>
+            </div>
+
+            {/* FILTERS */}
+            <div className="flex gap-4 items-center bg-white p-4 rounded-xl border border-neutral-200 shrink-0">
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                    <Input
+                        placeholder="Search products..."
+                        className="pl-9"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+                <Button variant="outline" className="text-neutral-600 gap-2">
+                    <Filter className="w-4 h-4" /> Filter
                 </Button>
             </div>
 
-            <Card className="rounded-xl border border-neutral-200 overflow-hidden">
-                <div className="p-4 border-b border-neutral-100 flex gap-4">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                        <input type="text" placeholder="Search by name, SKU..." className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm" />
+            {/* GRID CONTENT */}
+            <div className="flex-1 overflow-y-auto min-h-0 pb-10">
+                {loading && products.length === 0 ? (
+                    <div className="flex items-center justify-center h-64">
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                     </div>
-                    <Button variant="outline">
-                        <Filter className="w-4 h-4 mr-2" /> Filters
-                    </Button>
-                </div>
+                ) : (
+                    <ProductList
+                        products={products}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                    />
+                )}
+            </div>
 
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-neutral-50 text-neutral-500 font-medium border-b border-neutral-200">
-                        <tr>
-                            <th className="px-6 py-4">Product Name</th>
-                            <th className="px-6 py-4">SKU</th>
-                            <th className="px-6 py-4">Stock</th>
-                            <th className="px-6 py-4">Price</th>
-                            <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4 text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100">
-                        {PRODUCTS.map(p => (
-                            <tr key={p.id} className="hover:bg-neutral-50">
-                                <td className="px-6 py-4 font-medium text-neutral-900">{p.name}</td>
-                                <td className="px-6 py-4 font-mono text-neutral-500">{p.sku}</td>
-                                <td className="px-6 py-4">{p.stock}</td>
-                                <td className="px-6 py-4 font-medium">{p.price}</td>
-                                <td className="px-6 py-4">
-                                    <Badge variant="outline" className={`${p.status === 'Published' ? 'bg-green-50 text-green-700' : 'bg-neutral-100 text-neutral-600'}`}>
-                                        {p.status}
-                                    </Badge>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">Edit</Button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </Card>
+            <CreateProductModal
+                open={isModalOpen}
+                onOpenChange={(open) => {
+                    setIsModalOpen(open);
+                    if (!open) setActiveProduct(null);
+                }}
+                onSuccess={handleSuccess}
+                productToEdit={activeProduct}
+            />
         </div>
     );
 }

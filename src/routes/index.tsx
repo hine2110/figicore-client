@@ -1,25 +1,15 @@
-/**
- * This file serves as the documentation for the routing strategy.
- * The actual implementation is currently centralized in src/App.tsx for simplicity during scaffolding.
- * 
- * Future Scalability:
- * In Phase 5+, we can split routes into separate files:
- * - src/routes/adminRoutes.tsx
- * - src/routes/customerRoutes.tsx
- * etc.
- * 
- * Current Map:
- * /admin/*    -> AdminLayout    (Guarded: admin)
- * /manager/*  -> ManagerLayout  (Guarded: manager, admin)
- * /staff/*    -> StaffLayout    (Guarded: staff, manager, admin)
- * /customer/* -> CustomerLayout (Guarded: customer)
- * /guest/*    -> GuestLayout    (Public)
- */
+export const ROLE_LANDING_PATHS: Record<string, string> = {
+    SUPER_ADMIN: '/admin/dashboard',
+    MANAGER: '/manager/dashboard',
+    STAFF_INVENTORY: '/warehouse/dashboard',
+    STAFF_POS: '/pos/dashboard',
+    CUSTOMER: '/customer/home',
+};
 
-export const ROUTE_MAP = {
-    ADMIN: '/admin',
-    MANAGER: '/manager',
-    STAFF: '/staff',
-    CUSTOMER: '/customer',
-    GUEST: '/guest'
+// Helper to check if a path belongs to a specific root (Security)
+export const getRoleBaseRoute = (role: string) => {
+    // e.g., STAFF_INVENTORY -> '/warehouse'
+    const path = ROLE_LANDING_PATHS[role];
+    if (!path) return '';
+    return path.split('/')[1] || '';
 };
