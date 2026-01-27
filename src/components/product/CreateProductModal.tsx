@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, ChevronRight, CheckCircle2, Box, Info, Trash2, Plus, RefreshCw, X, Calendar, Tag, Image as ImageIcon, ExternalLink, Eye, ChevronRightSquare, Layers } from "lucide-react";
+import { Loader2, ChevronRight, CheckCircle2, Box, Info, Trash2, Plus, RefreshCw, X, Calendar, Tag, Image as ImageIcon, ExternalLink, Eye, ChevronRightSquare, Layers, Printer } from "lucide-react";
+// @ts-ignore
+import Barcode from 'react-barcode';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -52,7 +54,6 @@ const blindboxSchema = baseSchema.extend({
     price: z.coerce.number().min(1000, "Ticket Price must be at least 1,000 VND"),
     min_value_allow: z.coerce.number().min(0),
     max_value_allow: z.coerce.number().min(0),
-    target_margin: z.coerce.number().min(0).max(100).optional(),
     start_date: z.string().min(1, "Start Date is required"),
     end_date: z.string().min(1, "End Date is required"),
 });
@@ -85,10 +86,32 @@ const getTypeGradient = (type: string) => {
     }
 };
 
+const FormattedNumberInput = ({ field, placeholder = "0" }: { field: any, placeholder?: string }) => (
+    <div className="space-y-1">
+        <div className="relative">
+            <Input type="number" min={0} placeholder={placeholder} {...field} className="font-mono" />
+            <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">VND</span>
+        </div>
+        {field.value > 0 && <div className="text-xs font-medium text-blue-600">{formatPrice(field.value)}</div>}
+    </div>
+);
+
 // --- SUB-COMPONENT: DETAIL VIEW (TWO-COLUMN) ---
 function ProductDetailView({ product, onClose, onSuccess }: { product: any, onClose: () => void, onSuccess?: () => void }) {
     const [status, setStatus] = useState(product.status_code);
     const [galleryIndex, setGalleryIndex] = useState(0);
+
+    // --- PRINT STATE ---
+    const [showPrintConfig, setShowPrintConfig] = useState(false);
+    const [printQuantities, setPrintQuantities] = useState<Record<number, number>>({});
+
+    useEffect(() => {
+        if (product.product_variants) {
+            const initial: Record<number, number> = {};
+            product.product_variants.forEach((v: any) => initial[v.variant_id] = 1);
+            setPrintQuantities(initial);
+        }
+    }, [product]);
 
     // --- DATA PREPARATION ---
     // 1. Core Media
@@ -132,6 +155,10 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
         }
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
     const handleVariantClick = (variantId: number) => {
         if (variantIdToMediaIndex.has(variantId)) {
             setGalleryIndex(variantIdToMediaIndex.get(variantId)!);
@@ -145,8 +172,142 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
     const pre = product.product_preorders?.[0];
 
     return (
-        <div className="flex flex-col h-full bg-white">
+        <div className="flex flex-col h-full bg-white relative">
             <DialogTitle className="sr-only">Product Detail</DialogTitle>
+
+            {/* PRINT OVERLAY (Configuration) */}
+            {showPrintConfig && (
+                <div className="absolute inset-0 bg-white z-50 flex flex-col animate-in fade-in duration-200">
+                    <div className="p-4 border-b flex justify-between items-center bg-neutral-50">
+                        <h3 className="font-bold flex items-center gap-2"><Printer className="w-5 h-5" /> Print Configuration</h3>
+                        <Button variant="ghost" size="icon" onClick={() => setShowPrintConfig(false)}><X className="w-5 h-5" /></Button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6">
+                        <div className="max-w-3xl mx-auto space-y-6">
+                            <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm border border-blue-100 flex items-start gap-3">
+                                <Info className="w-5 h-5 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-bold">Ready to Print Labels</p>
+                                    <p>Select the quantity for each variant below. The layout is optimized for standard thermal sticket printers (2-inch width approx).</p>
+                                </div>
+                            </div>
+
+                            <div className="border rounded-md overflow-hidden">
+                                <Table>
+                                    <TableHeader className="bg-neutral-50"><TableRow><TableHead>Variant</TableHead><TableHead>SKU</TableHead><TableHead>Price</TableHead><TableHead className="w-[150px]">Quantity</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {product.product_variants?.map((v: any) => (
+                                            <TableRow key={v.variant_id}>
+                                                <TableCell className="font-medium">{v.option_name}</TableCell>
+                                                <TableCell className="text-neutral-500 font-mono text-xs">{v.sku}</TableCell>
+                                                <TableCell>{formatPrice(Number(v.price))}</TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        type="number"
+                                                        min={0}
+                                                        value={printQuantities[v.variant_id] || 0}
+                                                        onChange={(e) => setPrintQuantities(prev => ({ ...prev, [v.variant_id]: parseInt(e.target.value) || 0 }))}
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="p-4 border-t bg-neutral-50 flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowPrintConfig(false)}>Cancel</Button>
+                        <Button onClick={handlePrint} className="gap-2">
+                            <Printer className="w-4 h-4" />
+                            Print {Object.values(printQuantities).reduce((a, b) => a + b, 0)} Labels
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* HIDDEN PRINT AREA (Robust 50x30mm Layout) */}
+            <style>{`
+                @media print {
+                    body * { visibility: hidden; }
+                    #barcode-print-area, #barcode-print-area * { visibility: visible; }
+                    #barcode-print-area { 
+                        position: absolute; 
+                        left: 0; 
+                        top: 0; 
+                        width: 100%; 
+                        background: white; 
+                        display: flex;
+                        flex-wrap: wrap;
+                        align-content: flex-start;
+                        padding: 0;
+                    }
+                    .sticker {
+                        page-break-inside: avoid;
+                        width: 50mm; 
+                        height: 30mm;
+                        border: 1px dashed #ddd; /* Light border guide */
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: space-between; /* Distribute space */
+                        padding: 2mm 1mm;
+                        box-sizing: border-box;
+                        margin: 0;
+                        overflow: hidden;
+                    }
+                    /* FORCE SVG TO FIT CONTAINER */
+                    .sticker svg {
+                        max-width: 100% !important;
+                        height: auto !important;
+                        max-height: 18mm !important;
+                        width: auto !important;
+                    }
+                    @page { margin: 0; size: auto; }
+                }
+            `}</style>
+
+            <div id="barcode-print-area" className="hidden">
+                {product.product_variants?.flatMap((v: any) => {
+                    const count = printQuantities[v.variant_id] || 0;
+                    return Array(count).fill(0).map((_, i) => (
+                        <div key={`${v.variant_id}-${i}`} className="sticker">
+                            {/* Product Name (Bold, Condensed) */}
+                            <div className="text-[9px] font-bold uppercase truncate w-full text-center leading-none">
+                                {product.name.substring(0, 20)}
+                            </div>
+
+                            {/* Variant Name */}
+                            <div className="text-[8px] text-neutral-500 truncate w-full text-center leading-none mb-1">
+                                {v.option_name}
+                            </div>
+
+                            {/* BARCODE (Pure SVG, No Text) */}
+                            <div className="w-full flex justify-center items-center flex-1">
+                                <Barcode
+                                    value={v.sku || "UNKNOWN"}
+                                    format="CODE128"
+                                    width={1.2}         // Try 1.2 for better scanning, CSS will shrink it if needed
+                                    height={40}         // Tall bars
+                                    displayValue={false} // CRITICAL: Turn off default text
+                                    margin={0}
+                                    background="transparent"
+                                />
+                            </div>
+
+                            {/* Manual SKU & Price Text */}
+                            <div className="w-full flex justify-between items-end mt-1 px-1">
+                                <span className="text-[7px] font-mono text-neutral-600 leading-none truncate max-w-[60%]">
+                                    {v.sku}
+                                </span>
+                                <span className="text-[10px] font-bold leading-none">
+                                    {formatPrice(Number(v.price))}
+                                </span>
+                            </div>
+                        </div>
+                    ));
+                })}
+            </div>
 
             {/* Header */}
             <div className="p-4 border-b shrink-0 flex justify-between items-center bg-white sticky top-0 z-10">
@@ -165,6 +326,12 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
+                    <Button variant="outline" size="sm" className="gap-2 hidden sm:flex" onClick={() => setShowPrintConfig(true)}>
+                        <Printer className="w-4 h-4" /> Print Labels
+                    </Button>
+
+                    <div className="h-6 w-px bg-neutral-200" />
+
                     {/* Status Toggle (Green/Gray) */}
                     <div className="flex items-center gap-2">
                         <span className={cn("text-xs font-bold uppercase", status === 'ACTIVE' ? "text-green-600" : "text-neutral-400")}>
@@ -453,7 +620,6 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
             } else if (data.type_code === "BLINDBOX") {
                 payload.blindbox = {
                     price: data.price, min_value_allow: data.min_value_allow, max_value_allow: data.max_value_allow,
-                    target_margin: data.target_margin,
                     campaign_period: { start: data.start_date ? new Date(data.start_date).toISOString() : new Date().toISOString(), end: data.end_date ? new Date(data.end_date).toISOString() : new Date().toISOString() }
                 };
             } else if (data.type_code === "PREORDER") {
@@ -499,15 +665,8 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
     };
 
     const getBrandName = (id: number) => brands.find(b => b.value === id)?.label || "Unknown";
-    const FormattedNumberInput = ({ field, placeholder = "0" }: { field: any, placeholder?: string }) => (
-        <div className="space-y-1">
-            <div className="relative">
-                <Input type="number" min={0} placeholder={placeholder} {...field} className="font-mono" />
-                <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">VND</span>
-            </div>
-            {field.value > 0 && <div className="text-xs font-medium text-blue-600">{formatPrice(field.value)}</div>}
-        </div>
-    );
+
+
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
@@ -673,11 +832,37 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                     <div className="space-y-4">
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                            <FormField control={form.control} name="target_margin" render={({ field }) => (<FormItem><FormLabel>Margin %</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                         </div>
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <FormField control={form.control} name="min_value_allow" render={({ field }) => (<FormItem><FormLabel>Min Value</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
                                                             <FormField control={form.control} name="max_value_allow" render={({ field }) => (<FormItem><FormLabel>Max Value</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                        </div>
+
+                                                        {/* Smart Tier Preview */}
+                                                        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-100 space-y-3">
+                                                            <div className="flex items-center gap-2 text-xs font-bold uppercase text-purple-700">
+                                                                <Layers className="w-3 h-3" /> Smart Tier Distribution
+                                                            </div>
+                                                            <div className="grid grid-cols-3 gap-2">
+                                                                <div className="bg-white/60 p-2 rounded-lg border border-purple-100/50">
+                                                                    <div className="text-[10px] font-bold text-neutral-500 uppercase">Common (80%)</div>
+                                                                    <div className="text-xs font-medium text-purple-900 mt-0.5">
+                                                                        {formatPrice(form.watch('min_value_allow') || 0)} - {formatPrice(form.watch('price') || 0)}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="bg-white/60 p-2 rounded-lg border border-purple-100/50">
+                                                                    <div className="text-[10px] font-bold text-blue-500 uppercase">Rare (15%)</div>
+                                                                    <div className="text-xs font-medium text-purple-900 mt-0.5">
+                                                                        &gt; {formatPrice(form.watch('price') || 0)}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="bg-white/60 p-2 rounded-lg border border-purple-100/50">
+                                                                    <div className="text-[10px] font-bold text-amber-500 uppercase">Legend (5%)</div>
+                                                                    <div className="text-xs font-medium text-purple-900 mt-0.5">
+                                                                        Max: {formatPrice(form.watch('max_value_allow') || 0)}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <FormField control={form.control} name="start_date" render={({ field }) => (<FormItem><FormLabel>Start</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
