@@ -33,7 +33,7 @@ interface ScheduleSummary {
     total_hours: number;
 }
 
-export default function PosSchedule() {
+export default function WarehouseSchedule() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
     const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
@@ -75,7 +75,7 @@ export default function PosSchedule() {
             setSchedules(scheduleData);
             setSummary(summaryRes.data);
         } catch (error) {
-            console.error("Failed to fetch schedules:", error);
+            console.error("Failed to fetch warehouse schedules:", error);
             setSchedules([]); // Fallback to empty array on error
         } finally {
             setLoading(false);
@@ -123,8 +123,8 @@ export default function PosSchedule() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Work Schedule</h1>
-                    <p className="text-neutral-500">View your upcoming shifts and assignments.</p>
+                    <h1 className="text-2xl font-bold text-neutral-900">Warehouse Schedule</h1>
+                    <p className="text-neutral-500">View your logistics and inventory shifts.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Select value={viewMode} onValueChange={(v: 'week' | 'month') => setViewMode(v)}>
@@ -176,7 +176,7 @@ export default function PosSchedule() {
                 <div className="grid grid-cols-1 gap-6">
                     {daysToDisplay.map((day) => {
                         const daySchedules = getSchedulesForDay(day);
-                        if (daySchedules.length === 0) return null; // Reduce clutter
+                        if (daySchedules.length === 0) return null;
 
                         return (
                             <Card key={day.toISOString()} className="overflow-hidden border-neutral-200">
@@ -193,7 +193,7 @@ export default function PosSchedule() {
                                         <div key={shift.schedule_id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-neutral-50 transition-colors">
                                             <div className="flex items-start md:items-center gap-4">
                                                 <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                                                    {(shift.employees?.users?.full_name || 'Me').charAt(0)}
+                                                    {(shift.employees?.users?.full_name || 'M').charAt(0)}
                                                 </div>
                                                 <div>
                                                     <div className="font-medium text-neutral-900">{shift.employees?.users?.full_name || 'My Shift'}</div>
