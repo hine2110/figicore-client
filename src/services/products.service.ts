@@ -16,6 +16,11 @@ export const productsService = {
         return response.data;
     },
 
+    getOne: async (id: number): Promise<any> => {
+        const response = await axiosInstance.get(`/products/${id}`);
+        return response.data;
+    },
+
     searchInbound: async (query: string): Promise<ApiResponse<any[]>> => {
         return productsService.getProducts({ search: query });
     },

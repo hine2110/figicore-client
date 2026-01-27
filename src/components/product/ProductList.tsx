@@ -30,7 +30,7 @@ export function ProductList({ products, onEdit, onDelete, onView }: ProductListP
                 if (product.type_code === 'RETAIL') {
                     displayPrice = product.product_variants?.[0]?.price || 0;
                 } else if (product.type_code === 'BLINDBOX') {
-                    displayPrice = product.product_blindboxes?.[0]?.price || 0;
+                    displayPrice = product.product_blindboxes?.[0]?.price || product.product_variants?.[0]?.price || 0;
                 } else if (product.type_code === 'PREORDER') {
                     displayPrice = product.product_preorders?.[0]?.deposit_amount || product.product_variants?.[0]?.price || 0;
                 }
