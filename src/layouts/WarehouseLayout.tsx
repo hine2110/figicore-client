@@ -8,6 +8,7 @@ import {
     Truck,
     Menu,
     X,
+    CalendarDays,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export default function WarehouseLayout() {
         { name: 'Imports', path: '/warehouse/imports', icon: Truck },
         { name: 'Packing', path: '/warehouse/packing', icon: PackageCheck },
         { name: 'Returns', path: '/warehouse/returns', icon: RotateCcw },
+        { name: 'Schedule', path: '/warehouse/schedule', icon: CalendarDays },
     ];
 
     const isActive = (path: string) => location.pathname === path;
