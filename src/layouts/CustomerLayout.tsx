@@ -1,17 +1,18 @@
 import {
     ShoppingCart,
-    Heart,
     User,
     Search,
     Menu,
     X,
     Wallet,
     Package,
+    Ticket,
     Gavel,
     Home
 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useCartStore } from '@/store/useCartStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -32,10 +33,12 @@ interface CustomerLayoutProps {
 export default function CustomerLayout({ children, activePage = 'home' }: CustomerLayoutProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
+    const { items } = useCartStore(); // Use Cart Store
+    const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
     const navItems = [
         { id: 'home', label: 'Home', icon: Home, path: '/customer/home' },
-        { id: 'products', label: 'Products', path: '/customer/shop' },
+        { id: 'products', label: 'Products', path: '/customer/shop?type=RETAIL' },
         { id: 'blind-box', label: 'Blind Box', path: '/customer/shop' },
         { id: 'pre-order', label: 'Pre-Order', path: '/customer/shop' },
         { id: 'auction', label: 'Auction', icon: Gavel, path: '/customer/auctions' },
@@ -66,8 +69,8 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                                         key={item.id}
                                         onClick={() => navigate(item.path)}
                                         className={`text-sm font-medium transition-colors ${activePage === item.id
-                                                ? 'text-gray-900'
-                                                : 'text-gray-600 hover:text-gray-900'
+                                            ? 'text-gray-900'
+                                            : 'text-gray-600 hover:text-gray-900'
                                             }`}
                                     >
                                         {item.label}
@@ -85,10 +88,6 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                                 />
                             </div>
 
-                            <Button variant="ghost" size="icon" className="relative">
-                                <Heart className="w-5 h-5" />
-                            </Button>
-
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -96,9 +95,11 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                                 onClick={() => navigate('/customer/cart')}
                             >
                                 <ShoppingCart className="w-5 h-5" />
-                                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                                    3
-                                </Badge>
+                                {cartCount > 0 && (
+                                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                                        {cartCount}
+                                    </Badge>
+                                )}
                             </Button>
 
                             <DropdownMenu>
@@ -147,8 +148,8 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                                         key={item.id}
                                         onClick={() => handleNavClick(item.path)}
                                         className={`text-left px-4 py-2 text-sm font-medium transition-colors ${activePage === item.id
-                                                ? 'text-gray-900 bg-gray-50'
-                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                            ? 'text-gray-900 bg-gray-50'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                             }`}
                                     >
                                         {item.label}
