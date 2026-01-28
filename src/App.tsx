@@ -49,6 +49,7 @@ import PackingFulfillment from "@/pages/warehouse/PackingFulfillment";
 import GoodsReceipt from "@/pages/warehouse/GoodsReceipt";
 import ReturnInspection from "@/pages/warehouse/ReturnInspection";
 import WarehouseDashboard from "@/pages/warehouse/WarehouseDashboard";
+import WarehouseSchedule from "@/pages/warehouse/WarehouseSchedule";
 
 // POS Pages
 import OrderProcessing from "@/pages/pos/OrderProcessing";
@@ -84,7 +85,7 @@ export default function App() {
                     <Route path="product/:id" element={<ProductDetail />} />
                     <Route path="about" element={<About />} />
                     <Route path="login" element={<SignIn />} />
-                    <Route path="signup" element={<SignUp />} />
+                    <Route path="register" element={<SignUp />} />
                     <Route path="forgot-password" element={<ForgotPassword />} />
                     <Route path="reset-password" element={<ResetPassword />} />
                 </Route>
@@ -136,6 +137,7 @@ export default function App() {
                             <Route path="packing" element={<PackingFulfillment />} />
                             <Route path="imports" element={<GoodsReceipt />} />
                             <Route path="returns" element={<ReturnInspection />} />
+                            <Route path="schedule" element={<WarehouseSchedule />} />
                         </Route>
                     </Route>
 

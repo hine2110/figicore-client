@@ -76,9 +76,9 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                                 <Button
                                     size="sm"
                                     className="bg-gray-900 text-white hover:bg-black transition-colors px-5"
-                                    onClick={() => navigate('/guest/signup')}
+                                    onClick={() => navigate('/guest/register')}
                                 >
-                                    Sign Up
+                                    Register
                                 </Button>
                             </div>
 
@@ -124,9 +124,9 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                                     </Button>
                                     <Button
                                         className="w-full justify-center bg-gray-900 text-white"
-                                        onClick={() => handleNavClick('/guest/signup')}
+                                        onClick={() => handleNavClick('/guest/register')}
                                     >
-                                        <UserPlus className="w-4 h-4 mr-2" /> Sign Up
+                                        <UserPlus className="w-4 h-4 mr-2" /> Register
                                     </Button>
                                 </div>
                             </nav>
