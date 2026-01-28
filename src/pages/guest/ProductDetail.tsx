@@ -116,11 +116,12 @@ export default function GuestProductDetail() {
                             {/* PRICE DISPLAY */}
                             <div className="mb-8">
                                 {product.type_code === 'BLINDBOX' ? (
-                                    <div className="text-3xl font-bold text-neutral-900">{formatPrice(product.product_blindboxes?.[0]?.price || 0)}</div>
+
+                                    <div className="text-3xl font-bold text-neutral-900">{formatPrice(product.product_blindboxes?.price || 0)}</div>
                                 ) : product.type_code === 'PREORDER' ? (
                                     <div>
-                                        <div className="text-3xl font-bold text-orange-600">{formatPrice(product.product_preorders?.[0]?.deposit_amount || 0)} <span className="text-sm font-medium text-neutral-500">Deposit</span></div>
-                                        <div className="text-sm text-neutral-400">Full Price: {formatPrice(product.product_preorders?.[0]?.full_price)}</div>
+                                        <div className="text-3xl font-bold text-orange-600">{formatPrice(Number(product.product_preorders?.deposit_amount) || 0)} <span className="text-sm font-medium text-neutral-500">Deposit</span></div>
+                                        <div className="text-sm text-neutral-400">Full Price: {formatPrice(Number(product.product_preorders?.full_price) || 0)}</div>
                                     </div>
                                 ) : (
                                     <div className="text-3xl font-bold text-neutral-900">{selectedVariant ? formatPrice(selectedVariant.price) : 'Select Option'}</div>
