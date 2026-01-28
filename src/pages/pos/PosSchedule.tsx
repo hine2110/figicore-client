@@ -11,7 +11,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { axiosInstance } from '@/lib/axiosInstance';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, parseISO, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
 
 interface WorkSchedule {
     schedule_id: number;
@@ -114,9 +114,19 @@ export default function PosSchedule() {
         });
     };
 
-    const formatTime = (isoString: string | null) => {
+    const formatTime = (isoString?: string | null) => {
         if (!isoString) return '--:--';
-        return format(parseISO(isoString), 'HH:mm');
+        try {
+            const date = new Date(isoString);
+            return new Intl.DateTimeFormat('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'Asia/Ho_Chi_Minh',
+                hour12: false
+            }).format(date);
+        } catch {
+            return '--:--';
+        }
     };
 
     return (
