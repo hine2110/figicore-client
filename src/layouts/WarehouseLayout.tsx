@@ -89,7 +89,16 @@ export default function WarehouseLayout() {
                     </nav>
 
                     {/* Footer Actions */}
-                    <div className="p-4 border-t border-neutral-800">
+                    <div className="p-4 border-t border-neutral-800 space-y-1">
+                        <Link to="/warehouse/profile">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-neutral-400 hover:text-white hover:bg-neutral-800"
+                            >
+                                <Box className="w-5 h-5 mr-3" />
+                                My Profile
+                            </Button>
+                        </Link>
                         <Button
                             variant="ghost"
                             className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-400/10"

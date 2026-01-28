@@ -11,6 +11,7 @@ export interface Customer {
     phone: string;
     status_code: string;
     avatar_url: string | null;
+    addresses?: any[];
   };
 }
 
@@ -33,6 +34,11 @@ export interface PaginatedResponse<T> {
 export const customersService = {
   getCustomers: async (params: GetCustomersParams): Promise<PaginatedResponse<Customer>> => {
     const response = await api.get('/customers', { params });
+    return response.data;
+  },
+
+  getCustomerById: async (id: number): Promise<Customer> => {
+    const response = await api.get(`/customers/${id}`);
     return response.data;
   },
 };
