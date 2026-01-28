@@ -130,7 +130,7 @@ export default function ProductDetail() {
         console.log("Buying now...", payload);
         // Validation passed, add to cart + navigate
         // useCartStore.getState().addToCart(payload);
-        // navigate('/customer/checkout'); 
+        navigate('/customer/checkout');
     };
 
     // --- LOADING STATE ---
