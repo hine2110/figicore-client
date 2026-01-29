@@ -1,7 +1,6 @@
 import {
     Menu,
     X,
-    Gavel,
     Home,
     LogIn,
     UserPlus
@@ -22,8 +21,6 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
     const navItems = [
         { id: 'home', label: 'Home', icon: Home, path: '/guest/home' },
         { id: 'products', label: 'Products', path: '/guest/browse' },
-        { id: 'blind-box', label: 'Blind Box', path: '/guest/browse' },
-        { id: 'auction', label: 'Auction', icon: Gavel, path: '/guest/browse' },
         { id: 'about', label: 'About', path: '/guest/about' },
     ];
 
@@ -33,14 +30,14 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
     };
 
     return (
-        <div className="min-h-screen flex flex-col bg-white font-sans text-gray-900">
+        <div className={`min-h-screen flex flex-col font-sans text-gray-900 ${activePage === 'register' || activePage === 'login' ? 'bg-neutral-900' : 'bg-white'}`}>
             {/* Top Navigation */}
             <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
                 <div className="container mx-auto px-4">
-                    <div className="flex items-center justify-between h-16">
+                    <div className="flex items-center justify-between h-20">
                         <div className="flex items-center gap-8">
                             {/* Brand */}
-                            <Link to="/guest/home" className="font-semibold text-xl tracking-tight text-gray-900 flex items-center gap-2">
+                            <Link to="/guest/home" className="font-semibold text-2xl tracking-tight text-gray-900 flex items-center gap-2">
                                 FigiCore
                             </Link>
 
@@ -50,7 +47,7 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                                     <button
                                         key={item.id}
                                         onClick={() => navigate(item.path)}
-                                        className={`text-sm font-medium transition-colors ${activePage === item.id
+                                        className={`text-base font-medium transition-colors ${activePage === item.id
                                             ? 'text-gray-900'
                                             : 'text-gray-600 hover:text-gray-900'
                                             }`}
@@ -141,7 +138,7 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
             </main>
 
             {/* Footer */}
-            <footer className="bg-gray-50 border-t border-gray-200 mt-16 text-gray-900">
+            <footer className={`bg-gray-50 border-t border-gray-200 text-gray-900 ${activePage === 'register' || activePage === 'login' ? 'mt-0' : 'mt-16'}`}>
                 <div className="container mx-auto px-4 py-12">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
                         <div className="space-y-4">
@@ -155,8 +152,6 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                             <h3 className="font-medium mb-4 text-sm uppercase tracking-wider text-gray-900">Shop</h3>
                             <ul className="space-y-3 text-sm text-gray-500">
                                 <li onClick={() => navigate('/guest/browse')} className="hover:text-gray-900 cursor-pointer transition-colors">All Products</li>
-                                <li onClick={() => navigate('/guest/browse')} className="hover:text-gray-900 cursor-pointer transition-colors">Blind Box</li>
-                                <li onClick={() => navigate('/guest/browse')} className="hover:text-gray-900 cursor-pointer transition-colors">Auctions</li>
                                 <li onClick={() => navigate('/guest/browse')} className="hover:text-gray-900 cursor-pointer transition-colors">New Arrivals</li>
                             </ul>
                         </div>
