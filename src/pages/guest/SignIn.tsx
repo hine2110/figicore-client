@@ -100,7 +100,7 @@ export default function SignIn() {
                 {/* LEFT PANEL: VISUAL */}
                 <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
                     {/* Background Image - Matches Register Page */}
-                    <div className="absolute inset-0 opacity-60 bg-[url('https://s7.ezgif.com/tmp/ezgif-796184a4e2742c5b.gif')] bg-cover bg-center" />
+                    <div className="absolute inset-0 opacity-60 bg-[url('/images/grok-video-27f76232-6cb0-405b-ab9b-60697fafb4dd-ezgif.com-video-to-gif-converter.gif')] bg-cover bg-center" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
 
                     <div className="relative z-10 flex flex-col justify-end p-16 h-full">

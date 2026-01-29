@@ -154,7 +154,7 @@ export function SignUp() {
                 {/* LEFT PANEL: VISUAL */}
                 <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
                     {/* Background Image - Art Toy / Mystery Box Theme */}
-                    <div className="absolute inset-0 opacity-60 bg-[url('https://s7.ezgif.com/tmp/ezgif-740beeaa10d1a653.gif')] bg-cover bg-center" />
+                    <div className="absolute inset-0 opacity-60 bg-[url('/images/grok-video-c4faf7e1-ec31-44c1-93b3-d4e34445ac7b-ezgif.com-video-to-gif-converter.gif')] bg-cover bg-center" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
 
                     <div className="relative z-10 flex flex-col justify-end p-16 h-full">

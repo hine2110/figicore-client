@@ -11,7 +11,7 @@ import { Package, Star } from 'lucide-react';
 const BANNERS = [
     {
         id: 1,
-        image: "https://images.unsplash.com/photo-1618331835717-801e976710b2?q=80&w=2670&fit=crop",
+        image: "https://imagine-public.x.ai/imagine-public/images/8a52762b-52a2-4a09-8926-0e1d791c1aac.jpg?cache=1&dl=1",
         title: "Empire of Models",
         subtitle: "The ultimate destination for authentic collectible figures.",
         action: "Explore Gallery",
@@ -19,7 +19,7 @@ const BANNERS = [
     },
     {
         id: 2,
-        image: "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=1920&q=80&fit=crop",
+        image: "https://imagine-public.x.ai/imagine-public/images/9f3734a8-1652-48fe-8769-3d67607ee911.jpg?cache=1&dl=1",
         title: "Next Gen Mecha",
         subtitle: "Precision engineering meets artistic vision.",
         action: "View New Arrivals",
