@@ -12,11 +12,12 @@ import PosLayout from "@/layouts/PosLayout";
 
 // Pages
 import AdminDashboard from "@/pages/admin/AdminDashboard";
-import EmployeeManagement from "@/pages/admin/EmployeeManagement";
-import CustomerManagement from "@/pages/admin/CustomerManagement";
+
+import AccountManagement from "@/pages/admin/AccountManagement";
 import ProfileApproval from "@/pages/admin/ProfileApproval";
 import ProductManagement from "@/pages/admin/ProductManagement";
 import OrderOversight from "@/pages/admin/OrderOversight";
+import ProfilePage from "@/pages/common/ProfilePage";
 import AuctionManagement from "@/pages/admin/AuctionManagement";
 import ManualRefund from "@/pages/admin/ManualRefund";
 import SystemSettings from "@/pages/admin/SystemSettings";
@@ -101,8 +102,7 @@ export default function App() {
                         <Route path="/admin" element={<AdminLayout />}>
                             <Route index element={<Navigate to="/admin/dashboard" replace />} />
                             <Route path="dashboard" element={<AdminDashboard />} />
-                            <Route path="employees" element={<EmployeeManagement />} />
-                            <Route path="customers" element={<CustomerManagement />} />
+
                             <Route path="approvals" element={<ProfileApproval />} />
                             <Route path="products" element={<ProductManagement />} />
                             <Route path="orders" element={<OrderOversight />} />
@@ -110,6 +110,8 @@ export default function App() {
                             <Route path="refunds" element={<ManualRefund />} />
                             <Route path="settings" element={<SystemSettings />} />
                             <Route path="logs" element={<AuditLogs />} />
+                            <Route path="accounts" element={<AccountManagement />} />
+                            <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
 
@@ -125,6 +127,7 @@ export default function App() {
                             <Route path="returns" element={<ReturnApprovals />} />
                             <Route path="shifts" element={<ShiftManagement />} />
                             <Route path="feedback" element={<CustomerFeedback />} />
+                            <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
 
@@ -137,7 +140,8 @@ export default function App() {
                             <Route path="packing" element={<PackingFulfillment />} />
                             <Route path="imports" element={<GoodsReceipt />} />
                             <Route path="returns" element={<ReturnInspection />} />
-                            <Route path="schedule" element={<WarehouseSchedule />} />
+                            <Route path="profile" element={<ProfilePage />} />
+
                         </Route>
                     </Route>
 
@@ -149,6 +153,7 @@ export default function App() {
                             <Route path="counter" element={<PosSystem />} />
                             <Route path="orders" element={<OrderProcessing />} />
                             <Route path="schedule" element={<PosSchedule />} />
+                            <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
 

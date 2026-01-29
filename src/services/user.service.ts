@@ -23,5 +23,19 @@ export const userService = {
     updateRole: async (id: string, role: string): Promise<ApiResponse<void>> => {
         const response = await axiosInstance.patch(`${BASE}/${id}/role`, { role });
         return response.data;
+    },
+
+    updateStatus: async (id: number, status: 'ACTIVE' | 'INACTIVE') => {
+        const response = await axiosInstance.patch(`${BASE}/${id}/status`, { status });
+        return response.data;
+    },
+    getNextEmployeeId: async (role: string): Promise<{ code: string }> => {
+        const response = await axiosInstance.get(`${BASE}/next-id?role=${role}`);
+        return response.data;
+    },
+
+    createBulk: async (data: { users: any[] }) => {
+        const response = await axiosInstance.post(`${BASE}/bulk`, data);
+        return response.data;
     }
 };
