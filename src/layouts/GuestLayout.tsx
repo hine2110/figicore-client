@@ -1,15 +1,13 @@
 import {
-    ShoppingCart,
-    Search,
     Menu,
     X,
     Gavel,
     Home,
-    LogIn
+    LogIn,
+    UserPlus
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useNavigate, Link } from 'react-router-dom';
 
 interface GuestLayoutProps {
@@ -64,30 +62,27 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                         </div>
 
                         {/* Right Actions */}
-                        <div className="flex items-center gap-4">
-                            <div className="relative hidden lg:block">
-                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <Input
-                                    placeholder="Search products..."
-                                    className="pl-10 w-64 border-gray-200 focus:border-gray-900 focus:ring-gray-900 transition-all"
-                                />
+                        <div className="flex items-center gap-3">
+                            {/* Desktop Auth Buttons */}
+                            <div className="hidden md:flex items-center gap-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-gray-600 hover:text-gray-900"
+                                    onClick={() => navigate('/guest/login')}
+                                >
+                                    Sign In
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    className="bg-gray-900 text-white hover:bg-black transition-colors px-5"
+                                    onClick={() => navigate('/guest/register')}
+                                >
+                                    Register
+                                </Button>
                             </div>
 
-                            <Button variant="ghost" size="icon" className="relative text-gray-700 hover:text-gray-900 hover:bg-gray-100">
-                                <ShoppingCart className="w-5 h-5" />
-                                <span className="sr-only">Cart</span>
-                            </Button>
-
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-2 border-gray-200 text-gray-700 hover:border-gray-900 hover:text-gray-900"
-                                onClick={() => navigate('/guest/login')}
-                            >
-                                <LogIn className="w-4 h-4" />
-                                <span className="hidden sm:inline">Sign In</span>
-                            </Button>
-
+                            {/* Mobile Menu Toggle */}
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -102,15 +97,6 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                     {/* Mobile Menu */}
                     {mobileMenuOpen && (
                         <div className="md:hidden py-4 border-t border-gray-100 animate-in slide-in-from-top-2">
-                            <div className="space-y-4 mb-4">
-                                <div className="relative">
-                                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <Input
-                                        placeholder="Search products..."
-                                        className="pl-10 w-full"
-                                    />
-                                </div>
-                            </div>
                             <nav className="flex flex-col gap-1">
                                 {navItems.map((item) => (
                                     <button
@@ -127,12 +113,22 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                                         </div>
                                     </button>
                                 ))}
-                                <button
-                                    onClick={() => handleNavClick('/guest/login')}
-                                    className="text-left px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 bg-gray-50 mt-2"
-                                >
-                                    Sign In / Sign Up
-                                </button>
+
+                                <div className="mt-4 px-4 grid grid-cols-2 gap-3">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => handleNavClick('/guest/login')}
+                                        className="w-full justify-center"
+                                    >
+                                        <LogIn className="w-4 h-4 mr-2" /> Sign In
+                                    </Button>
+                                    <Button
+                                        className="w-full justify-center bg-gray-900 text-white"
+                                        onClick={() => handleNavClick('/guest/register')}
+                                    >
+                                        <UserPlus className="w-4 h-4 mr-2" /> Register
+                                    </Button>
+                                </div>
                             </nav>
                         </div>
                     )}

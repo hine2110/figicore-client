@@ -1,44 +1,108 @@
-import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Loader2, Edit, Package, RefreshCw, Box, Eye } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Plus, Search, Filter, Loader2, RefreshCw, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { CreateProductModal } from "@/components/product/CreateProductModal";
+import { ProductList } from "@/components/product/ProductList";
 import { productsService } from "@/services/products.service";
+import { optionsService } from "@/services/options.service";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
 
-import { Switch } from "@/components/ui/switch";
+const ITEMS_PER_PAGE_OPTIONS = [8, 12, 24, 48];
 
 export default function Inventory() {
+    const { toast } = useToast();
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(12);
+
+    // Filter State
+    const [filters, setFilters] = useState({
+        brand_id: undefined as number | undefined,
+        category_id: undefined as number | undefined,
+        series_id: undefined as number | undefined,
+        type_code: undefined as string | undefined
+    });
+
+    // Options for Filters
+    const [brands, setBrands] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
+    const [series, setSeries] = useState<any[]>([]);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [isViewMode, setIsViewMode] = useState(false);
 
+    // Initial Filter Options Fetch
+    useEffect(() => {
+        const fetchOptions = async () => {
+            try {
+                const [b, c, s] = await Promise.all([
+                    optionsService.getBrands(),
+                    optionsService.getCategories(),
+                    optionsService.getSeries()
+                ]);
+                setBrands(b);
+                setCategories(c);
+                setSeries(s);
+            } catch (err) {
+                console.error("Failed to load filter options", err);
+            }
+        };
+        fetchOptions();
+    }, []);
+
+    // Search Debounce
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            setDebouncedSearch(search);
+            setCurrentPage(1); // Reset to page 1 on search
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [search]);
+
+    // Fetch Products
     const fetchProducts = async () => {
         setLoading(true);
         try {
-            const data = await productsService.getProducts({ search });
+            const data = await productsService.getProducts({
+                search: debouncedSearch,
+                ...filters
+            });
             setProducts(Array.isArray(data) ? data : (data as any)?.data || []);
         } catch (error) {
             console.error("Failed to fetch products", error);
+            toast({ title: "Error", description: "Failed to load inventory data.", variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
 
+    // Re-fetch when search or filters change
     useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            fetchProducts();
-        }, 500); // Debounce search
-        return () => clearTimeout(timeoutId);
-    }, [search]);
+        fetchProducts();
+        setCurrentPage(1); // Reset page on filter change
+    }, [debouncedSearch, filters]);
 
+    // Client-side Pagination Logic
+    const displayedProducts = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return products.slice(startIndex, endIndex);
+    }, [products, currentPage, itemsPerPage]);
+
+    const totalPages = Math.ceil(products.length / itemsPerPage);
+
+    // Handlers
     const handleCreate = () => {
         setSelectedProduct(null);
         setIsViewMode(false);
@@ -57,188 +121,193 @@ export default function Inventory() {
         setIsModalOpen(true);
     };
 
-    const handleToggleStatus = async (product: any) => {
+    const handleDelete = async (id: number) => {
         try {
-            // Optimistic update
-            const newStatus = product.status_code === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-            setProducts(prev => prev.map(p => p.product_id === product.product_id ? { ...p, status_code: newStatus } : p));
-
-            await productsService.toggleStatus(product.product_id);
+            await productsService.delete(id);
+            setProducts(prev => prev.filter(p => p.product_id !== id));
+            toast({ title: "Deleted", description: "Product removed from inventory.", className: "bg-red-600 text-white border-none" });
         } catch (error) {
-            console.error("Failed to toggle status", error);
-            fetchProducts(); // Revert on failure
+            console.error(error);
+            toast({ title: "Delete Failed", description: "Could not remove product.", variant: "destructive" });
         }
     };
-
-
 
     const handleModalSuccess = () => {
         fetchProducts();
         setIsModalOpen(false);
+        toast({ title: "Success", description: "Product saved successfully.", className: "bg-green-600 text-white border-none" });
     };
 
-    const getDisplayPrice = (product: any) => {
-        let price = 0;
-        if (product.type_code === 'RETAIL') {
-            price = product.product_variants?.[0]?.price || 0;
-        } else if (product.type_code === 'BLINDBOX') {
-            price = product.product_blindboxes?.[0]?.price || product.product_variants?.[0]?.price || 0;
-        } else if (product.type_code === 'PREORDER') {
-            // For Preorder, show Deposit Amount or Full Price, but prefer Deposit as it's the "entry" price
-            price = product.product_preorders?.[0]?.deposit_amount ?? product.product_variants?.[0]?.price ?? 0;
-        }
-        return price;
+    const clearFilters = () => {
+        setFilters({ brand_id: undefined, category_id: undefined, series_id: undefined, type_code: undefined });
     };
+
+    const activeFilterCount = Object.values(filters).filter(v => v !== undefined).length;
 
     return (
-        <div className="space-y-6 h-full flex flex-col">
-            {/* HEADER */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
+        <div className="flex flex-col h-screen bg-[#F5F5F7] overflow-hidden">
+
+            {/* 1. FIXED HEADER */}
+            <header className="px-6 py-5 shrink-0 bg-[#F5F5F7] z-20 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Product Inventory</h1>
-                    <p className="text-neutral-500">Manage your catalog, stock, and pricing.</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Inventory</h1>
+                    <p className="text-neutral-500 font-medium">Manage catalog and pricing.</p>
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" size="icon" onClick={fetchProducts} disabled={loading} title="Refresh">
-                        <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                    </Button>
-                    <Button onClick={handleCreate} className="gap-2 flex-1 sm:flex-none">
-                        <Plus className="w-4 h-4" /> Create Product
-                    </Button>
-                </div>
-            </div>
 
-            {/* FILTERS */}
-            <div className="flex gap-4 items-center bg-white p-4 rounded-xl border border-neutral-200 shrink-0">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                    <Input
-                        placeholder="Search by name, SKU..."
-                        className="pl-9"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-                <Button variant="outline" className="text-neutral-600 gap-2 hidden sm:flex">
-                    <Filter className="w-4 h-4" /> Filters
-                </Button>
-            </div>
-
-            {/* PRODUCT GRID */}
-            <div className="flex-1 overflow-y-auto min-h-0 pb-10">
-                {loading && products.length === 0 ? (
-                    <div className="flex items-center justify-center h-64">
-                        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
+                    {/* Floating Search */}
+                    <div className="relative w-full sm:w-[320px] shadow-sm group">
+                        <Search className="absolute left-4 top-3.5 w-4 h-4 text-neutral-400 group-focus-within:text-blue-500 transition-colors" />
+                        <Input
+                            placeholder="Search products..."
+                            className="pl-10 h-11 rounded-full border-none bg-white shadow-[0_2px_10px_rgb(0,0,0,0.03)] focus:shadow-[0_4px_20px_rgb(0,0,0,0.08)] ring-0 focus-visible:ring-0 transition-all placeholder:text-neutral-400"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
                     </div>
-                ) : products.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-neutral-500 border rounded-xl bg-neutral-50 border-dashed m-1">
-                        <Box className="w-12 h-12 mb-4 opacity-50" />
-                        <p className="text-lg font-medium">No products found</p>
-                        <p className="text-sm">Try adjusting your search or create a new product.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {products.map((product) => {
-                            const imageUrl = Array.isArray(product.media_urls) && product.media_urls.length > 0
-                                ? product.media_urls[0]
-                                : (typeof product.media_urls === 'string' ? product.media_urls : null);
 
-                            const price = getDisplayPrice(product);
-                            const isActive = product.status_code === 'ACTIVE';
-
-                            return (
-                                <Card key={product.product_id} className={cn(
-                                    "group overflow-hidden border-neutral-200 hover:shadow-lg transition-all flex flex-col relative",
-                                    !isActive && "opacity-75 grayscale-[0.5]"
-                                )}>
-                                    {/* IMAGE AREA */}
-                                    <div className="aspect-square bg-neutral-100 relative overflow-hidden shrink-0">
-                                        {imageUrl ? (
-                                            <img
-                                                src={imageUrl}
-                                                alt={product.name}
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                                onError={(e) => (e.currentTarget.src = "")}
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-neutral-300">
-                                                <Package className="w-12 h-12" />
-                                            </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="secondary"
+                                    className={cn(
+                                        "h-11 rounded-full px-5 bg-white shadow-[0_2px_10px_rgb(0,0,0,0.03)] hover:bg-neutral-50 text-neutral-700 font-medium border-none",
+                                        activeFilterCount > 0 && "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                    )}
+                                >
+                                    <SlidersHorizontal className="w-4 h-4 mr-2" />
+                                    Filter {activeFilterCount > 0 && `(${activeFilterCount})`}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[340px] p-5 rounded-2xl shadow-xl border-neutral-100" align="end">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="font-semibold text-neutral-900">Filter Inventory</h4>
+                                        {activeFilterCount > 0 && (
+                                            <button onClick={clearFilters} className="text-xs text-red-500 hover:underline font-medium flex items-center">
+                                                <X className="w-3 h-3 mr-1" /> Clear All
+                                            </button>
                                         )}
-
-                                        {/* TYPE BADGE */}
-                                        <div className="absolute top-3 left-3">
-                                            <Badge className={cn(
-                                                "shadow-sm",
-                                                product.type_code === 'RETAIL' ? "bg-green-600" :
-                                                    product.type_code === 'BLINDBOX' ? "bg-purple-600" :
-                                                        "bg-orange-600"
-                                            )}>
-                                                {product.type_code}
-                                            </Badge>
-                                        </div>
-
-
                                     </div>
 
-                                    {/* CONTENT AREA */}
-                                    <CardContent className="p-4 space-y-2 flex-1 relative">
-                                        <div className="flex justify-between items-start">
-                                            <div className="text-xs text-neutral-500 font-medium truncate flex-1">
-                                                {product.brands?.name || product.brand?.name || "Unknown Brand"}
-                                            </div>
-                                            {/* Status Toggle on Card */}
-
+                                    <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+                                        <div className="space-y-1.5 col-span-2">
+                                            <label className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider ml-1">Brand</label>
+                                            <Select value={filters.brand_id?.toString()} onValueChange={(v) => setFilters(prev => ({ ...prev, brand_id: Number(v) }))}>
+                                                <SelectTrigger className="h-10 rounded-xl bg-neutral-50 border-transparent focus:ring-0"><SelectValue placeholder="All Brands" /></SelectTrigger>
+                                                <SelectContent>
+                                                    {brands.map((b: any) => <SelectItem key={b.brand_id} value={b.brand_id.toString()}>{b.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-
-                                        <h3 className="font-bold text-neutral-900 leading-tight line-clamp-2 h-10 cursor-pointer hover:text-blue-600 transition-colors"
-                                            onClick={() => handleView(product)} title={product.name}>
-                                            {product.name}
-                                        </h3>
-                                        <div className="text-lg font-bold text-red-600 pt-1">
-                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price)}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider ml-1">Category</label>
+                                            <Select value={filters.category_id?.toString()} onValueChange={(v) => setFilters(prev => ({ ...prev, category_id: Number(v) }))}>
+                                                <SelectTrigger className="h-10 rounded-xl bg-neutral-50 border-transparent focus:ring-0"><SelectValue placeholder="Any" /></SelectTrigger>
+                                                <SelectContent>
+                                                    {categories.map((c: any) => <SelectItem key={c.category_id} value={c.category_id.toString()}>{c.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                    </CardContent>
-
-                                    {/* FOOTER ACTIONS */}
-                                    <CardFooter className="p-4 pt-0 flex justify-between items-center gap-2 shrink-0">
-                                        <div className="flex items-center gap-2" title={isActive ? "Active" : "Inactive"}>
-                                            <Switch
-                                                checked={isActive}
-                                                onCheckedChange={() => handleToggleStatus(product)}
-                                                className="scale-90 data-[state=checked]:bg-green-600"
-                                            />
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider ml-1">Series</label>
+                                            <Select value={filters.series_id?.toString()} onValueChange={(v) => setFilters(prev => ({ ...prev, series_id: Number(v) }))}>
+                                                <SelectTrigger className="h-10 rounded-xl bg-neutral-50 border-transparent focus:ring-0"><SelectValue placeholder="Any" /></SelectTrigger>
+                                                <SelectContent>
+                                                    {series.map((s: any) => <SelectItem key={s.series_id} value={s.series_id.toString()}>{s.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-
-                                        <div className="flex items-center gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-neutral-600 hover:text-blue-600 hover:bg-blue-50"
-                                                onClick={() => handleView(product)}
-                                            >
-                                                <Eye className="w-4 h-4 mr-1" /> View
-                                            </Button>
-
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="text-neutral-400 hover:text-blue-600 hover:bg-blue-50"
-                                                onClick={() => handleEdit(product)}
-                                                title="Edit"
-                                            >
-                                                <Edit className="w-4 h-4" />
-                                            </Button>
+                                        <div className="space-y-1.5 col-span-2">
+                                            <label className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider ml-1">Product Type</label>
+                                            <Select value={filters.type_code} onValueChange={(v) => setFilters(prev => ({ ...prev, type_code: v }))}>
+                                                <SelectTrigger className="h-10 rounded-xl bg-neutral-50 border-transparent focus:ring-0"><SelectValue placeholder="All Types" /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="RETAIL">Retail</SelectItem>
+                                                    <SelectItem value="BLINDBOX">Blindbox</SelectItem>
+                                                    <SelectItem value="PREORDER">Preorder</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                    </CardFooter>
-                                </Card>
-                            );
-                        })}
+                                    </div>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+
+                        <Button
+                            className="h-11 rounded-full bg-black hover:bg-neutral-800 text-white shadow-md shadow-black/20 px-6 font-medium"
+                            onClick={handleCreate}
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Product
+                        </Button>
                     </div>
-                )}
-            </div>
+                </div>
+            </header>
 
-            {/* PRODUCT MODAL */}
+            {/* 2. SCROLLABLE CONTENT */}
+            <main className="flex-1 overflow-y-auto px-6 pb-6">
+                {loading && products.length === 0 ? (
+                    <div className="h-full flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-neutral-400" />
+                    </div>
+                ) : (
+                    <ProductList
+                        products={displayedProducts}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onView={handleView}
+                    />
+                )}
+            </main>
+
+            {/* 3. FIXED PAGINATION FOOTER */}
+            <footer className="shrink-0 bg-white/80 backdrop-blur-md border-t border-neutral-200 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm font-medium text-neutral-600 transition-all">
+                <div className="flex items-center gap-4">
+                    <span className="text-neutral-500">
+                        Showing <span className="text-neutral-900">{products.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-neutral-900">{Math.min(currentPage * itemsPerPage, products.length)}</span> of <span className="text-neutral-900">{products.length}</span> items
+                    </span>
+
+                    <div className="h-4 w-px bg-neutral-300 hidden sm:block"></div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-neutral-400 uppercase font-bold hidden sm:inline">Per Page</span>
+                        <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                            <SelectTrigger className="h-8 w-16 rounded-lg border-neutral-200 bg-white text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {ITEMS_PER_PAGE_OPTIONS.map(opt => <SelectItem key={opt} value={opt.toString()}>{opt}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 rounded-xl border-neutral-200 hover:bg-neutral-50 hover:text-neutral-900"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                    >
+                        <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                    </Button>
+                    <div className="px-2 text-neutral-900 font-semibold min-w-[3rem] text-center">
+                        {currentPage} <span className="text-neutral-400 font-normal">/ {totalPages || 1}</span>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 rounded-xl border-neutral-200 hover:bg-neutral-50 hover:text-neutral-900"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage >= totalPages && products.length > 0}
+                    >
+                        Next <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                </div>
+            </footer>
+
+            {/* MODAL */}
             <CreateProductModal
                 open={isModalOpen}
                 onOpenChange={(open) => {

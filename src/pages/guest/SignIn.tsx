@@ -178,7 +178,7 @@ export default function SignIn() {
                     <p className="text-center text-sm text-neutral-600">
                         Don't have an account?{" "}
                         <span
-                            onClick={() => navigate(redirectUrl === '/' ? '/guest/signup' : `/guest/signup?redirect=${encodeURIComponent(redirectUrl)}`)}
+                            onClick={() => navigate(redirectUrl === '/' ? '/guest/register' : `/guest/register?redirect=${encodeURIComponent(redirectUrl)}`)}
                             className="font-semibold text-blue-600 hover:underline cursor-pointer"
                         >
                             Sign up

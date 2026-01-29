@@ -1,272 +1,308 @@
-import { GuestLayout } from '@/layouts/GuestLayout';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Shield, TruckIcon, Award } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+
+import { productsService } from '@/services/products.service';
+import { GuestLayout } from '@/layouts/GuestLayout';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Package, Star } from 'lucide-react';
+
+// --- MOCK BANNERS (Refined Copy) ---
+const BANNERS = [
+    {
+        id: 1,
+        image: "https://images.unsplash.com/photo-1618331835717-801e976710b2?q=80&w=2670&fit=crop",
+        title: "The Art of Collection",
+        subtitle: "Curated masterpieces for the modern connoisseur.",
+        action: "Explore Gallery",
+        link: "/guest/shop"
+    },
+    {
+        id: 2,
+
+        image: "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=1920&q=80&fit=crop",
+        title: "Next Gen Mecha",
+        subtitle: "Precision engineering meets artistic vision.",
+        action: "View New Arrivals",
+        link: "/guest/shop?type=RETAIL"
+    }
+];
 
 export function GuestHome() {
     const navigate = useNavigate();
 
-    const featuredProducts = [
-        {
-            id: '1',
-            name: 'Molly Chess Series',
-            price: 149.99,
-            image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop',
-            category: 'Art Toy',
-            badge: 'Limited Edition',
-            edition: 'Edition of 500',
-        },
-        {
-            id: '2',
-            name: 'Skullpanda Dark Night',
-            price: 189.00,
-            image: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=400&h=400&fit=crop',
-            category: 'Art Toy',
-            badge: 'New Arrival',
-            edition: 'Signature Series',
-        },
-        {
-            id: '3',
-            name: 'Labubu Macaron Series',
-            price: 124.99,
-            image: 'https://images.unsplash.com/photo-1580870069867-74c57ee1bb07?w=400&h=400&fit=crop',
-            category: 'Blind Box',
-            edition: 'Set of 12',
-        },
-        {
-            id: '4',
-            name: 'CRYBABY Tears Series',
-            price: 299.99,
-            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=400&h=400&fit=crop',
-            category: 'Exclusive',
-            badge: 'Rare',
-            edition: 'Collector\'s Edition',
-        },
-    ];
+    const [latestProducts, setLatestProducts] = useState<any[]>([]);
+    const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [currentSlide, setCurrentSlide] = useState(0);
 
-    const collections = [
-        {
-            name: 'Art Toys',
-            count: '64',
-            image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop'
-        },
-        {
-            name: 'Blind Box',
-            count: '48',
-            image: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=800&h=600&fit=crop'
-        },
-        {
-            name: 'Limited Editions',
-            count: '23',
-            image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=800&h=600&fit=crop'
-        },
-    ];
+    // Carousel Timer
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % BANNERS.length), 6000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Data Fetching (Removed Blindbox)
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [retail, preorder] = await Promise.all([
+                    productsService.getProducts({ limit: 8, type_code: 'RETAIL' }),
+                    productsService.getProducts({ limit: 4, type_code: 'PREORDER' })
+                ]);
+
+                const getList = (res: any) => Array.isArray(res) ? res : (res as any)?.data || [];
+                setLatestProducts(getList(retail).slice(0, 8));
+                setPreorderProducts(getList(preorder).slice(0, 4));
+            } catch (error) {
+                console.error("Failed to load home data", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    // ------------------------------------------
+    // ROBUST PRICE HELPERS
+    // ------------------------------------------
+    const safeNumber = (val: any) => {
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+    };
+
+    const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
+
+    const getRetailPrice = (product: any) => {
+        return safeNumber(product.product_variants?.[0]?.price);
+    };
+
+    const getPreorderDeposit = (product: any) => {
+        const pre = product.product_preorders || {};
+        return safeNumber(pre.deposit_amount);
+    };
+
+    const getPreorderFullPrice = (product: any) => {
+        const pre = product.product_preorders || {};
+        return safeNumber(pre.full_price);
+    };
+
+    // --- SUB-COMPONENTS ---
+
+    const HeroSection = () => (
+        <div className="relative h-[85vh] min-h-[600px] w-full overflow-hidden bg-neutral-900 text-white">
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={currentSlide}
+                    initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    className="absolute inset-0"
+                >
+                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${BANNERS[currentSlide].image}')` }} />
+                    <div className="absolute inset-0 bg-black/40" /> {/* Subtle overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-transparent to-transparent opacity-90" />
+                </motion.div>
+            </AnimatePresence>
+
+            <div className="relative z-10 container mx-auto px-6 h-full flex flex-col justify-end pb-32 items-start">
+                <motion.div
+                    key={`text-${currentSlide}`}
+                    initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.2 }}
+                    className="max-w-3xl"
+                >
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="h-px w-16 bg-white/60"></div>
+                        <span className="text-sm font-medium tracking-[0.2em] uppercase text-white/90">FigiCore Premium Experience</span>
+                    </div>
+                    <h1 className="text-5xl md:text-8xl font-serif font-medium mb-8 leading-[1.1] text-white drop-shadow-md">
+                        {BANNERS[currentSlide].title}
+                    </h1>
+                    <p className="text-lg md:text-2xl text-white/80 mb-12 font-light leading-relaxed max-w-xl">
+                        {BANNERS[currentSlide].subtitle}
+                    </p>
+                    <Button
+                        size="lg"
+                        className="bg-white text-black hover:bg-neutral-200 rounded-none h-16 px-10 text-lg tracking-wide font-medium transition-all"
+                        onClick={() => navigate(BANNERS[currentSlide].link)}
+                    >
+                        {BANNERS[currentSlide].action}
+                    </Button>
+                </motion.div>
+            </div>
+
+            {/* Slide Indicators */}
+            <div className="absolute bottom-12 right-12 flex gap-3 z-20">
+                {BANNERS.map((_, idx) => (
+                    <button
+                        key={idx}
+                        onClick={() => setCurrentSlide(idx)}
+                        className={`h-1 transition-all duration-500 ${currentSlide === idx ? "w-16 bg-white" : "w-8 bg-white/30"}`}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+
+    const ProductCardMinimal = ({ product }: { product: any }) => (
+        <div
+            className="group cursor-pointer flex flex-col gap-6"
+            onClick={() => navigate(`/guest/product/${product.product_id}`)}
+        >
+            <div className="aspect-[3/4] overflow-hidden bg-neutral-100 relative shadow-sm hover:shadow-xl transition-all duration-500">
+                {product.media_urls?.[0] ? (
+                    <img
+                        src={product.media_urls[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-300"><Package className="w-10 h-10" /></div>
+                )}
+
+                {/* Minimal Overlay Badge */}
+                {product.type_code !== 'RETAIL' && (
+                    <div className="absolute top-4 left-4">
+                        <Badge variant="secondary" className="bg-white/90 backdrop-blur text-black border-0 text-[10px] uppercase tracking-wider rounded-none px-3 py-1">
+                            {product.type_code}
+                        </Badge>
+                    </div>
+                )}
+            </div>
+
+            <div className="space-y-2 text-center">
+                <div className="text-[10px] font-bold tracking-widest uppercase text-neutral-400">
+                    {product.brands?.name || "FigiCore"}
+                </div>
+                <h3 className="text-lg font-serif text-neutral-900 group-hover:text-neutral-600 transition-colors line-clamp-1">
+                    {product.name}
+                </h3>
+                <div className="text-base font-medium text-neutral-900">
+                    {formatPrice(getRetailPrice(product))}
+                </div>
+            </div>
+        </div>
+    );
+
+    const PreOrderCard = ({ product }: { product: any }) => {
+        return (
+            <div
+                className="group relative aspect-[4/5] overflow-hidden bg-neutral-800 cursor-pointer border border-neutral-800 hover:border-amber-900/50 transition-colors"
+                onClick={() => navigate(`/guest/product/${product.product_id}`)}
+            >
+                {product.media_urls?.[0] && (
+                    <img
+                        src={product.media_urls[0]}
+                        className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-all duration-700 group-hover:scale-105 saturate-50 group-hover:saturate-100"
+                    />
+                )}
+                <div className="absolute inset-0 flex flex-col justify-end p-8">
+                    <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500 ease-out">
+                        <Badge className="bg-amber-700 text-white border-0 mb-4 hover:bg-amber-600 rounded-none px-3 tracking-wider text-[10px]">PRE-ORDER</Badge>
+                        <h3 className="text-2xl font-serif text-white mb-3 leading-tight">{product.name}</h3>
+
+                        <div className="space-y-1">
+                            <div className="flex items-baseline gap-3">
+                                <span className="text-3xl font-light text-amber-500">
+                                    {formatPrice(getPreorderDeposit(product))}
+                                </span>
+                                <span className="text-xs text-neutral-400 uppercase tracking-wide">Deposit</span>
+                            </div>
+
+                            <div className="h-0 group-hover:h-auto overflow-hidden transition-all duration-300">
+                                <p className="text-white/60 text-sm mt-2 opacity-0 group-hover:opacity-100 transition-opacity delay-100 font-light">
+                                    Full Price: {formatPrice(getPreorderFullPrice(product))}
+                                </p>
+                            </div>
+                        </motion.div>
+                    </div>
+
+                </div>
+            </div>
+        );
+    };
 
     return (
         <GuestLayout activePage="home">
-            <div className="bg-white">
-                {/* Hero Section */}
-                <section className="relative bg-gray-50 border-b border-gray-200 overflow-hidden">
-                    <div className="container mx-auto px-4 py-24 md:py-32 relative z-10">
-                        <div className="max-w-3xl animate-in slide-in-from-bottom-5 duration-700 fade-in">
-                            <Badge className="mb-6 bg-gray-900 text-white border-0 text-xs font-medium tracking-widest px-3 py-1 uppercase">
-                                Collectible Figures
-                            </Badge>
-                            <h1 className="text-5xl md:text-7xl font-light mb-8 text-gray-900 tracking-tight leading-tight">
-                                Curated Art Toys for Discerning Collectors
-                            </h1>
-                            <p className="text-xl text-gray-500 mb-10 font-light leading-relaxed max-w-2xl">
-                                Discover rare and limited-edition collectible figures. Each piece is carefully selected for its craftsmanship and artistic value.
-                            </p>
-                            <div className="flex gap-4">
-                                <Button
-                                    size="lg"
-                                    className="bg-gray-900 text-white hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl px-8 h-12 text-base"
-                                    onClick={() => navigate('/guest/browse')}
-                                >
-                                    Explore Collection
-                                    <ArrowRight className="w-5 h-5 ml-2" />
-                                </Button>
-                                <Button
-                                    size="lg"
-                                    variant="outline"
-                                    className="border-gray-200 text-gray-900 hover:bg-white hover:border-gray-900 transition-all px-8 h-12 text-base bg-white"
-                                    onClick={() => navigate('/guest/about')}
-                                >
-                                    Learn More
-                                </Button>
-                            </div>
+            <div className="bg-white min-h-screen font-sans text-neutral-800 pb-0">
+
+                <HeroSection />
+
+                {/* SECTION 1: NEW ARRIVALS */}
+                <section className="py-32 container mx-auto px-6">
+                    <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6 text-center md:text-left">
+                        <div className="max-w-xl mx-auto md:mx-0">
+                            <span className="text-xs font-bold tracking-[0.2em] uppercase text-neutral-400 mb-2 block">Curated Selection</span>
+                            <h2 className="text-4xl md:text-5xl font-serif text-neutral-900 mb-4">Latest Acquisitions</h2>
+                            <p className="text-neutral-500 font-light text-lg">Detailed craftsmanship. Exclusive designs. Fresh from the studio to your personal gallery.</p>
                         </div>
+                        <Button
+                            variant="outline"
+                            className="bg-transparent border-neutral-200 text-neutral-900 hover:bg-neutral-900 hover:text-white rounded-none px-8 h-12 uppercase tracking-wider text-xs font-bold transition-all mx-auto md:mx-0"
+                            onClick={() => navigate('/guest/shop?type=RETAIL')}
+                        >
+                            View All Collection
+                        </Button>
                     </div>
-                    {/* Decorative background element */}
-                    <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-gray-100 to-transparent hidden lg:block pointer-events-none" />
+
+                    {loading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16">
+                            {[1, 2, 3, 4].map(i => <div key={i} className="aspect-[3/4] bg-neutral-100 animate-pulse" />)}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16">
+                            {latestProducts.map(p => <ProductCardMinimal key={p.product_id} product={p} />)}
+                        </div>
+                    )}
                 </section>
 
-                {/* Collections */}
-                <section className="container mx-auto px-4 py-24">
-                    <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-4xl font-light text-gray-900 mb-4 tracking-tight">Shop by Collection</h2>
-                        <p className="text-gray-500 font-light text-lg">Carefully curated series from renowned artists</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {collections.map((collection, index) => (
-                            <Card
-                                key={index}
-                                className="group cursor-pointer overflow-hidden border-0 rounded-none shadow-none relative h-96"
-                                onClick={() => navigate('/guest/browse')}
-                            >
-                                <div className="absolute inset-0 bg-gray-100">
-                                    <img
-                                        src={collection.image}
-                                        alt={collection.name}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                    />
-                                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors duration-300" />
-                                </div>
-                                <div className="absolute bottom-0 left-0 right-0 p-8 text-white z-10 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                                    <h3 className="text-3xl font-light mb-2">{collection.name}</h3>
-                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
-                                        <span className="text-sm font-medium tracking-wide">{collection.count} PIECES</span>
-                                        <ArrowRight className="w-4 h-4" />
-                                    </div>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
-                </section>
-
-                {/* Featured Products */}
-                <section className="bg-white py-24 border-t border-gray-100">
-                    <div className="container mx-auto px-4">
-                        <div className="flex items-end justify-between mb-12">
+                {/* SECTION 2: PRE-ORDER SPOTLIGHT (Dark Mode) */}
+                <section className="py-32 bg-[#050505] text-white">
+                    <div className="container mx-auto px-6">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8 border-b border-white/10 pb-8">
                             <div>
-                                <h2 className="text-3xl md:text-4xl font-light text-gray-900 mb-4 tracking-tight">Featured Collection</h2>
-                                <p className="text-gray-500 font-light text-lg">Handpicked exclusive pieces</p>
+                                <div className="text-amber-600 font-bold tracking-[0.2em] uppercase text-xs mb-4 flex items-center gap-2">
+                                    <Star className="w-3 h-3 fill-current" /> Future Masterpieces
+                                </div>
+                                <h2 className="text-4xl md:text-6xl font-serif text-white mb-2">Pre-Order Center</h2>
                             </div>
                             <Button
                                 variant="outline"
-                                className="border-gray-200 text-gray-900 hover:border-gray-900 hidden sm:flex"
-                                onClick={() => navigate('/guest/browse')}
+                                className="border-white/20 text-white hover:bg-white hover:text-black rounded-none px-8 h-12 uppercase tracking-wider text-xs font-bold transition-all"
+                                onClick={() => navigate('/guest/shop?type=PREORDER')}
                             >
-                                View All
-                                <ArrowRight className="w-4 h-4 ml-2" />
+                                Release Calendar
                             </Button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
-                            {featuredProducts.map((product) => (
-                                <Card
-                                    key={product.id}
-                                    className="group border border-gray-100 bg-white hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden cursor-pointer"
-                                    onClick={() => navigate(`/guest/product/${product.id}`)}
-                                >
-                                    <div className="aspect-square relative bg-gray-50 overflow-hidden">
-                                        <img
-                                            src={product.image}
-                                            alt={product.name}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                        />
-                                        {product.badge && (
-                                            <Badge className="absolute top-3 left-3 bg-gray-900 text-white border-0 text-xs font-light tracking-wide rounded-full px-3">
-                                                {product.badge}
-                                            </Badge>
-                                        )}
 
-                                        {/* Hover Actions */}
-                                        <div className="absolute bottom-4 left-4 right-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                                            <Button
-                                                className="w-full bg-white/90 backdrop-blur text-gray-900 hover:bg-gray-900 hover:text-white border-0 shadow-lg font-medium"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    navigate(`/guest/product/${product.id}`);
-                                                }}
-                                            >
-                                                Quick View
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <div className="p-5">
-                                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">{product.category}</div>
-                                        <h3 className="font-medium text-gray-900 mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">{product.name}</h3>
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-lg font-semibold text-gray-900">${product.price}</p>
-                                            {product.edition && (
-                                                <span className="text-xs text-gray-400">{product.edition}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
-                        <div className="mt-8 text-center sm:hidden">
-                            <Button
-                                variant="outline"
-                                className="w-full border-gray-200 text-gray-900"
-                                onClick={() => navigate('/guest/browse')}
-                            >
-                                View All Collection
-                            </Button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-white/10 border border-white/10">
+                            {preorderProducts.map(p => <PreOrderCard key={p.product_id} product={p} />)}
+
+                            {/* Fillers if empty */}
+                            {!loading && preorderProducts.length === 0 && (
+                                <div className="col-span-4 text-center py-32 text-neutral-600 font-serif italic text-2xl">
+                                    No upcoming pre-orders available.
+                                </div>
+                            )}
                         </div>
                     </div>
                 </section>
 
-                {/* Trust Indicators */}
-                <section className="bg-gray-50 border-y border-gray-200 py-20">
-                    <div className="container mx-auto px-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-6xl mx-auto">
-                            <div className="text-center group">
-                                <div className="w-16 h-16 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto mb-6 group-hover:border-gray-900 transition-colors duration-300">
-                                    <Shield className="w-7 h-7 text-gray-900" />
-                                </div>
-                                <h3 className="font-medium text-lg text-gray-900 mb-3">Authenticity Guaranteed</h3>
-                                <p className="text-gray-500 font-light leading-relaxed max-w-xs mx-auto">
-                                    Every piece is verified and authenticated by our expert team. 100% genuine products.
-                                </p>
-                            </div>
-
-                            <div className="text-center group">
-                                <div className="w-16 h-16 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto mb-6 group-hover:border-gray-900 transition-colors duration-300">
-                                    <TruckIcon className="w-7 h-7 text-gray-900" />
-                                </div>
-                                <h3 className="font-medium text-lg text-gray-900 mb-3">Secure Shipping</h3>
-                                <p className="text-gray-500 font-light leading-relaxed max-w-xs mx-auto">
-                                    Premium packaging and insured delivery worldwide. Your items arrive safely.
-                                </p>
-                            </div>
-
-                            <div className="text-center group">
-                                <div className="w-16 h-16 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto mb-6 group-hover:border-gray-900 transition-colors duration-300">
-                                    <Award className="w-7 h-7 text-gray-900" />
-                                </div>
-                                <h3 className="font-medium text-lg text-gray-900 mb-3">Collector Community</h3>
-                                <p className="text-gray-500 font-light leading-relaxed max-w-xs mx-auto">
-                                    Join a trusted network of serious collectors. Access exclusive member benefits.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* CTA Section */}
-                <section className="container mx-auto px-4 py-32">
-                    <div className="relative overflow-hidden rounded-2xl bg-gray-900 text-white">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1618331835717-801e976710b2?q=80&w=2670&auto=format&fit=crop')] bg-cover bg-center opacity-30" />
-                        <div className="relative z-10 p-12 md:p-24 text-center">
-                            <h2 className="text-3xl md:text-5xl font-light mb-6 tracking-tight text-white">
-                                Begin Your Collection Today
-                            </h2>
-                            <p className="text-gray-200 font-light mb-10 max-w-xl mx-auto leading-relaxed text-lg">
-                                Create an account to access exclusive releases, track your portfolio, and join our community of collectors.
-                            </p>
-                            <Button
-                                size="lg"
-                                className="bg-white text-gray-900 hover:bg-gray-100 transition-colors h-14 px-10 text-lg border-0"
-                                onClick={() => navigate('/guest/signup')}
-                            >
-                                Create Free Account
-                            </Button>
-                        </div>
+                {/* SECTION 3: MEMBERSHIP CTA */}
+                <section className="py-40 container mx-auto px-6 text-center bg-neutral-50 border-t border-neutral-100">
+                    <h2 className="text-4xl md:text-6xl font-serif text-neutral-900 mb-8">Unlock the Full Experience</h2>
+                    <p className="text-neutral-500 max-w-2xl mx-auto mb-12 text-xl font-light leading-relaxed">
+                        Join <span className="text-neutral-900 font-medium">FigiCore</span> to access exclusive <strong>Blind Box</strong> collections, earn loyalty points, and participate in member-only auctions.
+                    </p>
+                    <div className="flex flex-col sm:flex-row justify-center gap-6">
+                        <Button size="lg" className="bg-neutral-900 text-white hover:bg-black rounded-none px-12 h-16 text-lg tracking-wide uppercase" onClick={() => navigate('/guest/register')}>
+                            Become a Member
+                        </Button>
+                        <Button size="lg" variant="outline" className="border-neutral-300 text-neutral-900 hover:bg-neutral-200 rounded-none px-12 h-16 text-lg tracking-wide uppercase" onClick={() => navigate('/guest/login')}>
+                            Sign In
+                        </Button>
                     </div>
                 </section>
             </div>
