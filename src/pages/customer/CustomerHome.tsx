@@ -1,5 +1,4 @@
 import CustomerLayout from '@/layouts/CustomerLayout';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -10,7 +9,9 @@ import {
     Ticket,
     Gavel,
     Sparkles,
-    Eye
+    Eye,
+    ShoppingCart,
+    ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -23,32 +24,34 @@ export default function CustomerHome() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
 
-    // Separate Data States
+    // Data States
     const [retailProducts, setRetailProducts] = useState<any[]>([]);
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-
     const [stats, setStats] = useState<any>({ walletBalance: 0, loyaltyPoints: 0, activeOrders: 0, rankCode: 'MEMBER' });
-
 
     // Initial Data Fetch
     useEffect(() => {
         const loadData = async () => {
             try {
-                // Parallel Fetch
                 const [retailData, preorderData, statsData] = await Promise.all([
-                    productsService.getProducts({ type_code: 'RETAIL', limit: 3 }),
-                    productsService.getProducts({ type_code: 'PREORDER', limit: 4 }),
+                    productsService.getProducts({ type_code: 'RETAIL', limit: 50 }),
+                    productsService.getProducts({ type_code: 'PREORDER', limit: 50 }),
                     customersService.getDashboardStats()
                 ]);
 
-                // Helper to extract list
                 const getList = (res: any) => Array.isArray(res) ? res : (res as any)?.data || [];
+                const shuffle = (array: any[]) => {
+                    const arr = [...array];
+                    for (let i = arr.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [arr[i], arr[j]] = [arr[j], arr[i]];
+                    }
+                    return arr;
+                };
 
-                setRetailProducts(getList(retailData));
-                setPreorderProducts(getList(preorderData));
-
-                // Handle Stats
+                setRetailProducts(shuffle(getList(retailData)).slice(0, 6));
+                setPreorderProducts(shuffle(getList(preorderData)).slice(0, 4));
                 if (statsData) setStats(statsData);
 
             } catch (error) {
@@ -60,20 +63,19 @@ export default function CustomerHome() {
         loadData();
     }, []);
 
-    // Price Helper Logic (Robust)
+    // Helpers
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
         const p = Number(product.product_variants?.[0]?.price || 0);
-        return isNaN(p) ? '0 đ' : formatPrice(p);
+        return isNaN(p) ? 'Contact' : formatPrice(p);
     };
 
     const getPreorderDeposit = (product: any) => {
         const dep = Number(product.product_preorders?.deposit_amount || 0);
-        return isNaN(dep) ? '0 đ' : formatPrice(dep);
+        return isNaN(dep) ? 'Contact' : formatPrice(dep);
     };
 
-    // Greeting Logic
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour < 12) return 'Good Morning';
@@ -81,211 +83,224 @@ export default function CustomerHome() {
         return 'Good Evening';
     };
 
-    // --- ANIMATION VARIANTS ---
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1 }
-        }
-    };
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
-    };
-
-    const ProductCard = ({ product, dark = false }: { product: any, dark?: boolean }) => (
-        <Card
-            className={`group border-0 shadow-sm hover:shadow-xl transition-all duration-500 rounded-2xl overflow-hidden cursor-pointer h-full flex flex-col ${dark ? 'bg-neutral-800' : 'bg-white'}`}
+    const ProductCard = ({ product, isPreorder = false }: { product: any, isPreorder?: boolean }) => (
+        <div
+            className="group relative flex flex-col gap-3 cursor-pointer"
             onClick={() => navigate(`/customer/product/${product.product_id}`)}
         >
-            <div className="aspect-[3/3.5] relative bg-neutral-100 overflow-hidden">
+            {/* Glass Card Image */}
+            <div className="aspect-[4/5] relative overflow-hidden rounded-3xl bg-white/40 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-white/30 transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] group-hover:-translate-y-2 group-hover:bg-white/60">
                 {product.media_urls?.[0] ? (
                     <img
                         src={product.media_urls[0]}
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                        loading="lazy"
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-neutral-300"><Package className="w-10 h-10" /></div>
-                )}
-                {product.type_code === 'PREORDER' && (
-                    <div className="absolute top-3 left-3">
-                        <Badge className="bg-orange-600 text-white border-0 text-[10px] tracking-wider uppercase">Pre-Order</Badge>
+                    <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <Package className="w-10 h-10" />
                     </div>
                 )}
+
+                {/* Badge */}
+                {isPreorder ? (
+                    <div className="absolute top-3 left-3">
+                        <div className="bg-orange-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
+                            PRE-ORDER
+                        </div>
+                    </div>
+                ) : product.status_code === 'IN_STOCK' && (
+                    <div className="absolute top-3 left-3">
+                        <div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
+                            IN STOCK
+                        </div>
+                    </div>
+                )}
+
+                {/* Hover Actions */}
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0">
+                    <button className="h-10 w-10 rounded-full bg-white/80 backdrop-blur-xl flex items-center justify-center text-slate-800 shadow-lg hover:bg-white hover:scale-110 transition-all border border-white/50">
+                        <Eye className="w-5 h-5" />
+                    </button>
+                    {!isPreorder &&
+                        <button className="h-10 w-10 rounded-full bg-slate-900/80 backdrop-blur-xl flex items-center justify-center text-white shadow-lg hover:bg-slate-900 hover:scale-110 transition-all border border-white/10">
+                            <ShoppingCart className="w-5 h-5" />
+                        </button>
+                    }
+                </div>
             </div>
 
-            <div className="p-4 flex-1 flex flex-col">
-                <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 line-clamp-1 ${dark ? 'text-neutral-400' : 'text-neutral-400'}`}>
-                    {product.brands?.name || "FigiCore"}
+            {/* Content */}
+            <div className="px-2 space-y-1">
+                <div className="text-[11px] font-bold tracking-wider uppercase text-slate-400">
+                    {product.brands?.name || 'FigiCore'}
                 </div>
-                <h3 className={`font-medium mb-2 truncate group-hover:text-amber-500 transition-colors ${dark ? 'text-white' : 'text-neutral-900'}`} title={product.name}>
+                <h3 className={`text-base font-medium leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-amber-500 transition-colors ${isPreorder ? 'text-white' : 'text-slate-800'}`}>
                     {product.name}
                 </h3>
-                <div className="mt-auto pt-3 border-t border-dashed border-neutral-200/20 flex items-center justify-between">
-                    {product.type_code === 'PREORDER' ? (
-                        <div className="flex flex-col">
-                            <span className={`text-sm font-bold ${dark ? 'text-amber-500' : 'text-orange-600'}`}>
-                                {getPreorderDeposit(product)} <span className="text-[10px] font-normal text-neutral-500">Deposit</span>
-                            </span>
-                        </div>
-                    ) : (
-                        <span className={`font-bold ${dark ? 'text-white' : 'text-neutral-900'}`}>
-                            {getDisplayPrice(product)}
+                <div className="text-lg font-semibold pt-1">
+                    {isPreorder ? (
+                        <span className="text-orange-500">
+                            {getPreorderDeposit(product)} <span className="text-xs text-slate-500 font-normal">Deposit</span>
                         </span>
+                    ) : (
+                        <span className="text-slate-900/90">{getDisplayPrice(product)}</span>
                     )}
                 </div>
             </div>
-        </Card>
+        </div>
     );
 
     return (
         <CustomerLayout activePage="home">
-            <div className="bg-[#fcfcfc] min-h-screen pb-20 font-sans text-neutral-800">
+            <div className="min-h-screen bg-[#F2F2F7] pb-20 font-sans relative overflow-hidden transition-colors duration-500">
+                {/* Ambient Background */}
+                <div className="fixed inset-0 pointer-events-none z-0">
+                    <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] bg-blue-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '8s' }} />
+                    <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-purple-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '10s' }} />
+                </div>
+                <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url(/noise.png)' }} />
 
-                {/* --- HERO SECTION --- */}
-                <div className="relative bg-white pt-12 pb-16 border-b border-neutral-100 overflow-hidden">
-                    <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-blue-50/50 to-transparent pointer-events-none" />
-                    <div className="container mx-auto px-4 relative z-10">
-                        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-4">
-                            <motion.div variants={itemVariants} className="flex items-center gap-3">
-                                <Badge variant="secondary" className="bg-gradient-to-r from-amber-200 to-amber-100 text-amber-800 border-amber-200 px-3 py-1 text-xs font-semibold tracking-wider uppercase shadow-sm">
-                                    {stats.rankCode}
+                <div className="container mx-auto px-4 relative z-10 pt-8 max-w-7xl">
+                    {/* Header Section */}
+                    <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
+                        <div className="space-y-4">
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex items-center gap-3"
+                            >
+                                <Badge variant="outline" className="bg-white/50 backdrop-blur-sm border-slate-200 text-slate-600 px-3 py-1 text-xs tracking-widest uppercase font-bold shadow-sm">
+                                    {stats.rankCode} MEMBER
                                 </Badge>
                             </motion.div>
-                            <motion.div variants={itemVariants}>
-                                <h1 className="text-4xl md:text-5xl font-light tracking-tight text-neutral-900">
-                                    {getGreeting()}, <span className="font-medium text-neutral-900">{user?.full_name?.split(' ')[0] || 'Collector'}</span>
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                            >
+                                <h1 className="text-4xl md:text-6xl font-bold text-slate-900 tracking-tight leading-none mb-2">
+                                    {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{user?.full_name?.split(' ')[0] || 'Collector'}</span>
                                 </h1>
-                                <p className="text-neutral-500 mt-2 text-lg font-light">Your sanctuary awaits. What will you discover today?</p>
+                                <p className="text-slate-500 text-lg font-light">Welcome back to your sanctuary.</p>
                             </motion.div>
-                        </motion.div>
+                        </div>
                     </div>
-                </div>
 
-                <div className="container mx-auto px-4 -mt-10 relative z-20">
-
-                    {/* STATS DASHBOARD */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3, duration: 0.6 }}
-                        className="bg-white/70 backdrop-blur-xl border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-2xl p-1 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-neutral-100"
-                    >
-                        {/* Use original stats markup here for consistency, omitted for brevity but keeping structure */}
-                        <div className="p-6 flex items-center justify-between group hover:bg-white/50 transition-colors rounded-xl cursor-pointer" onClick={() => navigate('/customer/wallet')}>
-                            <div>
-                                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">Wallet Balance</p>
-                                <div className="text-2xl font-semibold text-neutral-900">
-                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stats.walletBalance)}
-                                </div>
-                            </div>
-                            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center"><Wallet className="w-5 h-5" /></div>
-                        </div>
-                        <div className="p-6 flex items-center justify-between group hover:bg-white/50 transition-colors rounded-xl cursor-pointer" onClick={() => navigate('/customer/wallet')}>
-                            <div>
-                                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">Loyalty Points</p>
-                                <div className="text-2xl font-semibold text-neutral-900">{stats.loyaltyPoints} <span className="text-sm text-neutral-400">pts</span></div>
-                            </div>
-                            <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center"><Gift className="w-5 h-5" /></div>
-                        </div>
-                        <div className="p-6 flex items-center justify-between group hover:bg-white/50 transition-colors rounded-xl cursor-pointer" onClick={() => navigate('/customer/orders')}>
-                            <div>
-                                <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">Active Orders</p>
-                                <div className="text-2xl font-semibold text-neutral-900">{stats.activeOrders}</div>
-                            </div>
-                            <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center"><Package className="w-5 h-5" /></div>
-                        </div>
-                    </motion.div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mt-12">
-
-                        {/* --- LEFT SIDEBAR --- */}
-                        <div className="lg:col-span-1 space-y-6 sticky top-24 self-start">
-                            <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-6">
-                                <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wide mb-4">Quick Access</h3>
-                                <div className="space-y-1">
-                                    {[
-                                        { label: "My Collection", icon: Package, path: "/customer/orders" },
-                                        { label: "Top Up Wallet", icon: Wallet, path: "/customer/wallet" },
-                                        { label: "Redeem Rewards", icon: Ticket, path: "/customer/wallet" },
-                                        { label: "Live Auctions", icon: Gavel, path: "/customer/auctions" },
-                                    ].map((action, i) => (
-                                        <button key={i} onClick={() => navigate(action.path)} className="w-full flex items-center gap-3 p-3 text-sm font-medium text-neutral-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all group">
-                                            <action.icon className="w-4 h-4 text-neutral-400 group-hover:text-blue-500" />
-                                            {action.label}
-                                            <ArrowRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-blue-400" />
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* --- MAIN CONTENT --- */}
-                        <div className="lg:col-span-3 space-y-16">
-
-                            {/* 1. NEW ARRIVALS (RETAIL) */}
-                            <div>
-                                <div className="flex items-center justify-between mb-6">
+                    {/* Stats Dashboard (Glass) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+                        {[
+                            { label: "Wallet Balance", value: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stats.walletBalance), icon: Wallet, color: "text-blue-600", bg: "bg-blue-50/50", link: "/customer/wallet" },
+                            { label: "Loyalty Points", value: `${stats.loyaltyPoints}`, unit: "pts", icon: Gift, color: "text-amber-600", bg: "bg-amber-50/50", link: "/customer/wallet" },
+                            { label: "Active Orders", value: stats.activeOrders, icon: Package, color: "text-emerald-600", bg: "bg-emerald-50/50", link: "/customer/orders" }
+                        ].map((stat, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 + (i * 0.1) }}
+                                onClick={() => navigate(stat.link)}
+                                className="relative overflow-hidden cursor-pointer group rounded-[2.5rem] bg-white/60 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-8 transition-all duration-500 hover:shadow-[0_24px_64px_rgba(0,0,0,0.08)] hover:-translate-y-2 hover:bg-white/80"
+                            >
+                                <div className="flex justify-between items-start relative z-10">
                                     <div>
-                                        <h2 className="text-xl font-light text-neutral-900">New Arrivals</h2>
-                                        <p className="text-xs text-neutral-500 mt-1 uppercase tracking-wide">Fresh from the studio</p>
+                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">{stat.label}</p>
+                                        <h3 className="text-3xl font-bold text-slate-800 tracking-tight flex items-baseline gap-1">
+                                            {stat.value}
+                                            {stat.unit && <span className="text-lg text-slate-400 font-medium">{stat.unit}</span>}
+                                        </h3>
                                     </div>
-                                    <Button variant="ghost" className="text-neutral-500 hover:text-neutral-900" onClick={() => navigate('/customer/shop?type=RETAIL')}>
+                                    <div className={`w-14 h-14 rounded-[1.2rem] ${stat.bg} ${stat.color} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500`}>
+                                        <stat.icon className="w-7 h-7" />
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
+                        {/* Sidebar */}
+                        <div className="lg:col-span-1 space-y-8">
+                            <div className="sticky top-28 space-y-8">
+                                {/* Quick Actions */}
+                                <div className="rounded-[2.5rem] bg-white/60 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-6">
+                                    <h3 className="text-slate-900 font-bold mb-6 px-2">Quick Access</h3>
+                                    <div className="space-y-2">
+                                        {[
+                                            { label: "My Collection", path: "/customer/orders", icon: Package },
+                                            { label: "Wallet & Points", path: "/customer/wallet", icon: Wallet },
+                                            { label: "Vouchers", path: "/customer/wallet", icon: Ticket },
+                                            { label: "Live Auctions", path: "/customer/auctions", icon: Gavel },
+                                        ].map((item, i) => (
+                                            <button key={i} onClick={() => navigate(item.path)} className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-white text-slate-600 hover:text-blue-600 transition-all group font-medium text-sm hover:shadow-md border border-transparent hover:border-white/50">
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-blue-50 flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                                                    <item.icon className="w-4 h-4" />
+                                                </div>
+                                                {item.label}
+                                                <ChevronRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 text-slate-300 transition-opacity" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Blindbox Banner */}
+                                <div onClick={() => navigate('/customer/blindbox')} className="relative rounded-[2.5rem] overflow-hidden cursor-pointer group aspect-[4/5] shadow-2xl transition-all hover:scale-[1.02]">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-violet-900 to-fuchsia-900 transition-all duration-500" />
+                                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30"></div>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 text-white z-10">
+                                        <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center mb-6 shadow-inner ring-1 ring-white/20 group-hover:scale-110 transition-transform duration-500">
+                                            <Sparkles className="w-8 h-8 text-fuchsia-300" />
+                                        </div>
+                                        <h3 className="text-2xl font-bold mb-2">Blind Box</h3>
+                                        <p className="text-fuchsia-100/80 text-sm mb-8 leading-relaxed">Feeling lucky? Unlock a mystery collectible today.</p>
+                                        <Button className="bg-white text-fuchsia-900 hover:bg-fuchsia-50 rounded-full font-bold px-8 h-12 border-0 shadow-lg hover:shadow-xl transition-all">
+                                            Reveal Now
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Main Feed */}
+                        <div className="lg:col-span-3 space-y-20">
+                            {/* New Arrivals */}
+                            <section>
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="space-y-1">
+                                        <h2 className="text-2xl font-bold text-slate-900">New Arrivals</h2>
+                                        <p className="text-slate-500 text-sm font-medium">Fresh drops straight to the shop.</p>
+                                    </div>
+                                    <Button variant="ghost" onClick={() => navigate('/customer/retail')} className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl">
                                         View All <ArrowRight className="w-4 h-4 ml-2" />
                                     </Button>
                                 </div>
-                                {loading ? (
-                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">{[1, 2, 3].map(i => <div key={i} className="aspect-square bg-neutral-100 rounded-2xl animate-pulse" />)}</div>
-                                ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {retailProducts.map(p => <ProductCard key={p.product_id} product={p} />)}
-                                    </div>
-                                )}
-                            </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {loading ? [1, 2, 3].map(i => <div key={i} className="aspect-[4/5] rounded-[2rem] bg-white/40 animate-pulse border border-white/30" />) : retailProducts.map(p => <ProductCard key={p.product_id} product={p} />)}
+                                </div>
+                            </section>
 
-                            {/* 2. PRE-ORDER CENTER (DARK MODE BLOCK) */}
-                            <div className="bg-neutral-900 rounded-3xl p-8 text-white relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/20 blur-[100px] rounded-full pointer-events-none"></div>
+                            {/* Pre-Order Center */}
+                            <section className="relative rounded-[3rem] bg-[#0F0F12] p-8 md:p-12 overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.2)]">
+                                <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-orange-500/10 blur-[150px] rounded-full pointer-events-none" />
+                                <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-blue-500/10 blur-[150px] rounded-full pointer-events-none" />
+
                                 <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-8">
-                                        <div>
-                                            <Badge className="bg-amber-600 text-white border-0 mb-3">Priority Access</Badge>
-                                            <h2 className="text-2xl font-serif">Pre-order Center</h2>
-                                            <p className="text-neutral-400 text-sm mt-1">Secure future releases before anyone else.</p>
+                                    <div className="flex items-center justify-between mb-10">
+                                        <div className="space-y-2">
+                                            <Badge className="bg-orange-500 text-white border-0 hover:bg-orange-600 px-3 py-1">PRE-ORDER</Badge>
+                                            <h2 className="text-3xl font-bold text-white tracking-tight">Upcoming Releases</h2>
+                                            <p className="text-slate-400 text-sm">Secure your figures before they hit the shelves.</p>
                                         </div>
+                                        <Button onClick={() => navigate('/customer/preorder')} className="bg-white text-slate-900 hover:bg-slate-200 rounded-full font-bold px-6 h-12">
+                                            View Schedule
+                                        </Button>
                                     </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        {preorderProducts.map(p => <ProductCard key={p.product_id} product={p} dark={true} />)}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        {loading ? [1, 2, 3, 4].map(i => <div key={i} className="aspect-[4/5] rounded-3xl bg-white/5 animate-pulse" />) : preorderProducts.map(p => <ProductCard key={p.product_id} product={p} isPreorder={true} />)}
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* 3. MYSTERY / BLINDBOX DISCOVERY (Hidden Gem) */}
-                            <div
-                                className="relative rounded-3xl overflow-hidden cursor-pointer group"
-                                onClick={() => navigate('/customer/shop?type=BLINDBOX')}
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-violet-900 to-fuchsia-900"></div>
-                                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30"></div>
-
-                                <div className="relative z-10 px-8 py-12 flex flex-col items-center justify-center text-center">
-                                    <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                                        <Sparkles className="w-8 h-8 text-fuchsia-300" />
-                                    </div>
-                                    <h2 className="text-3xl md:text-4xl font-serif text-white mb-4">Feeling Lucky?</h2>
-                                    <p className="text-fuchsia-200 max-w-lg mx-auto text-lg mb-8">
-                                        Some treasures are hidden for a reason. Unlock the mystery collection and see what specifically awaits you.
-                                    </p>
-                                    <Button className="bg-white text-fuchsia-900 hover:bg-fuchsia-50 rounded-full px-8 h-12 text-base font-bold shadow-lg group-hover:shadow-fuchsia-500/50 transition-all">
-                                        <Eye className="w-4 h-4 mr-2" />
-                                        Reveal The Secret
-                                    </Button>
-                                </div>
-                            </div>
-
+                            </section>
                         </div>
                     </div>
                 </div>

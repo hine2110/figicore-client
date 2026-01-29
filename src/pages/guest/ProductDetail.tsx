@@ -230,8 +230,8 @@ export default function GuestProductDetail() {
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm text-neutral-500 uppercase tracking-wider">Stock</span>
                                         <span className={`text-sm font-medium ${selectedVariant.stock_available === 0 ? 'text-red-600' :
-                                                selectedVariant.stock_available < 5 ? 'text-orange-600' :
-                                                    'text-green-600'
+                                            selectedVariant.stock_available < 5 ? 'text-orange-600' :
+                                                'text-green-600'
                                             }`}>
                                             {selectedVariant.stock_available === 0 ? 'Out of Stock' :
                                                 selectedVariant.stock_available < 5 ? 'Low Stock' :

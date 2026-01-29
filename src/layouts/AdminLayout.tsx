@@ -2,7 +2,6 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import {
     LayoutDashboard,
     Users,
-    UserCog,
     ShoppingBag,
     Gavel,
     FileText,
@@ -37,8 +36,7 @@ export default function AdminLayout() {
 
     const navItems = [
         { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-        { name: 'Employees', path: '/admin/employees', icon: UserCog },
-        { name: 'Customers', path: '/admin/customers', icon: Users },
+        { name: 'Accounts', path: '/admin/accounts', icon: Users },
         { name: 'Profile Approvals', path: '/admin/approvals', icon: ShieldAlert },
         { name: 'Products', path: '/admin/products', icon: ShoppingBag },
         { name: 'Orders Oversight', path: '/admin/orders', icon: FileText },
@@ -84,14 +82,14 @@ export default function AdminLayout() {
             <div className="p-4 border-t border-neutral-800 shrink-0">
                 <div className="flex items-center gap-3 mb-4 px-2">
                     <Avatar className="h-9 w-9 border border-neutral-700">
-                        <AvatarImage src={user?.avatarUrl} />
+                        <AvatarImage src={user?.avatar_url || undefined} />
                         <AvatarFallback className="bg-red-900 text-white border-neutral-700">
-                            {user?.name?.charAt(0)}
+                            {user?.full_name?.charAt(0)}
                         </AvatarFallback>
                     </Avatar>
                     <div className="overflow-hidden">
-                        <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-                        <p className="text-xs text-neutral-500 capitalize">{user?.role}</p>
+                        <p className="text-sm font-medium text-white truncate">{user?.full_name}</p>
+                        <p className="text-xs text-neutral-500 capitalize">{user?.role_code}</p>
                     </div>
                 </div>
                 <Button
@@ -149,23 +147,29 @@ export default function AdminLayout() {
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                                     <Avatar className="h-8 w-8">
-                                        <AvatarImage src={user?.avatarUrl} alt={user?.name} />
-                                        <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
+                                        <AvatarImage src={user?.avatar_url || undefined} alt={user?.full_name || undefined} />
+                                        <AvatarFallback>{user?.full_name?.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-56" align="end" forceMount>
                                 <DropdownMenuLabel className="font-normal">
                                     <div className="flex flex-col space-y-1">
-                                        <p className="text-sm font-medium leading-none">{user?.name}</p>
+                                        <p className="text-sm font-medium leading-none">{user?.full_name}</p>
                                         <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                                     </div>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem>Profile</DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link to="/admin/profile" className="cursor-pointer font-medium">
+                                        <div className="flex items-center">
+                                            <span>My Profile</span>
+                                        </div>
+                                    </Link>
+                                </DropdownMenuItem>
                                 <DropdownMenuItem>Settings</DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => logout()} className="text-red-600">
+                                <DropdownMenuItem onClick={() => logout()} className="text-red-600 cursor-pointer">
                                     Log out
                                 </DropdownMenuItem>
                             </DropdownMenuContent>

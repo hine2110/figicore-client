@@ -12,11 +12,12 @@ import PosLayout from "@/layouts/PosLayout";
 
 // Pages
 import AdminDashboard from "@/pages/admin/AdminDashboard";
-import EmployeeManagement from "@/pages/admin/EmployeeManagement";
-import CustomerManagement from "@/pages/admin/CustomerManagement";
+
+import AccountManagement from "@/pages/admin/AccountManagement";
 import ProfileApproval from "@/pages/admin/ProfileApproval";
 import ProductManagement from "@/pages/admin/ProductManagement";
 import OrderOversight from "@/pages/admin/OrderOversight";
+import ProfilePage from "@/pages/common/ProfilePage";
 import AuctionManagement from "@/pages/admin/AuctionManagement";
 import ManualRefund from "@/pages/admin/ManualRefund";
 import SystemSettings from "@/pages/admin/SystemSettings";
@@ -33,7 +34,10 @@ import CustomerFeedback from "@/pages/manager/CustomerFeedback";
 
 // Customer Pages
 import CustomerHome from "@/pages/customer/CustomerHome";
-import CustomerShop from "@/pages/customer/Shop";
+
+import RetailShop from "@/pages/customer/RetailShop";
+import BlindBoxShop from "@/pages/customer/BlindBoxShop";
+import PreOrderShop from "@/pages/customer/PreOrderShop";
 import Cart from "@/pages/customer/Cart";
 import Checkout from "@/pages/customer/Checkout";
 import MyOrders from "@/pages/customer/MyOrders";
@@ -41,6 +45,7 @@ import CustomerWallet from "@/pages/customer/CustomerWallet";
 import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
+import ScrollToTop from "@/components/ScrollToTop";
 
 // Staff Pages
 // Warehouse Pages
@@ -72,6 +77,7 @@ import { Toaster } from "@/components/ui/toaster";
 export default function App() {
     return (
         <BrowserRouter>
+            <ScrollToTop />
             <Toaster />
             <Routes>
                 {/* Default Redirect handled by RoleBasedRedirect, but keep fallback */}
@@ -101,8 +107,7 @@ export default function App() {
                         <Route path="/admin" element={<AdminLayout />}>
                             <Route index element={<Navigate to="/admin/dashboard" replace />} />
                             <Route path="dashboard" element={<AdminDashboard />} />
-                            <Route path="employees" element={<EmployeeManagement />} />
-                            <Route path="customers" element={<CustomerManagement />} />
+
                             <Route path="approvals" element={<ProfileApproval />} />
                             <Route path="products" element={<ProductManagement />} />
                             <Route path="orders" element={<OrderOversight />} />
@@ -110,6 +115,8 @@ export default function App() {
                             <Route path="refunds" element={<ManualRefund />} />
                             <Route path="settings" element={<SystemSettings />} />
                             <Route path="logs" element={<AuditLogs />} />
+                            <Route path="accounts" element={<AccountManagement />} />
+                            <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
 
@@ -125,6 +132,7 @@ export default function App() {
                             <Route path="returns" element={<ReturnApprovals />} />
                             <Route path="shifts" element={<ShiftManagement />} />
                             <Route path="feedback" element={<CustomerFeedback />} />
+                            <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
 
@@ -137,7 +145,8 @@ export default function App() {
                             <Route path="packing" element={<PackingFulfillment />} />
                             <Route path="imports" element={<GoodsReceipt />} />
                             <Route path="returns" element={<ReturnInspection />} />
-                            <Route path="schedule" element={<WarehouseSchedule />} />
+                            <Route path="profile" element={<ProfilePage />} />
+
                         </Route>
                     </Route>
 
@@ -149,6 +158,7 @@ export default function App() {
                             <Route path="counter" element={<PosSystem />} />
                             <Route path="orders" element={<OrderProcessing />} />
                             <Route path="schedule" element={<PosSchedule />} />
+                            <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
 
@@ -157,7 +167,10 @@ export default function App() {
                         <Route path="/customer">
                             <Route index element={<Navigate to="/customer/home" replace />} />
                             <Route path="home" element={<CustomerHome />} />
-                            <Route path="shop" element={<CustomerShop />} />
+                            {/* <Route path="shop" element={<CustomerShop />} /> */}
+                            <Route path="retail" element={<RetailShop />} />
+                            <Route path="blindbox" element={<BlindBoxShop />} />
+                            <Route path="preorder" element={<PreOrderShop />} />
                             <Route path="product/:id" element={<CustomerProductDetail />} />
                             <Route path="cart" element={<Cart />} />
                             <Route path="checkout" element={<Checkout />} />

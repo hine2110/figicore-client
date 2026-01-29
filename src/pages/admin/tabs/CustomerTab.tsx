@@ -9,18 +9,26 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { customersService, Customer } from '@/services/customers.service';
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
+import ConfirmStatusDialog from "@/features/admin/components/ConfirmStatusDialog";
+import { userService } from "@/services/user.service";
+import { useAuthStore } from "@/store/useAuthStore";
 
-export default function CustomerManagement() {
+import CustomerDetailSheet from "@/features/admin/components/CustomerDetailSheet";
+
+export default function CustomerTab() {
     const { toast } = useToast();
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+    const [selectedId, setSelectedId] = useState<number | null>(null);
+    const [statusConfirm, setStatusConfirm] = useState<{id: number, status: string} | null>(null);
 
     const fetchCustomers = async () => {
         setIsLoading(true);
@@ -49,13 +57,6 @@ export default function CustomerManagement() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Customer Management</h1>
-                    <p className="text-neutral-500">View and manage customer accounts.</p>
-                </div>
-            </div>
-
             <Card className="rounded-xl border border-neutral-200 overflow-hidden">
                 <div className="p-4 border-b border-neutral-100 flex gap-4 bg-neutral-50/50">
                     <div className="relative flex-1">
@@ -74,8 +75,8 @@ export default function CustomerManagement() {
                     <thead className="bg-neutral-50 text-neutral-500 font-medium border-b border-neutral-200">
                         <tr>
                             <th className="px-6 py-4">Customer</th>
-                            <th className="px-6 py-4">Total Spent</th>
-                            <th className="px-6 py-4">Rank</th>
+                            <th className="px-6 py-4">Phone</th>
+                            <th className="px-6 py-4">Loyalty Points</th>
                             <th className="px-6 py-4">Status</th>
                             <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
@@ -99,11 +100,10 @@ export default function CustomerManagement() {
                                         <div>
                                             <div className="font-medium text-neutral-900">{cust.users.full_name}</div>
                                             <div className="text-xs text-neutral-500">{cust.users.email}</div>
-                                            <div className="text-xs text-neutral-400">{cust.users.phone}</div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 font-mono">${Number(cust.total_spent).toLocaleString()}</td>
-                                    <td className="px-6 py-4">{cust.current_rank_code}</td>
+                                    <td className="px-6 py-4 text-neutral-600">{cust.users.phone}</td>
+                                    <td className="px-6 py-4 font-mono">{cust.loyalty_points ?? 0}</td>
                                     <td className="px-6 py-4">
                                         <Badge variant="outline" className={`${cust.users.status_code === 'ACTIVE' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                                             {cust.users.status_code}
@@ -115,9 +115,17 @@ export default function CustomerManagement() {
                                                 <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>View Profile</DropdownMenuItem>
-                                                <DropdownMenuItem>Order History</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-red-600">Suspend Account</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => setSelectedId(cust.user_id)}>
+                                                    View Profile
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>Edit Details</DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem 
+                                                    className={cust.users.status_code === 'ACTIVE' ? "text-red-600" : "text-green-600"}
+                                                    onClick={() => setStatusConfirm({ id: cust.user_id, status: cust.users.status_code })}
+                                                >
+                                                    {cust.users.status_code === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
+                                                </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </td>
@@ -148,6 +156,32 @@ export default function CustomerManagement() {
                     </div>
                 </div>
             </Card>
+
+            <CustomerDetailSheet 
+                customerId={selectedId} 
+                open={!!selectedId} 
+                onOpenChange={(open) => !open && setSelectedId(null)} 
+                onUpdateSuccess={fetchCustomers}
+            />
+
+            {statusConfirm && (
+                <ConfirmStatusDialog 
+                    open={!!statusConfirm}
+                    onOpenChange={(open) => !open && setStatusConfirm(null)}
+                    currentStatus={statusConfirm.status}
+                    onConfirm={async () => {
+                        try {
+                            await userService.updateStatus(statusConfirm.id, statusConfirm.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE');
+                            toast({ title: "Success", description: "User status updated successfully." });
+                            fetchCustomers();
+                        } catch (error) {
+                            toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+                        } finally {
+                            setStatusConfirm(null);
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }
