@@ -11,6 +11,7 @@ export interface Customer {
     phone: string;
     status_code: string;
     avatar_url: string | null;
+    addresses?: any[];
   };
 }
 
@@ -36,8 +37,8 @@ export const customersService = {
     return response.data;
   },
 
-  getDashboardStats: async (): Promise<any> => {
-    const response = await api.get('/customers/dashboard-stats');
+  getCustomerById: async (id: number): Promise<Customer> => {
+    const response = await api.get(`/customers/${id}`);
     return response.data;
   },
 };

@@ -33,6 +33,7 @@ export interface GetEmployeesParams {
   page?: number;
   limit?: number;
   search?: string;
+  role?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -66,5 +67,10 @@ export const employeesService = {
       }
       throw error;
     }
+  },
+
+  getEmployeeById: async (id: number): Promise<Employee> => {
+    const response = await api.get(`/employees/${id}`);
+    return response.data;
   },
 };

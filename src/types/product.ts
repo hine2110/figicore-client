@@ -58,6 +58,9 @@ export interface Product {
     type_code: 'RETAIL' | 'BLINDBOX' | 'PREORDER';
     status_code: string;
     description?: string;
+    brand_id?: number;
+    category_id?: number;
+    series_id?: number;
     media_urls?: any; // JSON, often string[]
     specifications?: any; // JSON
     created_at: string;
