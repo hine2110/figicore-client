@@ -33,7 +33,10 @@ import CustomerFeedback from "@/pages/manager/CustomerFeedback";
 
 // Customer Pages
 import CustomerHome from "@/pages/customer/CustomerHome";
-import CustomerShop from "@/pages/customer/Shop";
+
+import RetailShop from "@/pages/customer/RetailShop";
+import BlindBoxShop from "@/pages/customer/BlindBoxShop";
+import PreOrderShop from "@/pages/customer/PreOrderShop";
 import Cart from "@/pages/customer/Cart";
 import Checkout from "@/pages/customer/Checkout";
 import MyOrders from "@/pages/customer/MyOrders";
@@ -41,6 +44,7 @@ import CustomerWallet from "@/pages/customer/CustomerWallet";
 import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
+import ScrollToTop from "@/components/ScrollToTop";
 
 // Staff Pages
 // Warehouse Pages
@@ -72,6 +76,7 @@ import { Toaster } from "@/components/ui/toaster";
 export default function App() {
     return (
         <BrowserRouter>
+            <ScrollToTop />
             <Toaster />
             <Routes>
                 {/* Default Redirect handled by RoleBasedRedirect, but keep fallback */}
@@ -157,7 +162,10 @@ export default function App() {
                         <Route path="/customer">
                             <Route index element={<Navigate to="/customer/home" replace />} />
                             <Route path="home" element={<CustomerHome />} />
-                            <Route path="shop" element={<CustomerShop />} />
+                            {/* <Route path="shop" element={<CustomerShop />} /> */}
+                            <Route path="retail" element={<RetailShop />} />
+                            <Route path="blindbox" element={<BlindBoxShop />} />
+                            <Route path="preorder" element={<PreOrderShop />} />
                             <Route path="product/:id" element={<CustomerProductDetail />} />
                             <Route path="cart" element={<Cart />} />
                             <Route path="checkout" element={<Checkout />} />

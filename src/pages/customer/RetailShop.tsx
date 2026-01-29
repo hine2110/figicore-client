@@ -29,7 +29,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export default function CustomerShop() {
+export default function RetailShop() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -38,7 +38,6 @@ export default function CustomerShop() {
     const [loading, setLoading] = useState(true);
     const [brands, setBrands] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
-    // const [series, setSeries] = useState<any[]>([]); // potentially unused if not filtering by series in new UI
 
     // Filter States
     const [searchText, setSearchText] = useState(searchParams.get('search') || '');
@@ -52,7 +51,7 @@ export default function CustomerShop() {
     const selectedBrand = searchParams.get('brand_id') || 'all';
     const selectedCategory = searchParams.get('category_id') || 'all';
     const selectedSeries = searchParams.get('series_id') || 'all';
-    const selectedType = searchParams.get('type_code');
+    const selectedType = 'RETAIL'; // Hardcoded
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -64,11 +63,10 @@ export default function CustomerShop() {
             try {
                 const [b, c] = await Promise.all([
                     productsService.getEntities('brands'),
-                    productsService.getEntities('categories')
+                    productsService.getEntities('categories'),
                 ]);
                 setBrands(Array.isArray(b) ? b : (b as any).data || []);
                 setCategories(Array.isArray(c) ? c : (c as any).data || []);
-                // setSeries(Array.isArray(s) ? s : (s as any).data || []);
             } catch (e) {
                 console.error("Failed to load metadata", e);
             }
@@ -93,8 +91,7 @@ export default function CustomerShop() {
             if (sortBy !== 'created_at_desc') params.set('sort', sortBy);
             else params.delete('sort');
 
-            // Preserve type_code if it exists (don't clear it)
-            if (selectedType) params.set('type_code', selectedType);
+            // Removed type_code handling from params since it's hardcoded for this page
 
             setSearchParams(params, { replace: true });
         }, 600);
@@ -107,8 +104,6 @@ export default function CustomerShop() {
         const fetchProducts = async () => {
             setLoading(true);
             try {
-                const typeToFetch = searchParams.get('type_code') || 'RETAIL';
-
                 const params: any = {
                     limit: 1000,
                     sort: searchParams.get('sort') || 'created_at_desc',
@@ -116,7 +111,7 @@ export default function CustomerShop() {
                     brand_id: searchParams.get('brand_id') !== 'all' ? Number(searchParams.get('brand_id')) : undefined,
                     category_id: searchParams.get('category_id') !== 'all' ? Number(searchParams.get('category_id')) : undefined,
                     series_id: searchParams.get('series_id') !== 'all' ? Number(searchParams.get('series_id')) : undefined,
-                    type_code: typeToFetch,
+                    type_code: selectedType, // Hardcoded
                     min_price: searchParams.get('min_price') ? Number(searchParams.get('min_price')) : undefined,
                     max_price: searchParams.get('max_price') ? Number(searchParams.get('max_price')) : undefined,
                 };
@@ -154,14 +149,6 @@ export default function CustomerShop() {
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
-        if (product.type_code === 'PREORDER') {
-            const dep = Number(product.product_preorders?.deposit_amount || 0);
-            return isNaN(dep) ? 'Contact' : `Dep: ${formatPrice(dep)}`;
-        }
-        if (product.type_code === 'BLINDBOX') {
-            const p = Number(product.product_blindboxes?.price || 0);
-            return isNaN(p) ? 'Contact' : formatPrice(p);
-        }
         const p = Number(product.product_variants?.[0]?.price || 0);
         return isNaN(p) ? 'Contact' : formatPrice(p);
     };
@@ -181,27 +168,21 @@ export default function CustomerShop() {
         setSearchParams(prev => {
             const newParams = new URLSearchParams();
             if (prev.get('sort')) newParams.set('sort', prev.get('sort')!);
-            if (prev.get('type_code')) newParams.set('type_code', prev.get('type_code')!);
             return newParams;
         });
     };
 
-    // Dynamic Title
-    const pageTitle = useMemo(() => {
-        const type = searchParams.get('type_code');
-        if (type === 'BLINDBOX') return 'Blind Box Collection';
-        if (type === 'PREORDER') return 'Pre-Order Zone';
-        return 'Retail Collection';
-    }, [searchParams]);
+    const pageTitle = 'Retail Collection';
 
     return (
         <CustomerLayout activePage="products">
             <div className="min-h-screen bg-[#F2F2F7] pb-20 font-sans relative overflow-hidden transition-colors duration-500">
                 {/* Ambient Background (iOS 26 Style) */}
+                {/* Ambient Background (iOS 26 Style) */}
                 <div className="fixed inset-0 pointer-events-none z-0">
-                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-blue-400/20 blur-[120px] rounded-full mix-blend-multiply animate-pulse" style={{ animationDuration: '8s' }} />
-                    <div className="absolute top-[10%] right-[-10%] w-[60%] h-[60%] bg-purple-400/20 blur-[120px] rounded-full mix-blend-multiply animate-pulse" style={{ animationDuration: '10s' }} />
-                    <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-indigo-400/20 blur-[120px] rounded-full mix-blend-multiply animate-pulse" style={{ animationDuration: '12s' }} />
+                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-blue-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '8s' }} />
+                    <div className="absolute top-[10%] right-[-10%] w-[60%] h-[60%] bg-purple-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '10s' }} />
+                    <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-indigo-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '12s' }} />
                 </div>
 
                 {/* Noise Texture */}

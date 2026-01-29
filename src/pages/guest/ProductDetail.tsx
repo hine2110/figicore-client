@@ -101,7 +101,7 @@ export default function GuestProductDetail() {
                             <div className="grid grid-cols-5 gap-4">
                                 {activeMedia.map((m: any, i: number) => (
                                     <div key={i} onClick={() => setSelectedImage(i)} className={cn("aspect-square rounded-xl overflow-hidden border-2 cursor-pointer", selectedImage === i ? "border-black" : "border-transparent")}>
-                                        <img src={m.url} className="w-full h-full object-cover" />
+                                        <img src={m.url} className="w-full h-full object-cover" loading="lazy" />
                                     </div>
                                 ))}
                             </div>

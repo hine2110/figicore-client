@@ -1,12 +1,10 @@
 import {
     ShoppingCart,
     User,
-    Search,
     Menu,
     X,
     Wallet,
     Package,
-    Ticket,
     Gavel,
     Home
 } from 'lucide-react';
@@ -14,7 +12,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '@/store/useCartStore';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
     DropdownMenu,
@@ -38,9 +35,9 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
 
     const navItems = [
         { id: 'home', label: 'Home', icon: Home, path: '/customer/home' },
-        { id: 'products', label: 'Products', path: '/customer/shop?type=RETAIL' },
-        { id: 'blind-box', label: 'Blind Box', path: '/customer/shop' },
-        { id: 'pre-order', label: 'Pre-Order', path: '/customer/shop' },
+        { id: 'products', label: 'Products', path: '/customer/retail' },
+        { id: 'blind-box', label: 'Blind Box', path: '/customer/blindbox' },
+        { id: 'pre-order', label: 'Pre-Order', path: '/customer/preorder' },
         { id: 'auction', label: 'Auction', icon: Gavel, path: '/customer/auctions' },
     ];
 
@@ -80,13 +77,7 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <div className="relative hidden lg:block">
-                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <Input
-                                    placeholder="Search products..."
-                                    className="pl-10 w-64"
-                                />
-                            </div>
+
 
                             <Button
                                 variant="ghost"
