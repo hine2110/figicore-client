@@ -116,6 +116,7 @@ export default function GuestProductDetail() {
                             {/* PRICE DISPLAY */}
                             <div className="mb-8">
                                 {product.type_code === 'BLINDBOX' ? (
+
                                     <div className="text-3xl font-bold text-neutral-900">{formatPrice(product.product_blindboxes?.price || 0)}</div>
                                 ) : product.type_code === 'PREORDER' ? (
                                     <div>
