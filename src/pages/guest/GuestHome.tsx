@@ -30,7 +30,7 @@ const BANNERS = [
 export function GuestHome() {
     const navigate = useNavigate();
     const [latestProducts, setLatestProducts] = useState<any[]>([]);
-    const [blindboxProducts, setBlindboxProducts] = useState<any[]>([]);
+
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -45,15 +45,13 @@ export function GuestHome() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [retail, blindbox, preorder] = await Promise.all([
+                const [retail, preorder] = await Promise.all([
                     productsService.getProducts({ limit: 8, type_code: 'RETAIL' }),
-                    productsService.getProducts({ limit: 6, type_code: 'BLINDBOX' }),
                     productsService.getProducts({ limit: 4, type_code: 'PREORDER' })
                 ]);
 
                 const getList = (res: any) => Array.isArray(res) ? res : (res as any)?.data || [];
                 setLatestProducts(getList(retail).slice(0, 8));
-                setBlindboxProducts(getList(blindbox).slice(0, 6));
                 setPreorderProducts(getList(preorder).slice(0, 4));
             } catch (error) {
                 console.error("Failed to load home data", error);
@@ -88,9 +86,7 @@ export function GuestHome() {
         return safeNumber(pre.full_price);
     };
 
-    const getBlindboxPrice = (product: any) => {
-        return safeNumber(product.product_blindboxes?.price);
-    };
+
 
     // --- SUB-COMPONENTS ---
 
@@ -149,51 +145,7 @@ export function GuestHome() {
         </div>
     );
 
-    const BlindBoxCard = ({ product }: { product: any }) => (
-        <div
-            className="group cursor-pointer flex flex-col gap-6 relative overflow-hidden rounded-lg bg-neutral-800 border border-neutral-700 hover:border-amber-900/50 transition-all duration-500"
-            onClick={() => navigate(`/guest/product/${product.product_id}`)}
-        >
-            <div className="aspect-[3/4] overflow-hidden bg-black relative flex items-center justify-center">
-                {product.media_urls?.[0] ? (
-                    <img
-                        src={product.media_urls[0]}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105 opacity-70 group-hover:opacity-90"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-neutral-600">
-                        <Package className="w-10 h-10" />
-                    </div>
-                )}
 
-                {/* Mystery Badge */}
-                <div className="absolute top-4 left-4">
-                    <Badge className="bg-amber-700 text-white border-0 text-[10px] uppercase tracking-wider rounded-none px-3 py-1 font-medium">
-                        ✨ Mystery
-                    </Badge>
-                </div>
-
-                {/* Subtle glow effect on hover */}
-                <div className="absolute inset-0 bg-gradient-to-t from-amber-900/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            </div>
-
-            <div className="space-y-2 text-center px-4 pb-4">
-                <div className="text-[10px] font-bold tracking-widest uppercase text-neutral-500">
-                    {product.brands?.name || "Mystery Series"}
-                </div>
-                <h3 className="text-lg font-serif text-white group-hover:text-amber-500 transition-colors line-clamp-2">
-                    {product.name}
-                </h3>
-                <div className="text-xl font-bold text-white">
-                    {formatPrice(getBlindboxPrice(product))}
-                </div>
-                <div className="text-xs text-neutral-400">
-                    One random figure per box
-                </div>
-            </div>
-        </div>
-    );
 
     const isOutOfStock = (product: any) => {
         if (product.type_code === 'RETAIL') {
@@ -324,55 +276,7 @@ export function GuestHome() {
                     )}
                 </section>
 
-                {/* SECTION 2: MYSTERY BOX COLLECTION (Dark Subtle Theme) - HIDDEN */}
-                {/* <section className="py-32 bg-neutral-900 text-white relative overflow-hidden border-y border-neutral-800">
-                    <div className="absolute inset-0 opacity-5">
-                        <div className="absolute top-0 left-0 w-96 h-96 bg-amber-600 rounded-full blur-3xl animate-pulse" />
-                        <div className="absolute bottom-0 right-0 w-96 h-96 bg-neutral-600 rounded-full blur-3xl animate-pulse delay-1000" />
-                    </div>
 
-                    <div className="container mx-auto px-6 relative z-10">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8 border-b border-neutral-800 pb-8">
-                            <div>
-                                <div className="text-amber-500 font-bold tracking-[0.2em] uppercase text-xs mb-4 flex items-center gap-2">
-                                    ✨ Mystery Collection
-                                </div>
-                                <h2 className="text-4xl md:text-6xl font-serif text-white mb-2">Blind Box</h2>
-                                <p className="text-neutral-400 font-light text-lg max-w-xl">
-                                    Each box contains one random figure. Will luck be on your side?
-                                </p>
-                            </div>
-                            <Button
-                                variant="outline"
-                                className="bg-transparent border-white/30 text-white hover:bg-white hover:text-black rounded-none px-8 h-12 uppercase tracking-wider text-xs font-bold transition-all"
-                                onClick={() => navigate('/guest/browse?category=BLINDBOX')}
-                            >
-                                Explore Collection
-                            </Button>
-                        </div>
-
-                        {loading ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-                                {[1, 2, 3, 4, 5, 6].map(i => (
-                                    <div key={i} className="space-y-4">
-                                        <div className="aspect-[3/4] bg-neutral-800/50 animate-pulse rounded-xl" />
-                                        <div className="h-4 bg-neutral-800/50 animate-pulse rounded" />
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-                                {blindboxProducts.map(p => <BlindBoxCard key={p.product_id} product={p} />)}
-                            </div>
-                        )}
-
-                        {!loading && blindboxProducts.length === 0 && (
-                            <div className="text-center py-32 text-neutral-500 font-serif italic text-2xl">
-                                No mystery boxes available yet.
-                            </div>
-                        )}
-                    </div>
-                </section> */}
 
                 {/* SECTION 3: PRE-ORDER SPOTLIGHT (Dark Mode) */}
                 <section className="py-32 bg-[#050505] text-white">
