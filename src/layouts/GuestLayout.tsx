@@ -37,17 +37,16 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                     <div className="flex items-center justify-between h-20">
                         <div className="flex items-center gap-8">
                             {/* Brand */}
-                            <Link to="/guest/home" className="font-semibold text-2xl tracking-tight text-gray-900 flex items-center gap-2">
-                                FigiCore
+                            <Link to="/guest/home" className="flex items-center gap-2">
+                                <img src="/logo.png?v=8" alt="Figi Logo" className="h-16 w-auto object-contain" />
                             </Link>
-
                             {/* Desktop Nav */}
                             <nav className="hidden md:flex items-center gap-6">
                                 {navItems.map((item) => (
                                     <button
                                         key={item.id}
                                         onClick={() => navigate(item.path)}
-                                        className={`text-base font-medium transition-colors ${activePage === item.id
+                                        className={`text-base font-bold transition-colors ${activePage === item.id
                                             ? 'text-gray-900'
                                             : 'text-gray-600 hover:text-gray-900'
                                             }`}
@@ -65,14 +64,14 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="text-gray-600 hover:text-gray-900"
+                                    className="text-gray-600 hover:text-gray-900 font-bold"
                                     onClick={() => navigate('/guest/login')}
                                 >
                                     Sign In
                                 </Button>
                                 <Button
                                     size="sm"
-                                    className="bg-gray-900 text-white hover:bg-black transition-colors px-5"
+                                    className="bg-gray-900 text-white hover:bg-black transition-colors px-5 font-bold"
                                     onClick={() => navigate('/guest/register')}
                                 >
                                     Register
@@ -175,7 +174,10 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                         </div>
                     </div>
                     <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500">
-                        <p>© 2026 FigiCore. All rights reserved.</p>
+                        <div className="flex items-center gap-2">
+                            <img src="/logo.png" alt="Figi Logo" className="h-6 w-auto object-contain opacity-80" />
+                            <p>© 2026 FigiCore. All rights reserved.</p>
+                        </div>
                         <div className="flex gap-6 mt-4 md:mt-0">
                             <span className="hover:text-gray-900 cursor-pointer">Twitter</span>
                             <span className="hover:text-gray-900 cursor-pointer">Instagram</span>
