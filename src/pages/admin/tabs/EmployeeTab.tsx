@@ -32,6 +32,7 @@ import {
 import ConfirmStatusDialog from "@/features/admin/components/ConfirmStatusDialog";
 import EmployeeDetailSheet from "@/features/admin/components/EmployeeDetailSheet";
 import BulkCreateUserSheet from "@/features/admin/components/BulkCreateUserSheet";
+import BanUserDialog from "@/features/admin/components/BanUserDialog";
 import { userService } from "@/services/user.service";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -46,6 +47,7 @@ export default function EmployeeTab() {
     const [selectedId, setSelectedId] = useState<number | null>(null);
 
     const [statusConfirm, setStatusConfirm] = useState<{id: number, status: string} | null>(null);
+    const [banDialog, setBanDialog] = useState<{id: number, name: string} | null>(null);
     const [isBulkOpen, setIsBulkOpen] = useState(false);
 
     const fetchEmployees = async () => {
@@ -167,7 +169,7 @@ export default function EmployeeTab() {
                                     <TableCell>
                                         <Badge variant={
                                             employee.users.status_code === 'ACTIVE' ? 'default' : 
-                                            employee.users.status_code === 'INACTIVE' ? 'destructive' : 'secondary'
+                                            employee.users.status_code === 'BANNED' ? 'destructive' : 'secondary'
                                         } className="capitalize">
                                             {employee.users.status_code?.toLowerCase()}
                                         </Badge>
@@ -188,15 +190,46 @@ export default function EmployeeTab() {
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 {['SUPER_ADMIN', 'ADMIN'].includes(useAuthStore.getState().user?.role_code || '') && (
-                                                    <DropdownMenuItem 
-                                                        className={employee.users.status_code === 'ACTIVE' ? "text-red-600" : "text-green-600"}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setStatusConfirm({ id: employee.user_id, status: employee.users.status_code });
-                                                        }}
-                                                    >
-                                                        {employee.users.status_code === 'ACTIVE' ? 'Deactivate User' : 'Activate User'}
-                                                    </DropdownMenuItem>
+                                                    <>
+                                                        {/* Deactivate / Activate */}
+                                                        {employee.users.status_code !== 'BANNED' && (
+                                                            <DropdownMenuItem 
+                                                                className={employee.users.status_code === 'ACTIVE' ? "text-orange-600" : "text-green-600"}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setStatusConfirm({ id: employee.user_id, status: employee.users.status_code });
+                                                                }}
+                                                            >
+                                                                {employee.users.status_code === 'ACTIVE' ? 'Deactivate User' : 'Activate User'}
+                                                            </DropdownMenuItem>
+                                                        )}
+
+                                                        {/* Ban */}
+                                                        {employee.users.status_code !== 'BANNED' && (
+                                                            <DropdownMenuItem 
+                                                                className="text-red-600 font-bold"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setBanDialog({ id: employee.user_id, name: employee.users.full_name });
+                                                                }}
+                                                            >
+                                                                Ban User
+                                                            </DropdownMenuItem>
+                                                        )}
+
+                                                        {/* Unban */}
+                                                        {employee.users.status_code === 'BANNED' && (
+                                                            <DropdownMenuItem 
+                                                                className="text-green-600 font-bold"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setStatusConfirm({ id: employee.user_id, status: 'BANNED' });
+                                                                }}
+                                                            >
+                                                                Unban User
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    </>
                                                 )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -251,6 +284,24 @@ export default function EmployeeTab() {
                             toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
                         } finally {
                             setStatusConfirm(null);
+                        }
+                    }}
+                />
+            )}
+            
+            {banDialog && (
+                <BanUserDialog
+                    open={!!banDialog}
+                    onOpenChange={(open) => !open && setBanDialog(null)}
+                    userId={banDialog.id}
+                    userName={banDialog.name}
+                    onConfirm={async (id, reason) => {
+                        try {
+                            await userService.updateStatus(id, 'BANNED', reason);
+                            toast({ title: "Banned", description: "User has been banned successfully." });
+                            fetchEmployees();
+                        } catch (error) {
+                            toast({ title: "Error", description: "Failed to ban user", variant: "destructive" });
                         }
                     }}
                 />

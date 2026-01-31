@@ -12,5 +12,15 @@ export const adminService = {
     getSystemStats: async (): Promise<ApiResponse<any>> => {
         const response = await axiosInstance.get(`${BASE}/stats`);
         return response.data;
+    },
+
+    getPendingRequests: async (): Promise<any[]> => {
+        const response = await axiosInstance.get(`${BASE}/requests`);
+        return response.data;
+    },
+
+    resolveRequest: async (id: number, action: 'approve' | 'reject') => {
+        const response = await axiosInstance.post(`${BASE}/request/${id}/${action}`);
+        return response.data;
     }
 };

@@ -19,10 +19,7 @@ const BANNERS = [
     },
     {
         id: 2,
-
-
         image: "https://imagine-public.x.ai/imagine-public/images/9f3734a8-1652-48fe-8769-3d67607ee911.jpg?cache=1&dl=1",
-
         title: "Next Gen Mecha",
         subtitle: "Precision engineering meets artistic vision.",
         action: "View New Arrivals",

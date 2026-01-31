@@ -46,7 +46,7 @@ export default function ProfilePage() {
         setLoading(true);
         setError(null);
         try {
-            const data = await userService.getProfile();
+            const data: any = await userService.getProfile();
             setProfile(data);
             
             // Set form values
@@ -74,7 +74,7 @@ export default function ProfilePage() {
 
     const onSubmit = async (values: z.infer<typeof personalSchema>) => {
         try {
-            await userService.updateProfile({
+            await userService.requestProfileUpdate({
                 full_name: values.full_name,
                 phone: values.phone,
                 address: values.address,
@@ -82,21 +82,14 @@ export default function ProfilePage() {
             });
             toast({
                 title: "Success",
-                description: "Profile updated successfully",
+                description: "Yêu cầu cập nhật đã được gửi đi chờ duyệt",
             });
-            // Update local state to reflect changes immediately
-            setProfile((prev: any) => ({
-                 ...prev, 
-                 full_name: values.full_name,
-                 phone: values.phone,
-                 // Assuming address update logic handles default address sync or we might need to refetch
-            }));
-            fetchProfile(); // Refetch to be safe and get updated address structure if needed
-        } catch (error) {
+            // Do not update local state immediately as it needs approval
+        } catch (error: any) {
             toast({
                 variant: "destructive",
                 title: "Error",
-                description: "Failed to update profile",
+                description: error.response?.data?.message || "Failed to update profile",
             });
         }
     };
@@ -178,6 +171,12 @@ export default function ProfilePage() {
                                 <CardContent>
                                     <Form {...form}>
                                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                            {profile.has_pending_request && (
+                                                <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-md flex items-center gap-2 text-sm">
+                                                    <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
+                                                    <span>You have a pending profile update request waiting for approval.</span>
+                                                </div>
+                                            )}
                                             <FormField
                                                 control={form.control}
                                                 name="full_name"
@@ -185,7 +184,7 @@ export default function ProfilePage() {
                                                     <FormItem>
                                                         <FormLabel>Full Name</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="John Doe" {...field} />
+                                                            <Input placeholder="John Doe" {...field} disabled={profile.has_pending_request} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -198,7 +197,7 @@ export default function ProfilePage() {
                                                     <FormItem>
                                                         <FormLabel>Phone Number</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="0901234567" {...field} />
+                                                            <Input placeholder="0901234567" {...field} disabled={profile.has_pending_request} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -211,7 +210,7 @@ export default function ProfilePage() {
                                                     <FormItem>
                                                         <FormLabel>Default Address</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="123 Street, Dist 1, HCMC" {...field} />
+                                                            <Input placeholder="123 Street, Dist 1, HCMC" {...field} disabled={profile.has_pending_request} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -219,9 +218,9 @@ export default function ProfilePage() {
                                             />
                                             {/* Avatar URL is now handled by file upload */}
                                             <input type="hidden" {...form.register('avatar_url')} />
-                                            <Button type="submit" disabled={form.formState.isSubmitting}>
+                                            <Button type="submit" disabled={form.formState.isSubmitting || profile.has_pending_request}>
                                                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                Save Changes
+                                                {profile.has_pending_request ? "Waiting for Approval" : "Save Changes"}
                                             </Button>
                                         </form>
                                     </Form>
