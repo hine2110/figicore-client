@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -94,11 +96,103 @@
 @layer base {
   * {
     @apply border-border;
+    /* smooths out fonts */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     @apply bg-background text-foreground;
   }
 }
-@keyframes toast-progress { from { width: 100%; } to { width: 0%; } }
-.animate-toast-progress { animation-name: toast-progress; animation-timing-function: linear; animation-fill-mode: forwards; }
+
+/* removed scroll-behavior: smooth for performance */
+
+/* Optimize expensive properties during scroll */
+.glass-effect {
+  will-change: backdrop-filter;
+}
+
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+@keyframes breathe {
+
+  0%,
+  100% {
+    transform: scale(1) translateZ(0);
+  }
+
+  50% {
+    transform: scale(1.05) translateZ(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-breathe {
+    animation: breathe 8s ease-in-out infinite;
+  }
+}
+
+/* Fallback for reduced motion or low power */
+@media (prefers-reduced-motion: reduce) {
+  .animate-breathe {
+    animation: none;
+    transform: scale(1.02);
+    /* Static slight scale */
+  }
+}
+
+/* Lightweight Ambient Background (Replaces heavy blur-120px divs) */
+.ambient-gradient-bg {
+  background:
+    radial-gradient(circle at 15% 50%, rgba(240, 240, 255, 0.8), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(230, 240, 255, 0.8), transparent 25%);
+  background-attachment: fixed;
+  /* Optional: Creates parallax feel cheaply */
+}
+
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
+}
+
+.animate-toast-progress {
+  animation-name: toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* Force element to its own GPU layer */
+.gpu-layer {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity, filter;
+}
+
+/* Optimize Glass Elements specifically */
+.glass-optimized {
+  /* Using specific content-visibility helps browser skip rendering off-screen content */
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 500px;
+  /* Estimated height */
+}
+
+/* Optimize Background Blobs */
+.blob-optimized {
+  pointer-events: none;
+  /* Crucial: Mouse ignores them, saving hit-test processing */
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  /* Hardware acceleration */
+}

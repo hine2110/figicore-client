@@ -21,7 +21,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     currentRole: initialRole,
 
     // Login now expects a real User object
-    login: (role: UserRole) => {
+    login: (_role: UserRole | 'guest') => {
         // This 'login' signature in AuthState might need changing if we want to pass the whole user
         // But for now, let's keep it simple or just rely on 'user' being set by SignIn.tsx
         // Actually, SignIn.tsx sets localStorage, but doesn't call store.login()!
@@ -47,9 +47,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         });
         localStorage.removeItem('user');
         localStorage.removeItem('accessToken');
+        localStorage.removeItem('figi-cart-storage'); // Clear persisted cart
+        // Note: Query cache clearing should be done in the component or via a queryClient hook
     },
 
-    switchRole: (role: UserRole) => {
+    switchRole: (_role: UserRole | 'guest') => {
         console.warn("Dev Switch Role is disabled in production mode.");
     }
 }));

@@ -34,6 +34,7 @@ export interface ProductVariant {
     stock_defect: number;
     barcode?: string;
     media_assets?: any; // JSON, often [string] or MediaItem[]
+    description?: string;
 }
 
 export interface ProductBlindbox {
@@ -58,6 +59,9 @@ export interface Product {
     type_code: 'RETAIL' | 'BLINDBOX' | 'PREORDER';
     status_code: string;
     description?: string;
+    brand_id?: number;
+    category_id?: number;
+    series_id?: number;
     media_urls?: any; // JSON, often string[]
     specifications?: any; // JSON
     created_at: string;

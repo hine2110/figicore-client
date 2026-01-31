@@ -1,20 +1,17 @@
 import {
     ShoppingCart,
     User,
-    Search,
     Menu,
     X,
     Wallet,
     Package,
-    Ticket,
     Gavel,
     Home
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '@/store/useCartStore';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
     DropdownMenu,
@@ -33,14 +30,19 @@ interface CustomerLayoutProps {
 export default function CustomerLayout({ children, activePage = 'home' }: CustomerLayoutProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
-    const { items } = useCartStore(); // Use Cart Store
+    const { items, fetchCart } = useCartStore(); // Use Cart Store
     const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
+
+    // Initial Cart Fetch
+    useEffect(() => {
+        fetchCart();
+    }, [fetchCart]);
 
     const navItems = [
         { id: 'home', label: 'Home', icon: Home, path: '/customer/home' },
-        { id: 'products', label: 'Products', path: '/customer/shop?type=RETAIL' },
-        { id: 'blind-box', label: 'Blind Box', path: '/customer/shop' },
-        { id: 'pre-order', label: 'Pre-Order', path: '/customer/shop' },
+        { id: 'products', label: 'Products', path: '/customer/retail' },
+        { id: 'blind-box', label: 'Blind Box', path: '/customer/blindbox' },
+        { id: 'pre-order', label: 'Pre-Order', path: '/customer/preorder' },
         { id: 'auction', label: 'Auction', icon: Gavel, path: '/customer/auctions' },
     ];
 
@@ -80,13 +82,7 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <div className="relative hidden lg:block">
-                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <Input
-                                    placeholder="Search products..."
-                                    className="pl-10 w-64"
-                                />
-                            </div>
+
 
                             <Button
                                 variant="ghost"
@@ -124,7 +120,13 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                                         Wallet
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => navigate('/guest/login')}>Logout</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => {
+                                        import('@/store/useAuthStore').then(({ useAuthStore }) => {
+                                            useAuthStore.getState().logout();
+                                            useCartStore.getState().clearCart();
+                                            navigate('/guest/login');
+                                        });
+                                    }}>Logout</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
