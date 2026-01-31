@@ -8,7 +8,7 @@ import {
     Gavel,
     Home
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '@/store/useCartStore';
 import { Button } from '@/components/ui/button';
@@ -30,8 +30,13 @@ interface CustomerLayoutProps {
 export default function CustomerLayout({ children, activePage = 'home' }: CustomerLayoutProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
-    const { items } = useCartStore(); // Use Cart Store
+    const { items, fetchCart } = useCartStore(); // Use Cart Store
     const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
+
+    // Initial Cart Fetch
+    useEffect(() => {
+        fetchCart();
+    }, [fetchCart]);
 
     const navItems = [
         { id: 'home', label: 'Home', icon: Home, path: '/customer/home' },
@@ -115,7 +120,13 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                                         Wallet
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => navigate('/guest/login')}>Logout</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => {
+                                        import('@/store/useAuthStore').then(({ useAuthStore }) => {
+                                            useAuthStore.getState().logout();
+                                            useCartStore.getState().clearCart();
+                                            navigate('/guest/login');
+                                        });
+                                    }}>Logout</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
 

@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-
 import { productsService } from '@/services/products.service';
 import { GuestLayout } from '@/layouts/GuestLayout';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Package, Star } from 'lucide-react';
 
@@ -21,7 +19,6 @@ const BANNERS = [
     },
     {
         id: 2,
-
         image: "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=1920&q=80&fit=crop",
         title: "Next Gen Mecha",
         subtitle: "Precision engineering meets artistic vision.",
@@ -32,7 +29,6 @@ const BANNERS = [
 
 export function GuestHome() {
     const navigate = useNavigate();
-
     const [latestProducts, setLatestProducts] = useState<any[]>([]);
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -148,7 +144,7 @@ export function GuestHome() {
 
     const ProductCardMinimal = ({ product }: { product: any }) => (
         <div
-            className="group cursor-pointer flex flex-col gap-6"
+            className="group cursor-pointer flex flex-col gap-6 gpu-layer"
             onClick={() => navigate(`/guest/product/${product.product_id}`)}
         >
             <div className="aspect-[3/4] overflow-hidden bg-neutral-100 relative shadow-sm hover:shadow-xl transition-all duration-500">
@@ -189,7 +185,7 @@ export function GuestHome() {
     const PreOrderCard = ({ product }: { product: any }) => {
         return (
             <div
-                className="group relative aspect-[4/5] overflow-hidden bg-neutral-800 cursor-pointer border border-neutral-800 hover:border-amber-900/50 transition-colors"
+                className="group relative aspect-[4/5] overflow-hidden bg-neutral-800 cursor-pointer border border-neutral-800 hover:border-amber-900/50 transition-colors gpu-layer"
                 onClick={() => navigate(`/guest/product/${product.product_id}`)}
             >
                 {product.media_urls?.[0] && (
@@ -199,7 +195,7 @@ export function GuestHome() {
                     />
                 )}
                 <div className="absolute inset-0 flex flex-col justify-end p-8">
-                    <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500 ease-out">
+                    <div className="transform translate-y-8 group-hover:translate-y-0 transition-transform duration-500 ease-out">
                         <Badge className="bg-amber-700 text-white border-0 mb-4 hover:bg-amber-600 rounded-none px-3 tracking-wider text-[10px]">PRE-ORDER</Badge>
                         <h3 className="text-2xl font-serif text-white mb-3 leading-tight">{product.name}</h3>
 
@@ -211,14 +207,13 @@ export function GuestHome() {
                                 <span className="text-xs text-neutral-400 uppercase tracking-wide">Deposit</span>
                             </div>
 
-                            <div className="h-0 group-hover:h-auto overflow-hidden transition-all duration-300">
+                            <div>
                                 <p className="text-white/60 text-sm mt-2 opacity-0 group-hover:opacity-100 transition-opacity delay-100 font-light">
                                     Full Price: {formatPrice(getPreorderFullPrice(product))}
                                 </p>
                             </div>
-                        </motion.div>
+                        </div>
                     </div>
-
                 </div>
             </div>
         );
@@ -305,6 +300,7 @@ export function GuestHome() {
                         </Button>
                     </div>
                 </section>
+
             </div>
         </GuestLayout>
     );

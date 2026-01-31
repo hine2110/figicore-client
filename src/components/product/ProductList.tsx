@@ -1,4 +1,4 @@
-import { Edit, Trash2, Box, Package, MoreHorizontal, Eye } from "lucide-react";
+import { Edit, Trash2, Box, Package, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

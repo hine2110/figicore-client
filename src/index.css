@@ -132,8 +132,19 @@
   }
 }
 
-.animate-breathe {
-  animation: breathe 8s ease-in-out infinite;
+@media (prefers-reduced-motion: no-preference) {
+  .animate-breathe {
+    animation: breathe 8s ease-in-out infinite;
+  }
+}
+
+/* Fallback for reduced motion or low power */
+@media (prefers-reduced-motion: reduce) {
+  .animate-breathe {
+    animation: none;
+    transform: scale(1.02);
+    /* Static slight scale */
+  }
 }
 
 /* Lightweight Ambient Background (Replaces heavy blur-120px divs) */
@@ -159,4 +170,29 @@
   animation-name: toast-progress;
   animation-timing-function: linear;
   animation-fill-mode: forwards;
+}
+
+/* Force element to its own GPU layer */
+.gpu-layer {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity, filter;
+}
+
+/* Optimize Glass Elements specifically */
+.glass-optimized {
+  /* Using specific content-visibility helps browser skip rendering off-screen content */
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 500px;
+  /* Estimated height */
+}
+
+/* Optimize Background Blobs */
+.blob-optimized {
+  pointer-events: none;
+  /* Crucial: Mouse ignores them, saving hit-test processing */
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  /* Hardware acceleration */
 }

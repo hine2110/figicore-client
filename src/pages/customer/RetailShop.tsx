@@ -146,6 +146,11 @@ export default function RetailShop() {
 
     const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
 
+    // Scroll to top on page change
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [currentPage]);
+
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
@@ -178,15 +183,14 @@ export default function RetailShop() {
         <CustomerLayout activePage="products">
             <div className="min-h-screen bg-[#F2F2F7] pb-20 font-sans relative overflow-hidden transition-colors duration-500">
                 {/* Ambient Background (iOS 26 Style) */}
-                {/* Ambient Background (iOS 26 Style) */}
-                <div className="fixed inset-0 pointer-events-none z-0">
-                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-blue-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '8s' }} />
-                    <div className="absolute top-[10%] right-[-10%] w-[60%] h-[60%] bg-purple-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '10s' }} />
-                    <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-indigo-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '12s' }} />
+                {/* Ambient Background (iOS 26 Style) - Optimized */}
+                <div className="fixed inset-0 pointer-events-none z-0 opacity-50">
+                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] ambient-glow-blue rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '8s' }} />
+                    <div className="absolute top-[10%] right-[-10%] w-[60%] h-[60%] ambient-glow-purple rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '10s' }} />
+                    <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] ambient-glow-orange rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '12s' }} />
                 </div>
 
-                {/* Noise Texture */}
-                <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url(/noise.png)' }} />
+                {/* Noise Texture Removed */}
 
                 {/* --- HEADER & FILTERS (Floating Glass Bar) --- */}
                 <div className="sticky top-20 z-40 px-4 mb-24">
@@ -351,7 +355,7 @@ export default function RetailShop() {
                                 {paginatedProducts.map(product => (
                                     <div
                                         key={product.product_id}
-                                        className="group relative flex flex-col gap-3 cursor-pointer"
+                                        className="group relative flex flex-col gap-3 cursor-pointer gpu-layer"
                                         onClick={() => navigate(`/customer/product/${product.product_id}`)}
                                     >
                                         {/* Glass Card Image */}
@@ -370,7 +374,13 @@ export default function RetailShop() {
                                             )}
 
                                             {/* Floating Badge */}
-                                            {product.status_code === 'IN_STOCK' && (
+                                            {Number(product.product_variants?.[0]?.stock_available || 0) <= 0 ? (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                                    <span className="bg-black/80 text-yellow-400 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg backdrop-blur-sm">
+                                                        SOLD OUT
+                                                    </span>
+                                                </div>
+                                            ) : product.status_code === 'IN_STOCK' && (
                                                 <div className="absolute top-3 left-3">
                                                     <div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
                                                         IN STOCK

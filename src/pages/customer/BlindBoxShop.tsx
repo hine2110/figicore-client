@@ -141,6 +141,11 @@ export default function BlindBoxShop() {
 
     const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
 
+    // Scroll to top on page change
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [currentPage]);
+
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
@@ -173,14 +178,14 @@ export default function BlindBoxShop() {
         <CustomerLayout activePage="blind-box">
             <div className="min-h-screen bg-[#F2F2F7] pb-20 font-sans relative overflow-hidden transition-colors duration-500">
                 {/* Ambient Background (Future: Different colors for BlindBox) */}
-                {/* Ambient Background (Future: Different colors for BlindBox) */}
-                <div className="fixed inset-0 pointer-events-none z-0">
-                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-pink-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '8s' }} />
-                    <div className="absolute top-[10%] right-[-10%] w-[60%] h-[60%] bg-purple-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '10s' }} />
-                    <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-indigo-400/20 blur-[120px] rounded-full mix-blend-multiply animate-breathe gpu-accelerated" style={{ animationDuration: '12s' }} />
+                {/* Ambient Background (Future: Different colors for BlindBox) - Optimized */}
+                <div className="fixed inset-0 pointer-events-none z-0 opacity-50">
+                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] ambient-glow-orange rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '8s' }} />
+                    <div className="absolute top-[10%] right-[-10%] w-[60%] h-[60%] ambient-glow-purple rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '10s' }} />
+                    <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] ambient-glow-blue rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '12s' }} />
                 </div>
 
-                <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url(/noise.png)' }} />
+                {/* Noise Texture Removed */}
 
                 <div className="sticky top-20 z-40 px-4 mb-24">
                     <div className="max-w-7xl mx-auto">
@@ -276,10 +281,17 @@ export default function BlindBoxShop() {
                         <>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                 {paginatedProducts.map(product => (
-                                    <div key={product.product_id} className="group relative flex flex-col gap-3 cursor-pointer" onClick={() => navigate(`/customer/product/${product.product_id}`)}>
+                                    <div key={product.product_id} className="group relative flex flex-col gap-3 cursor-pointer gpu-layer" onClick={() => navigate(`/customer/product/${product.product_id}`)}>
                                         <div className="aspect-[4/5] relative overflow-hidden rounded-3xl bg-white/40 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-white/30 transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] group-hover:-translate-y-2 group-hover:bg-white/60">
                                             {product.media_urls?.[0] ? <img src={product.media_urls[0]} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><Package className="w-10 h-10" /></div>}
-                                            {product.status_code === 'IN_STOCK' && <div className="absolute top-3 left-3"><div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">IN STOCK</div></div>}
+                                            {/* Floating Badge */}
+                                            {Number(product.product_blindboxes?.stock || 0) <= 0 ? (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                                    <span className="bg-black/80 text-yellow-400 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg backdrop-blur-sm">
+                                                        SOLD OUT
+                                                    </span>
+                                                </div>
+                                            ) : product.status_code === 'IN_STOCK' && <div className="absolute top-3 left-3"><div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">IN STOCK</div></div>}
                                             <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0">
                                                 <button className="h-10 w-10 rounded-full bg-white/80 backdrop-blur-xl flex items-center justify-center text-slate-800 shadow-lg hover:bg-white hover:scale-110 transition-all border border-white/50"><Eye className="w-5 h-5" /></button>
                                                 <button className="h-10 w-10 rounded-full bg-slate-900/80 backdrop-blur-xl flex items-center justify-center text-white shadow-lg hover:bg-slate-900 hover:scale-110 transition-all border border-white/10"><ShoppingCart className="w-5 h-5" /></button>

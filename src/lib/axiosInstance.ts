@@ -55,7 +55,8 @@ axiosInstance.interceptors.response.use(
             // 2. Nếu thành công -> Update token & retry request cũ
             // 3. Nếu thất bại -> Logout user & Redirect về login
             console.warn('Unauthorized - Redirecting to login...');
-            // window.location.href = '/login'; // Cẩn thận redirect loop
+            localStorage.removeItem('accessToken'); // Clear invalid token
+            window.location.href = '/login';
         }
 
         // Xử lý lỗi chung
