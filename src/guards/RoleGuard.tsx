@@ -9,7 +9,7 @@ interface RoleGuardProps {
 export default function RoleGuard({ allowedRoles }: RoleGuardProps) {
     const { currentRole } = useAuthStore();
 
-    if (!allowedRoles.includes(currentRole)) {
+    if (!allowedRoles.includes(currentRole as UserRole)) {
         // Redirect to unauthorized page or fallback to guest home
         // In a real app, this might show a 403 Forbidden page
         return <Navigate to="/guest/home" replace />;

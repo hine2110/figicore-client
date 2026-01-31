@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { axiosInstance } from '@/lib/axiosInstance';
 import { format, startOfWeek, addDays, subDays, endOfWeek, isSameDay } from 'date-fns';
+import StaffSummaryTable from './StaffSummaryTable';
 
 // --- Types ---
 
@@ -46,9 +47,9 @@ export interface CreateWorkScheduleDto {
 const ALLOWED_ROLES = ['STAFF_POS', 'STAFF_INVENTORY'];
 
 const SHIFTS = [
-    { code: 'MORNING', label: 'Morning', color: 'bg-blue-50 border-blue-200 text-blue-700', time: '08:00 - 12:00' },
-    { code: 'AFTERNOON', label: 'Afternoon', color: 'bg-purple-50 border-purple-200 text-purple-700', time: '13:00 - 17:00' },
-    { code: 'EVENING', label: 'Evening', color: 'bg-orange-50 border-orange-200 text-orange-700', time: '17:00 - 22:00' },
+    { code: 'MORNING', label: 'Morning', color: 'bg-blue-50 border-blue-200 text-blue-700', time: '08:00 - 12:00', start: '08:00', end: '12:00' },
+    { code: 'AFTERNOON', label: 'Afternoon', color: 'bg-purple-50 border-purple-200 text-purple-700', time: '13:00 - 17:00', start: '13:00', end: '17:00' },
+    { code: 'EVENING', label: 'Evening', color: 'bg-orange-50 border-orange-200 text-orange-700', time: '17:00 - 21:00', start: '17:00', end: '21:00' },
 ];
 
 // --- Component ---
@@ -110,15 +111,13 @@ export default function ShiftManagement() {
         }
     };
 
-    // Convert ISO String -> HH:mm for Input
+    // Convert ISO String -> HH:mm (String Manipulation for strict accuracy)
     const getTimeFromIso = (isoString?: string | null) => {
         if (!isoString) return '';
-        try {
-            const date = new Date(isoString);
-            return format(date, 'HH:mm');
-        } catch {
-            return '';
-        }
+        // Expected format: YYYY-MM-DDTHH:mm:ss... or just Time
+        // Regex to extract HH:mm regardless of T or Z
+        const match = isoString.match(/T?(\d{2}:\d{2})/);
+        return match ? match[1] : '';
     };
 
     const getUserName = (schedule: WorkSchedule) => {
@@ -323,6 +322,18 @@ export default function ShiftManagement() {
         fetchSchedules();
     }, [currentWeekStart]);
 
+    // Auto-fill time when shift_code changes
+    useEffect(() => {
+        const selectedShift = SHIFTS.find(s => s.code === formData.shift_code);
+        if (selectedShift) {
+            setFormData(prev => ({
+                ...prev,
+                expected_start: selectedShift.start,
+                expected_end: selectedShift.end
+            }));
+        }
+    }, [formData.shift_code]);
+
     useEffect(() => {
         fetchUsers();
     }, []);
@@ -330,10 +341,13 @@ export default function ShiftManagement() {
     // --- Render Helpers ---
 
     const renderShiftCell = (dayDate: Date, shiftCode: string) => {
+        const dayStr = format(dayDate, 'yyyy-MM-dd');
+
         const daySchedules = schedules.filter(s => {
             if (!s.date) return false;
-            const scheduleDate = new Date(s.date);
-            return isSameDay(scheduleDate, dayDate) && s.shift_code === shiftCode;
+            // Robust string comparison (ignore time component in s.date if any)
+            const scheduleDateStr = typeof s.date === 'string' ? s.date.substring(0, 10) : '';
+            return scheduleDateStr === dayStr && s.shift_code === shiftCode;
         });
 
         return (
@@ -569,13 +583,17 @@ export default function ShiftManagement() {
                                 <Input
                                     type="time"
                                     value={formData.expected_start || ''}
-                                    onChange={(e) => setFormData({ ...formData, expected_start: e.target.value })}
+                                    readOnly
+                                    disabled
+                                    className="bg-neutral-100 cursor-not-allowed"
                                 />
                                 <span className="flex items-center">-</span>
                                 <Input
                                     type="time"
                                     value={formData.expected_end || ''}
-                                    onChange={(e) => setFormData({ ...formData, expected_end: e.target.value })}
+                                    readOnly
+                                    disabled
+                                    className="bg-neutral-100 cursor-not-allowed"
                                 />
                             </div>
                         </div>
@@ -589,6 +607,13 @@ export default function ShiftManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+
+            {/* Staff Work Summary Table */}
+            < StaffSummaryTable
+                fromDate={format(currentWeekStart, 'yyyy-MM-dd')}
+                toDate={format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+                }
+            />
+        </div >
     );
 }

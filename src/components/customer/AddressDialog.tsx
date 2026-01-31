@@ -11,63 +11,81 @@ import { Loader2 } from 'lucide-react';
 import { User } from '@/types/auth.types';
 import { useToast } from "@/components/ui/use-toast";
 
-interface AddressDialogProps {
+export interface AddressDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSuccess: () => void;
+    onSuccess?: () => void; // Made optional to avoid strict requirement if not needed
+    onSelect?: (addressId: number) => void;
     initialData?: Address | null;
     user?: User | null;
 }
 
-export default function AddressDialog({ open, onOpenChange, onSuccess, initialData, user }: AddressDialogProps) {
+export default function AddressDialog({ open, onOpenChange, onSuccess, onSelect, initialData, user }: AddressDialogProps) {
     const { toast } = useToast();
-    const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     // Master Data
     const [provinces, setProvinces] = useState<Province[]>([]);
     const [districts, setDistricts] = useState<District[]>([]);
     const [wards, setWards] = useState<Ward[]>([]);
 
-    // Form State
     const [formData, setFormData] = useState({
         recipient_name: '',
         recipient_phone: '',
-        province_id: '',
-        district_id: '',
+        province_id: 0,
+        province_name: '',
+        district_id: 0,
+        district_name: '',
         ward_code: '',
+        ward_name: '',
         detail_address: '',
-        is_default: false,
+        is_default: false
     });
 
-    // Reset or Load Data on Open
+    // ... (UseEffect reset logic needs update too, doing via separate chunks if needed or all here if contiguous)
+    // Actually, splitting into chunks might be safer given the file size and disjointed nature.
+    // Let's do the state init first, then the handlers.
+
+    // Wait, replace_file_content is for SINGLE CONTIGUOUS BLOCK.
+    // The state init is at lines 33-41.
+    // The handlers are at 115-128.
+    // The submit is at 130+.
+    // The selects are at 215+.
+
+    // I should use multi_replace.
+
+    // Reset Form on Open/InitialData Change
     useEffect(() => {
         if (open) {
-            loadProvinces();
             if (initialData) {
-                // Edit Mode
                 setFormData({
                     recipient_name: initialData.recipient_name,
                     recipient_phone: initialData.recipient_phone,
-                    province_id: String(initialData.province_id),
-                    district_id: String(initialData.district_id),
+                    province_id: initialData.province_id,
+                    province_name: initialData.province_name || '',
+                    district_id: initialData.district_id,
+                    district_name: initialData.district_name || '',
                     ward_code: initialData.ward_code,
+                    ward_name: initialData.ward_name || '',
                     detail_address: initialData.detail_address,
-                    is_default: initialData.is_default,
+                    is_default: initialData.is_default
                 });
-                // Load dependent data immediately for Edit Mode
+                // Trigger cascading loads
                 loadDistricts(initialData.province_id);
                 loadWards(initialData.district_id);
             } else {
-                // Create Mode - Auto-fill from User Profile
                 setFormData({
                     recipient_name: user?.full_name || '',
                     recipient_phone: user?.phone || '',
-                    province_id: '',
-                    district_id: '',
+                    province_id: 0,
+                    province_name: '',
+                    district_id: 0,
+                    district_name: '',
                     ward_code: '',
+                    ward_name: '',
                     detail_address: '',
-                    is_default: false,
+                    is_default: false
                 });
                 setDistricts([]);
                 setWards([]);
@@ -75,24 +93,25 @@ export default function AddressDialog({ open, onOpenChange, onSuccess, initialDa
         }
     }, [open, initialData, user]);
 
-    const loadProvinces = async () => {
-        try {
-            const res = await addressService.getProvinces();
-            // Check if res itself is array or inside data
-            const data = Array.isArray(res) ? res : (res as any).data;
-            if (data) setProvinces(data);
-        } catch (error) {
-            console.error('Failed to load provinces', error);
-        }
-    };
+    // Load Provinces on Mount
+    useEffect(() => {
+        const loadProvinces = async () => {
+            try {
+                const res = await addressService.getProvinces();
+                if (res.data) setProvinces(res.data);
+            } catch (error) {
+                console.error("Failed to load provinces", error);
+            }
+        };
+        loadProvinces();
+    }, []);
 
     const loadDistricts = async (provinceId: number) => {
         if (!provinceId) return;
-        setLoading(true);
         try {
+            setLoading(true);
             const res = await addressService.getDistricts(provinceId);
-            const data = Array.isArray(res) ? res : (res as any).data;
-            if (data) setDistricts(data);
+            if (res.data) setDistricts(res.data);
         } catch (error) {
             console.error(error);
         } finally {
@@ -102,11 +121,10 @@ export default function AddressDialog({ open, onOpenChange, onSuccess, initialDa
 
     const loadWards = async (districtId: number) => {
         if (!districtId) return;
-        setLoading(true);
         try {
+            setLoading(true);
             const res = await addressService.getWards(districtId);
-            const data = Array.isArray(res) ? res : (res as any).data;
-            if (data) setWards(data);
+            if (res.data) setWards(res.data);
         } catch (error) {
             console.error(error);
         } finally {
@@ -115,39 +133,68 @@ export default function AddressDialog({ open, onOpenChange, onSuccess, initialDa
     };
 
     const handleProvinceChange = (val: string) => {
-        setFormData(prev => ({ ...prev, province_id: val, district_id: '', ward_code: '' }));
+        const pid = Number(val);
+        const province = provinces.find(p => p.ProvinceID === pid);
+        setFormData(prev => ({
+            ...prev,
+            province_id: pid,
+            province_name: province?.ProvinceName || '',
+            district_id: 0,
+            district_name: '',
+            ward_code: '',
+            ward_name: ''
+        }));
         setDistricts([]);
         setWards([]);
-        loadDistricts(Number(val));
+        loadDistricts(pid);
     };
 
     const handleDistrictChange = (val: string) => {
-        setFormData(prev => ({ ...prev, district_id: val, ward_code: '' }));
+        const did = Number(val);
+        const district = districts.find(d => d.DistrictID === did);
+        setFormData(prev => ({
+            ...prev,
+            district_id: did,
+            district_name: district?.DistrictName || '',
+            ward_code: '',
+            ward_name: ''
+        }));
         setWards([]);
-        loadWards(Number(val));
+        loadWards(did);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         try {
+            let title = "";
+            let message = "";
+
+            // Validate required
+            if (!formData.recipient_name || !formData.recipient_phone || !formData.province_id || !formData.district_id || !formData.ward_code || !formData.detail_address) {
+                toast({ variant: "destructive", title: "Missing Information", description: "Please fill in all required fields." });
+                setSubmitting(false);
+                return;
+            }
+
             const payload = {
                 ...formData,
                 province_id: Number(formData.province_id),
-                district_id: Number(formData.district_id),
+                district_id: Number(formData.district_id)
             };
-
-            let message = "";
-            let title = "";
 
             if (initialData) {
                 await addressService.updateAddress(initialData.address_id, payload);
                 title = "Address Updated";
                 message = "The address has been successfully updated.";
+                onSelect?.(initialData.address_id);
             } else {
-                await addressService.createAddress(payload);
+                const res: any = await addressService.createAddress(payload);
                 title = "Address Created";
                 message = "New address has been added to your address book.";
+                if (res?.data?.address_id) {
+                    onSelect?.(res.data.address_id);
+                }
             }
 
             toast({
@@ -155,8 +202,9 @@ export default function AddressDialog({ open, onOpenChange, onSuccess, initialDa
                 description: message,
             });
 
-            onSuccess();
+            onSuccess?.();
             onOpenChange(false);
+
         } catch (error: any) {
             console.error('Failed to save address', error);
             toast({
@@ -201,7 +249,7 @@ export default function AddressDialog({ open, onOpenChange, onSuccess, initialDa
                     <div className="space-y-2">
                         <Label>Province / City</Label>
                         <Select
-                            value={formData.province_id}
+                            value={formData.province_id ? String(formData.province_id) : undefined}
                             onValueChange={handleProvinceChange}
                         >
                             <SelectTrigger>
@@ -221,7 +269,7 @@ export default function AddressDialog({ open, onOpenChange, onSuccess, initialDa
                         <div className="space-y-2">
                             <Label>District</Label>
                             <Select
-                                value={formData.district_id}
+                                value={formData.district_id ? String(formData.district_id) : undefined}
                                 onValueChange={handleDistrictChange}
                                 disabled={!formData.province_id || loading}
                             >
@@ -240,8 +288,11 @@ export default function AddressDialog({ open, onOpenChange, onSuccess, initialDa
                         <div className="space-y-2">
                             <Label>Ward</Label>
                             <Select
-                                value={formData.ward_code}
-                                onValueChange={(val) => setFormData({ ...formData, ward_code: val })}
+                                value={formData.ward_code || undefined}
+                                onValueChange={(val) => {
+                                    const ward = wards.find(w => w.WardCode === val);
+                                    setFormData({ ...formData, ward_code: val, ward_name: ward?.WardName || '' });
+                                }}
                                 disabled={!formData.district_id || loading}
                             >
                                 <SelectTrigger>

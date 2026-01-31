@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ROLE_LANDING_PATHS, getRoleBaseRoute } from "@/routes";
+import { GuestLayout } from '@/layouts/GuestLayout';
+import { Mail, Lock, Sparkles, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function SignIn() {
     const navigate = useNavigate();
@@ -18,8 +22,6 @@ export default function SignIn() {
         email: '',
         password: ''
     });
-
-
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,9 +44,6 @@ export default function SignIn() {
 
             // Sync with Global State
             useAuthStore.getState().setUser(user);
-
-            // Smart Redirect Logic
-
 
             // Smart Redirect Logic
             const userRole = user?.role_code || 'GUEST';
@@ -96,96 +95,126 @@ export default function SignIn() {
     };
 
     return (
-        <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
-            {/* Left Decoration */}
-            <div className="hidden md:block bg-neutral-900 relative">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80')] bg-cover bg-center opacity-40"></div>
-                <div className="absolute inset-0 flex flex-col justify-between p-12 text-white z-10">
-                    <div className="text-2xl font-bold">FigiCore</div>
-                    <div>
-                        <h2 className="text-4xl font-bold mb-4">Welcome Back</h2>
-                        <p className="text-neutral-300 max-w-md">Sign in to access your orders, wishlist, and exclusive member deals.</p>
-                    </div>
-                    <p className="text-sm text-neutral-400">© 2026 FigiCore Inc.</p>
-                </div>
-            </div>
+        <GuestLayout activePage="login">
+            <div className="min-h-screen flex bg-neutral-900 text-white font-sans">
+                {/* LEFT PANEL: VISUAL */}
+                <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
+                    {/* Background Image - Matches Register Page */}
+                    <div className="absolute inset-0 opacity-60 bg-[url('/images/grok-video-27f76232-6cb0-405b-ab9b-60697fafb4dd-ezgif.com-video-to-gif-converter.gif')] bg-cover bg-center" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
 
-            {/* Right Form */}
-            <div className="flex items-center justify-center p-8 bg-white">
-                <div className="w-full max-w-md space-y-8">
-                    <div className="text-center">
-                        <h1 className="text-2xl font-bold text-neutral-900">Sign in to your account</h1>
-                        <p className="text-neutral-500 mt-2">Enter your email below to login</p>
-                    </div>
-
-                    <form onSubmit={handleLogin} className="space-y-6">
-                        {error && <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">{error}</div>}
-                        {message && <div className="bg-green-50 text-green-600 p-3 rounded-md text-sm">{message}</div>}
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-neutral-900">Email</label>
-                            <input
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                required
-                                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                placeholder="m@example.com"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex justify-between">
-                                <label className="text-sm font-medium text-neutral-900">Password</label>
-                                <Link to="/guest/forgot-password" className="text-sm text-blue-600 hover:underline">Forgot password?</Link>
+                    <div className="relative z-10 flex flex-col justify-end p-16 h-full">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8 }}
+                        >
+                            <div className="flex items-center gap-3 mb-6 text-amber-500 font-bold tracking-widest uppercase text-sm">
+                                <Sparkles className="w-5 h-5" />
+                                Welcome Back
                             </div>
-                            <input
-                                type="password"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                required
-                                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                            />
-                        </div>
-
-                        <Button
-                            type="submit"
-                            className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? "Signing in..." : "Sign In"}
-                        </Button>
-                    </form>
-
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-neutral-200"></span>
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-white px-2 text-neutral-500">Or continue with</span>
-                        </div>
+                            <h1 className="text-6xl font-serif mb-6 leading-tight">
+                                Continue Your <br /> Collection <br /> <span className="text-amber-500 italic">FigiCore</span>
+                            </h1>
+                            <p className="text-xl text-neutral-400 max-w-md font-light leading-relaxed">
+                                Sign in to access your exclusive wishlist, track orders, and discover new limited edition drops.
+                            </p>
+                        </motion.div>
                     </div>
+                </div>
 
-                    <Button
-                        variant="outline"
-                        className="w-full h-11 border-neutral-300 flex items-center justify-center gap-2 hover:bg-gray-50"
-                        onClick={() => window.location.href = "http://localhost:3000/auth/google"}
-                    >
-                        {/* Chrome Icon SVG or Lucide */}
-                        <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true"><g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)"><path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z" /><path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z" /><path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.734 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z" /><path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z" /></g></svg>
-                        Continue with Google
-                    </Button>
+                {/* RIGHT PANEL: FORM */}
+                <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-neutral-900">
+                    <div className="max-w-md w-full space-y-8">
+                        <div className="text-center lg:text-left">
+                            <h2 className="text-3xl font-serif font-bold text-white mb-2">Sign In</h2>
+                            <p className="text-neutral-400">Welcome back to FigiCore</p>
+                        </div>
 
-                    <p className="text-center text-sm text-neutral-600">
-                        Don't have an account?{" "}
-                        <span
-                            onClick={() => navigate(redirectUrl === '/' ? '/guest/register' : `/guest/register?redirect=${encodeURIComponent(redirectUrl)}`)}
-                            className="font-semibold text-blue-600 hover:underline cursor-pointer"
-                        >
-                            Sign up
-                        </span>
-                    </p>
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="bg-red-900/30 border border-red-800 text-red-200 px-4 py-3 rounded text-sm"
+                            >
+                                {error}
+                            </motion.div>
+                        )}
+
+                        {message && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="bg-green-900/30 border border-green-800 text-green-200 px-4 py-3 rounded text-sm"
+                            >
+                                {message}
+                            </motion.div>
+                        )}
+
+                        <form onSubmit={handleLogin} className="space-y-6">
+                            <div className="space-y-5">
+                                {/* Email Input */}
+                                <div className="space-y-1">
+                                    <div className="relative">
+                                        <Mail className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
+                                            placeholder="Email Address"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Password Input */}
+                                <div className="space-y-1">
+                                    <div className="relative">
+                                        <Lock className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
+                                        <Input
+                                            id="password"
+                                            type="password"
+                                            className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
+                                            placeholder="Password"
+                                            value={formData.password}
+                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="flex justify-end mt-1">
+                                        <Link to="/guest/forgot-password" className="text-xs text-amber-500 hover:text-amber-400 font-medium">
+                                            Forgot password?
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Submit Button */}
+                            <Button
+                                type="submit"
+                                className="w-full h-14 text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-900/20 uppercase tracking-widest transition-all hover:scale-[1.01]"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <span className="flex items-center gap-2">Signing In...</span>
+                                ) : (
+                                    <span className="flex items-center gap-2 justify-center">Sign In <ArrowRight className="w-4 h-4" /></span>
+                                )}
+                            </Button>
+
+                            {/* Footer */}
+                            <p className="text-center text-neutral-500 text-sm mt-8">
+                                Don't have an account?{' '}
+                                <Link to="/guest/register" className="text-white hover:text-amber-500 font-medium transition-colors">
+                                    Create Account
+                                </Link>
+                            </p>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
+        </GuestLayout>
     );
 }

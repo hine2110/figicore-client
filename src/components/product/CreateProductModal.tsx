@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, ChevronRight, CheckCircle2, Box, Info, Trash2, Plus, RefreshCw, X, Calendar, Tag, Image as ImageIcon, ExternalLink, Eye, ChevronRightSquare, Layers, Printer } from "lucide-react";
+import { Loader2, ChevronRight, CheckCircle2, Box, Info, Trash2, Plus, RefreshCw, X, Calendar, Tag, Image as ImageIcon, Eye, Layers, Printer, Sparkles } from "lucide-react";
 // @ts-ignore
 import Barcode from 'react-barcode';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +45,9 @@ const retailSchema = baseSchema.extend({
         option_name: z.string().min(1, "Option Name is required"),
         price: z.coerce.number().min(1000, "Price must be at least 1,000 VND"),
         sku: z.string().min(1, "SKU is required"),
+
         media_assets: z.array(mediaItemSchema).optional(),
+        description: z.string().optional(), // NEW: Variant description
     })).min(1, "At least one variant is required"),
 });
 
@@ -172,17 +174,17 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
     const pre = product.product_preorders?.[0];
 
     return (
-        <div className="flex flex-col h-full bg-white relative">
+        <div className="flex flex-col h-full bg-white relative overflow-hidden">
             <DialogTitle className="sr-only">Product Detail</DialogTitle>
 
             {/* PRINT OVERLAY (Configuration) */}
             {showPrintConfig && (
-                <div className="absolute inset-0 bg-white z-50 flex flex-col animate-in fade-in duration-200">
+                <div className="absolute inset-0 bg-white z-50 flex flex-col animate-in fade-in duration-200 overflow-hidden">
                     <div className="p-4 border-b flex justify-between items-center bg-neutral-50">
                         <h3 className="font-bold flex items-center gap-2"><Printer className="w-5 h-5" /> Print Configuration</h3>
                         <Button variant="ghost" size="icon" onClick={() => setShowPrintConfig(false)}><X className="w-5 h-5" /></Button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6">
+                    <div className="flex-1 overflow-y-auto min-h-0 p-6">
                         <div className="max-w-3xl mx-auto space-y-6">
                             <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm border border-blue-100 flex items-start gap-3">
                                 <Info className="w-5 h-5 shrink-0 mt-0.5" />
@@ -349,9 +351,9 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
             </div>
 
             {/* Split View */}
-            <div className="flex-1 overflow-hidden grid grid-cols-2">
+            <div className="flex-1 min-h-0 overflow-hidden grid grid-cols-2">
                 {/* LEFT: GALLERY */}
-                <div className="bg-neutral-50 p-6 overflow-y-auto border-r min-h-0 flex flex-col justify-center">
+                <div className="bg-neutral-50 p-6 overflow-y-auto h-full border-r min-h-0 flex flex-col justify-center">
                     <ProductMediaGallery
                         media={combinedMedia}
                         activeIndex={galleryIndex}
@@ -360,7 +362,7 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                 </div>
 
                 {/* RIGHT: DETAILS */}
-                <div className="p-6 overflow-y-auto min-h-0 space-y-8">
+                <div className="p-6 overflow-y-auto h-full min-h-0 space-y-8">
                     {/* Metrics */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="p-3 border border-blue-100 rounded-lg space-y-1 bg-blue-50">
@@ -505,7 +507,8 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "", description: "", media_items: [], type_code: "RETAIL",
-            variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [] }],
+
+            variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "" }], // NEW: init description
             price: 0, min_value_allow: 0, max_value_allow: 0, target_margin: 20, start_date: "", end_date: "",
             full_price: 0, deposit_amount: 0, release_date: "", max_slots: 100,
         },
@@ -549,8 +552,8 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
             if (p.type_code === 'RETAIL') {
                 formValues.variants = p.product_variants?.map((v: any) => ({
-                    option_name: v.option_name, price: Number(v.price), sku: v.sku, media_assets: v.media_assets || []
-                })) || [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [] }];
+                    option_name: v.option_name, price: Number(v.price), sku: v.sku, media_assets: v.media_assets || [], description: v.description || "" // NEW: Map description
+                })) || [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "" }];
             } else if (p.type_code === 'BLINDBOX') {
                 const bb = p.product_blindboxes?.[0];
                 if (bb) {
@@ -572,7 +575,8 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         } else if (open && !productToEdit) {
             form.reset({
                 name: "", description: "", media_items: [], type_code: "RETAIL",
-                variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [] }],
+
+                variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "" }], // NEW: init description
                 price: 0, min_value_allow: 0, max_value_allow: 0, target_margin: 20, start_date: "", end_date: "",
                 full_price: 0, deposit_amount: 0, release_date: "", max_slots: 100,
             });
@@ -602,6 +606,56 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         update(index, { ...current, sku: `SKU-${Date.now().toString().slice(-6)}-${randomStr}` });
     };
 
+    // --- AI GENERATION LOGIC ---
+    const [aiLoading, setAiLoading] = useState(false);
+    // NEW: Per-variant loading state
+    const [variantAiLoading, setVariantAiLoading] = useState<Record<number, boolean>>({});
+    const handleAiGenerate = async () => {
+        const name = form.getValues("name");
+        if (!name) return alert("Please enter Product Name first!");
+
+        const brandId = form.getValues("brand_id");
+        const catId = form.getValues("category_id");
+        const brand = brands.find(b => b.value === brandId)?.label || "";
+        const cat = categories.find(c => c.value === catId)?.label || "";
+        const attributes = `${brand ? `Brand: ${brand}, ` : ""}${cat ? `Category: ${cat}` : ""}`;
+
+        setAiLoading(true);
+        try {
+            const text = await productsService.generateAiDescription({ productName: name, attributes });
+            form.setValue("description", text);
+        } catch (error) {
+            console.error(error);
+            alert("AI Generation failed. Please try again.");
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    // NEW: Handle Variant AI Gen
+    // NEW: Handle Variant AI Gen
+    const handleVariantAiGen = async (index: number) => {
+        const vName = form.getValues(`variants.${index}.option_name`);
+        const pName = form.getValues("name");
+        if (!vName || !pName) return alert("Please enter Product Name and Variant Name first.");
+
+        // Set loading for THIS index only
+        setVariantAiLoading(prev => ({ ...prev, [index]: true }));
+
+        try {
+            const text = await productsService.generateAiDescription({
+                productName: pName,
+                attributes: `Phiên bản/Màu sắc: ${vName}`
+            });
+            form.setValue(`variants.${index}.description`, text);
+        } catch (e) {
+            console.error("Variant AI Gen Failed", e);
+            alert("Failed to generate variant description.");
+        } finally {
+            setVariantAiLoading(prev => ({ ...prev, [index]: false }));
+        }
+    };
+
     const onSubmit = async (data: ProductFormValues) => {
         setLoading(true);
         try {
@@ -615,7 +669,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
             if (data.type_code === "RETAIL") {
                 payload.variants = data.variants.map((v: any) => ({
-                    option_name: v.option_name, price: v.price, sku: v.sku, media_assets: v.media_assets, stock_available: 0
+                    option_name: v.option_name, price: v.price, sku: v.sku, media_assets: v.media_assets, description: v.description, stock_available: 0 // NEW: Include description
                 }));
             } else if (data.type_code === "BLINDBOX") {
                 payload.blindbox = {
@@ -670,7 +724,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[900px] p-0 gap-0 overflow-hidden bg-white max-h-[90vh] flex flex-col [&>button]:hidden">
+            <DialogContent className="sm:max-w-[900px] w-full h-[90vh] p-0 gap-0 overflow-hidden bg-white flex flex-col [&>button]:hidden">
                 {isViewMode && productToEdit ? (
                     <ProductDetailView product={productToEdit} onClose={handleClose} onSuccess={onSuccess} />
                 ) : (
@@ -680,6 +734,9 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                 <Box className="w-6 h-6 text-blue-600" />
                                 {isEditMode ? "Update Product" : "Create New Product"}
                             </DialogTitle>
+                            <DialogDescription className="hidden">
+                                Fill in the details to create or update a product.
+                            </DialogDescription>
                         </DialogHeader>
 
                         {/* STEPPER */}
@@ -716,8 +773,21 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                             )} />
                                             <FormField control={form.control} name="description" render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Description</FormLabel>
-                                                    <FormControl><Textarea placeholder="Details..." {...field} /></FormControl>
+                                                    <div className="flex justify-between items-center">
+                                                        <FormLabel>Description</FormLabel>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-6 px-2 text-xs gap-1"
+                                                            onClick={handleAiGenerate}
+                                                            disabled={aiLoading}
+                                                        >
+                                                            {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                                            {aiLoading ? "Generating..." : "AI Write"}
+                                                        </Button>
+                                                    </div>
+                                                    <FormControl><Textarea placeholder="Details..." {...field} className="min-h-[120px]" /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
@@ -785,7 +855,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                     <div className="space-y-4">
                                                         <div className="flex justify-between items-center">
                                                             <h4 className="text-sm font-medium">Variants</h4>
-                                                            <Button type="button" size="sm" variant="outline" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [] })}><Plus className="w-4 h-4 mr-2" />Add</Button>
+                                                            <Button type="button" size="sm" variant="outline" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "" })}><Plus className="w-4 h-4 mr-2" />Add</Button>
                                                         </div>
                                                         <div className="space-y-2">
                                                             {fields.map((field, index) => (
@@ -822,7 +892,35 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                             </Popover>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="col-span-1 flex justify-end"><Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => remove(index)}><Trash2 className="w-4 h-4" /></Button></div>
+                                                                    <div className="col-span-1 pt-8 text-right"><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="w-4 h-4 text-red-500" /></Button></div>
+
+                                                                    {/* NEW: Variant Description Row */}
+                                                                    <div className="col-span-12 mt-1">
+                                                                        <FormField control={form.control} name={`variants.${index}.description`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormControl>
+                                                                                    <div className="relative">
+                                                                                        <Textarea
+                                                                                            placeholder="Variant details (e.g. specific features, size info)..."
+                                                                                            {...field}
+                                                                                            className="min-h-[60px] text-xs resize-none bg-white font-normal pr-10"
+                                                                                        />
+                                                                                        <Button
+                                                                                            type="button"
+                                                                                            size="icon"
+                                                                                            variant="ghost"
+                                                                                            className="absolute right-2 top-2 h-6 w-6 text-purple-600 hover:bg-purple-50"
+                                                                                            onClick={() => handleVariantAiGen(index)}
+                                                                                            disabled={variantAiLoading[index]}
+                                                                                        >
+                                                                                            {variantAiLoading[index] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                </FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
+                                                                    </div>
                                                                 </div>
                                                             ))}
                                                         </div>

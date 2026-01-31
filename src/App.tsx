@@ -45,6 +45,7 @@ import CustomerWallet from "@/pages/customer/CustomerWallet";
 import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
+import OrderSuccess from "@/pages/customer/OrderSuccess";
 import ScrollToTop from "@/components/ScrollToTop";
 
 // Staff Pages
@@ -54,7 +55,6 @@ import PackingFulfillment from "@/pages/warehouse/PackingFulfillment";
 import GoodsReceipt from "@/pages/warehouse/GoodsReceipt";
 import ReturnInspection from "@/pages/warehouse/ReturnInspection";
 import WarehouseDashboard from "@/pages/warehouse/WarehouseDashboard";
-import WarehouseSchedule from "@/pages/warehouse/WarehouseSchedule";
 
 // POS Pages
 import OrderProcessing from "@/pages/pos/OrderProcessing";
@@ -174,6 +174,7 @@ export default function App() {
                             <Route path="product/:id" element={<CustomerProductDetail />} />
                             <Route path="cart" element={<Cart />} />
                             <Route path="checkout" element={<Checkout />} />
+                            <Route path="order-success" element={<OrderSuccess />} />
                             <Route path="orders" element={<MyOrders />} />
                             <Route path="wallet" element={<CustomerWallet />} />
                             <Route path="profile" element={<CustomerProfile />} />

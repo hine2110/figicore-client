@@ -11,25 +11,26 @@ import { Package, Star } from 'lucide-react';
 const BANNERS = [
     {
         id: 1,
-        image: "https://images.unsplash.com/photo-1618331835717-801e976710b2?q=80&w=2670&fit=crop",
-        title: "The Art of Collection",
-        subtitle: "Curated masterpieces for the modern connoisseur.",
+        image: "https://imagine-public.x.ai/imagine-public/images/8a52762b-52a2-4a09-8926-0e1d791c1aac.jpg?cache=1&dl=1",
+        title: "Empire of Models",
+        subtitle: "The ultimate destination for authentic collectible figures.",
         action: "Explore Gallery",
-        link: "/guest/shop"
+        link: "/guest/browse"
     },
     {
         id: 2,
-        image: "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=1920&q=80&fit=crop",
+        image: "https://imagine-public.x.ai/imagine-public/images/9f3734a8-1652-48fe-8769-3d67607ee911.jpg?cache=1&dl=1",
         title: "Next Gen Mecha",
         subtitle: "Precision engineering meets artistic vision.",
         action: "View New Arrivals",
-        link: "/guest/shop?type=RETAIL"
+        link: "/guest/browse?category=RETAIL"
     }
 ];
 
 export function GuestHome() {
     const navigate = useNavigate();
     const [latestProducts, setLatestProducts] = useState<any[]>([]);
+
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -40,7 +41,7 @@ export function GuestHome() {
         return () => clearInterval(timer);
     }, []);
 
-    // Data Fetching (Removed Blindbox)
+    // Data Fetching
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -84,6 +85,8 @@ export function GuestHome() {
         const pre = product.product_preorders || {};
         return safeNumber(pre.full_price);
     };
+
+
 
     // --- SUB-COMPONENTS ---
 
@@ -142,9 +145,19 @@ export function GuestHome() {
         </div>
     );
 
+
+
+    const isOutOfStock = (product: any) => {
+        if (product.type_code === 'RETAIL') {
+            if (!product.product_variants || product.product_variants.length === 0) return true;
+            return product.product_variants.reduce((sum: number, v: any) => sum + v.stock_available, 0) === 0;
+        }
+        return false;
+    };
+
     const ProductCardMinimal = ({ product }: { product: any }) => (
         <div
-            className="group cursor-pointer flex flex-col gap-6"
+            className="group cursor-pointer flex flex-col gap-6 gpu-layer"
             onClick={() => navigate(`/guest/product/${product.product_id}`)}
         >
             <div className="aspect-[3/4] overflow-hidden bg-neutral-100 relative shadow-sm hover:shadow-xl transition-all duration-500">
@@ -166,6 +179,13 @@ export function GuestHome() {
                         </Badge>
                     </div>
                 )}
+
+                {/* Out of Stock Overlay */}
+                {isOutOfStock(product) && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                        <span className="text-yellow-400 font-black uppercase tracking-widest text-xs border-2 border-yellow-400 px-3 py-1.5 transform -rotate-12">HẾT HÀNG</span>
+                    </div>
+                )}
             </div>
 
             <div className="space-y-2 text-center">
@@ -179,13 +199,13 @@ export function GuestHome() {
                     {formatPrice(getRetailPrice(product))}
                 </div>
             </div>
-        </div>
+        </div >
     );
 
     const PreOrderCard = ({ product }: { product: any }) => {
         return (
             <div
-                className="group relative aspect-[4/5] overflow-hidden bg-neutral-800 cursor-pointer border border-neutral-800 hover:border-amber-900/50 transition-colors"
+                className="group relative aspect-[4/5] overflow-hidden bg-neutral-800 cursor-pointer border border-neutral-800 hover:border-amber-900/50 transition-colors gpu-layer"
                 onClick={() => navigate(`/guest/product/${product.product_id}`)}
             >
                 {product.media_urls?.[0] && (
@@ -195,8 +215,12 @@ export function GuestHome() {
                     />
                 )}
                 <div className="absolute inset-0 flex flex-col justify-end p-8">
+
                     <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500 ease-out">
-                        <Badge className="bg-amber-700 text-white border-0 mb-4 hover:bg-amber-600 rounded-none px-3 tracking-wider text-[10px]">PRE-ORDER</Badge>
+                        <Badge className="bg-amber-700 text-white border-0 mb-2 hover:bg-amber-600 rounded-none px-3 tracking-wider text-[10px]">PRE-ORDER</Badge>
+                        <div className="text-[10px] font-bold tracking-widest uppercase text-neutral-400 mb-2">
+                            {product.brands?.name || "FigiCore"}
+                        </div>
                         <h3 className="text-2xl font-serif text-white mb-3 leading-tight">{product.name}</h3>
 
                         <div className="space-y-1">
@@ -207,7 +231,7 @@ export function GuestHome() {
                                 <span className="text-xs text-neutral-400 uppercase tracking-wide">Deposit</span>
                             </div>
 
-                            <div className="h-0 group-hover:h-auto overflow-hidden transition-all duration-300">
+                            <div>
                                 <p className="text-white/60 text-sm mt-2 opacity-0 group-hover:opacity-100 transition-opacity delay-100 font-light">
                                     Full Price: {formatPrice(getPreorderFullPrice(product))}
                                 </p>
@@ -236,7 +260,7 @@ export function GuestHome() {
                         <Button
                             variant="outline"
                             className="bg-transparent border-neutral-200 text-neutral-900 hover:bg-neutral-900 hover:text-white rounded-none px-8 h-12 uppercase tracking-wider text-xs font-bold transition-all mx-auto md:mx-0"
-                            onClick={() => navigate('/guest/shop?type=RETAIL')}
+                            onClick={() => navigate('/guest/browse')}
                         >
                             View All Collection
                         </Button>
@@ -253,7 +277,9 @@ export function GuestHome() {
                     )}
                 </section>
 
-                {/* SECTION 2: PRE-ORDER SPOTLIGHT (Dark Mode) */}
+
+
+                {/* SECTION 3: PRE-ORDER SPOTLIGHT (Dark Mode) */}
                 <section className="py-32 bg-[#050505] text-white">
                     <div className="container mx-auto px-6">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8 border-b border-white/10 pb-8">
@@ -265,10 +291,10 @@ export function GuestHome() {
                             </div>
                             <Button
                                 variant="outline"
-                                className="border-white/20 text-white hover:bg-white hover:text-black rounded-none px-8 h-12 uppercase tracking-wider text-xs font-bold transition-all"
-                                onClick={() => navigate('/guest/shop?type=PREORDER')}
+                                className="bg-transparent border-white/30 text-white hover:bg-white hover:text-black rounded-none px-8 h-12 uppercase tracking-wider text-xs font-bold transition-all"
+                                onClick={() => navigate('/guest/browse?category=PREORDER')}
                             >
-                                Release Calendar
+                                View All Pre-Orders
                             </Button>
                         </div>
 

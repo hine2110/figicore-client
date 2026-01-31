@@ -25,6 +25,11 @@ export const productsService = {
         return response.data;
     },
 
+    getSimilar: async (id: number): Promise<any[]> => {
+        const response = await axiosInstance.get(`/products/${id}/similar`);
+        return response.data;
+    },
+
     searchInbound: async (query: string): Promise<ApiResponse<any[]>> => {
         return productsService.getProducts({ search: query });
     },
@@ -63,5 +68,10 @@ export const productsService = {
     createEntity: async (entity: string, name: string): Promise<ApiResponse<any>> => {
         const response = await axiosInstance.post(`/${entity}/quick-create`, { name });
         return response.data;
+    },
+
+    generateAiDescription: async (payload: { productName: string, attributes?: string }): Promise<string> => {
+        const response = await axiosInstance.post('/products/gen-description', payload);
+        return response.data.text;
     }
 };

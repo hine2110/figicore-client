@@ -15,6 +15,7 @@ interface ProductCardProps {
         rating: number;
         reviews: number;
         isNew?: boolean;
+        stock_available: number;
     };
 }
 
@@ -49,17 +50,28 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
                     </span>
                 )}
 
-                {/* Quick Action Overlay */}
-                <div className="absolute inset-x-0 bottom-0 p-4 tranneutral-y-full transition-transform duration-300 group-hover:tranneutral-y-0">
-                    <Button
-                        onClick={handleAddToCart}
-                        className={`w-full backdrop-blur-sm shadow-sm font-medium transition-all ${isAdded ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-white/90 text-neutral-900 hover:bg-blue-600 hover:text-white'}`}
-                        size="sm"
-                    >
-                        {isAdded ? <Check className="w-4 h-4 mr-2" /> : <ShoppingCart className="w-4 h-4 mr-2" />}
-                        {isAdded ? 'Added' : 'Add to Cart'}
-                    </Button>
-                </div>
+                {/* Out of Stock Overlay */}
+                {product.stock_available <= 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                        <span className="bg-black/80 text-yellow-400 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg backdrop-blur-sm">
+                            SOLD OUT
+                        </span>
+                    </div>
+                )}
+
+                {/* Quick Action Overlay (Hidden if out of stock) */}
+                {product.stock_available > 0 && (
+                    <div className="absolute inset-x-0 bottom-0 p-4 tranneutral-y-full transition-transform duration-300 group-hover:tranneutral-y-0">
+                        <Button
+                            onClick={handleAddToCart}
+                            className={`w-full backdrop-blur-sm shadow-sm font-medium transition-all ${isAdded ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-white/90 text-neutral-900 hover:bg-blue-600 hover:text-white'}`}
+                            size="sm"
+                        >
+                            {isAdded ? <Check className="w-4 h-4 mr-2" /> : <ShoppingCart className="w-4 h-4 mr-2" />}
+                            {isAdded ? 'Added' : 'Add to Cart'}
+                        </Button>
+                    </div>
+                )}
             </div>
 
             <div className="p-4">
