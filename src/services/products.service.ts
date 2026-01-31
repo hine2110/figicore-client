@@ -68,5 +68,10 @@ export const productsService = {
     createEntity: async (entity: string, name: string): Promise<ApiResponse<any>> => {
         const response = await axiosInstance.post(`/${entity}/quick-create`, { name });
         return response.data;
+    },
+
+    generateAiDescription: async (payload: { productName: string, attributes?: string }): Promise<string> => {
+        const response = await axiosInstance.post('/products/gen-description', payload);
+        return response.data.text;
     }
 };

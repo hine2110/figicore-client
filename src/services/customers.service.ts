@@ -41,4 +41,9 @@ export const customersService = {
     const response = await api.get(`/customers/${id}`);
     return response.data;
   },
+
+  getDashboardStats: async (): Promise<any> => {
+    const response = await api.get('/customers/dashboard-stats');
+    return response.data;
+  },
 };

@@ -19,6 +19,7 @@ const BANNERS = [
     },
     {
         id: 2,
+
         image: "https://imagine-public.x.ai/imagine-public/images/9f3734a8-1652-48fe-8769-3d67607ee911.jpg?cache=1&dl=1",
         title: "Next Gen Mecha",
         subtitle: "Precision engineering meets artistic vision.",
@@ -157,7 +158,7 @@ export function GuestHome() {
 
     const ProductCardMinimal = ({ product }: { product: any }) => (
         <div
-            className="group cursor-pointer flex flex-col gap-6"
+            className="group cursor-pointer flex flex-col gap-6 gpu-layer"
             onClick={() => navigate(`/guest/product/${product.product_id}`)}
         >
             <div className="aspect-[3/4] overflow-hidden bg-neutral-100 relative shadow-sm hover:shadow-xl transition-all duration-500">
@@ -205,7 +206,7 @@ export function GuestHome() {
     const PreOrderCard = ({ product }: { product: any }) => {
         return (
             <div
-                className="group relative aspect-[4/5] overflow-hidden bg-neutral-800 cursor-pointer border border-neutral-800 hover:border-amber-900/50 transition-colors"
+                className="group relative aspect-[4/5] overflow-hidden bg-neutral-800 cursor-pointer border border-neutral-800 hover:border-amber-900/50 transition-colors gpu-layer"
                 onClick={() => navigate(`/guest/product/${product.product_id}`)}
             >
                 {product.media_urls?.[0] && (
@@ -215,6 +216,7 @@ export function GuestHome() {
                     />
                 )}
                 <div className="absolute inset-0 flex flex-col justify-end p-8">
+
                     <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500 ease-out">
                         <Badge className="bg-amber-700 text-white border-0 mb-2 hover:bg-amber-600 rounded-none px-3 tracking-wider text-[10px]">PRE-ORDER</Badge>
                         <div className="text-[10px] font-bold tracking-widest uppercase text-neutral-400 mb-2">
@@ -230,7 +232,7 @@ export function GuestHome() {
                                 <span className="text-xs text-neutral-400 uppercase tracking-wide">Deposit</span>
                             </div>
 
-                            <div className="h-0 group-hover:h-auto overflow-hidden transition-all duration-300">
+                            <div>
                                 <p className="text-white/60 text-sm mt-2 opacity-0 group-hover:opacity-100 transition-opacity delay-100 font-light">
                                     Full Price: {formatPrice(getPreorderFullPrice(product))}
                                 </p>

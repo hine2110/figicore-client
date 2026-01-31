@@ -34,6 +34,7 @@ export interface ProductVariant {
     stock_defect: number;
     barcode?: string;
     media_assets?: any; // JSON, often [string] or MediaItem[]
+    description?: string;
 }
 
 export interface ProductBlindbox {
