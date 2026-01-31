@@ -48,14 +48,22 @@ axiosInstance.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // Xử lý lỗi 401 Unauthorized (Token hết hạn)
+        // Xử lý lỗi 401 Unauthorized (Token hết hạn hoăc bị Ban)
         if (error.response?.status === 401 && !originalRequest._retry) {
-            // TODO: Implement Refresh Token flow logic here
-            // 1. Gọi API refresh token
-            // 2. Nếu thành công -> Update token & retry request cũ
-            // 3. Nếu thất bại -> Logout user & Redirect về login
-            console.warn('Unauthorized - Redirecting to login...');
-            // window.location.href = '/login'; // Cẩn thận redirect loop
+            
+            // 1. SAFETY CHECK: Không redirect nếu đang ở trang Login (để hiển thị lỗi sai pass)
+            if (!window.location.pathname.includes('/login')) {
+                console.warn('Unauthorized (401) detected - Logging out...');
+
+                // 2. CLEANUP: Xóa mọi data xác thực
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('user');
+                localStorage.removeItem('auth-storage'); // Xóa cache của Zustand Persist
+
+                // 3. FORCE REDIRECT: Đá về Login
+                window.location.href = '/login';
+                return Promise.reject(error); // Reject để không chạy logic tiếp theo
+            }
         }
 
         // Xử lý lỗi chung

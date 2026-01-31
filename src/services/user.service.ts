@@ -10,6 +10,11 @@ export const userService = {
         return response.data;
     },
 
+    getProfile: async (): Promise<ApiResponse<UserDTO>> => {
+        const response = await axiosInstance.get(`${BASE}/profile`);
+        return response.data;
+    },
+
     getUserById: async (id: string): Promise<ApiResponse<UserDTO>> => {
         const response = await axiosInstance.get(`${BASE}/${id}`);
         return response.data;
@@ -25,8 +30,8 @@ export const userService = {
         return response.data;
     },
 
-    updateStatus: async (id: number, status: 'ACTIVE' | 'INACTIVE') => {
-        const response = await axiosInstance.patch(`${BASE}/${id}/status`, { status });
+    updateStatus: async (id: number, status: 'ACTIVE' | 'INACTIVE' | 'BANNED', reason?: string) => {
+        const response = await axiosInstance.patch(`${BASE}/${id}/status`, { status, reason });
         return response.data;
     },
     getNextEmployeeId: async (role: string): Promise<{ code: string }> => {
@@ -36,6 +41,11 @@ export const userService = {
 
     createBulk: async (data: { users: any[] }) => {
         const response = await axiosInstance.post(`${BASE}/bulk`, data);
+        return response.data;
+    },
+
+    requestProfileUpdate: async (data: any) => {
+        const response = await axiosInstance.post(`${BASE}/profile/request-update`, data);
         return response.data;
     }
 };

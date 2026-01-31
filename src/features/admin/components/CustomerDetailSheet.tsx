@@ -68,13 +68,13 @@ export default function CustomerDetailSheet({ customerId, open, onOpenChange, on
                         {/* Header Profile */}
                         <div className="flex flex-col items-center text-center">
                             <Avatar className="h-24 w-24 mb-4 border-4 border-neutral-100">
-                                <AvatarImage src={customer.users.avatar_url || ""} />
+                                <AvatarImage src={customer.avatar_url || ""} />
                                 <AvatarFallback className="text-2xl bg-neutral-100 text-neutral-600">
-                                    {customer.users.full_name?.charAt(0) || "U"}
+                                    {customer.full_name?.charAt(0) || "U"}
                                 </AvatarFallback>
                             </Avatar>
                             <h2 className="text-2xl font-bold text-neutral-900 leading-tight">
-                                {customer.users.full_name}
+                                {customer.full_name}
                             </h2>
                             <div className="flex items-center gap-2 mt-2">
                                 <Badge variant="outline" className={`border-neutral-200 
@@ -84,9 +84,9 @@ export default function CustomerDetailSheet({ customerId, open, onOpenChange, on
                                     {customer.current_rank_code || 'MEMBER'}
                                 </Badge>
                                 <Badge variant={
-                                    customer.users.status_code === 'ACTIVE' ? 'default' : 'destructive'
+                                    customer.status_code === 'ACTIVE' ? 'default' : 'destructive'
                                 }>
-                                    {customer.users.status_code}
+                                    {customer.status_code}
                                 </Badge>
                             </div>
                         </div>
@@ -118,7 +118,7 @@ export default function CustomerDetailSheet({ customerId, open, onOpenChange, on
                                 <Mail className="w-5 h-5 text-neutral-400" />
                                 <div className="flex-1 overflow-hidden">
                                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Email Address</p>
-                                    <p className="text-sm font-medium text-neutral-900 truncate" title={customer.users.email}>{customer.users.email}</p>
+                                    <p className="text-sm font-medium text-neutral-900 truncate" title={customer.email}>{customer.email}</p>
                                 </div>
                             </div>
                             
@@ -126,7 +126,7 @@ export default function CustomerDetailSheet({ customerId, open, onOpenChange, on
                                 <Phone className="w-5 h-5 text-neutral-400" />
                                 <div className="flex-1">
                                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Phone</p>
-                                    <p className="text-sm font-medium text-neutral-900">{customer.users.phone}</p>
+                                    <p className="text-sm font-medium text-neutral-900">{customer.phone}</p>
                                 </div>
                             </div>
                         </div>
@@ -137,9 +137,9 @@ export default function CustomerDetailSheet({ customerId, open, onOpenChange, on
                                 <MapPin className="w-4 h-4 text-neutral-500" />
                                 <h3 className="font-medium text-neutral-900">Saved Addresses</h3>
                             </div>
-                            {customer.users.addresses && customer.users.addresses.length > 0 ? (
+                            {customer.addresses && customer.addresses.length > 0 ? (
                                 <div className="rounded-xl border border-neutral-200 divide-y divide-neutral-100">
-                                    {customer.users.addresses.map((addr: any) => (
+                                    {customer.addresses.map((addr: any) => (
                                         <div key={addr.address_id} className="p-3 text-sm">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <Badge variant="outline" className="text-[10px] h-5 px-1.5">{addr.address_type}</Badge>
@@ -160,11 +160,11 @@ export default function CustomerDetailSheet({ customerId, open, onOpenChange, on
                         <div className="pt-6 border-t border-neutral-100 flex justify-end">
                             {['SUPER_ADMIN', 'ADMIN'].includes(useAuthStore.getState().user?.role_code || '') && (
                                 <Button
-                                    variant={customer.users.status_code === 'ACTIVE' ? "destructive" : "default"}
-                                    className={customer.users.status_code === 'ACTIVE' ? "" : "bg-green-600 hover:bg-green-700"}
-                                    onClick={() => setStatusConfirm({ status: customer.users.status_code })}
+                                    variant={customer.status_code === 'ACTIVE' ? "destructive" : "default"}
+                                    className={customer.status_code === 'ACTIVE' ? "" : "bg-green-600 hover:bg-green-700"}
+                                    onClick={() => setStatusConfirm({ status: customer.status_code })}
                                 >
-                                    {customer.users.status_code === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
+                                    {customer.status_code === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
                                 </Button>
                             )}
                         </div>

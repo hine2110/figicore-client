@@ -4,15 +4,13 @@ export interface Customer {
   user_id: number;
   loyalty_points: number;
   current_rank_code: string;
-  total_spent: string;
-  users: {
-    full_name: string;
-    email: string;
-    phone: string;
-    status_code: string;
-    avatar_url: string | null;
-    addresses?: any[];
-  };
+  total_spent: string | number;
+  full_name: string;
+  email: string;
+  phone: string;
+  status_code: string;
+  avatar_url: string | null;
+  addresses?: any[];
 }
 
 export interface GetCustomersParams {

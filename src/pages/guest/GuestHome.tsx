@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-
 import { productsService } from '@/services/products.service';
 import { GuestLayout } from '@/layouts/GuestLayout';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Package, Star } from 'lucide-react';
 
@@ -21,7 +19,6 @@ const BANNERS = [
     },
     {
         id: 2,
-
         image: "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=1920&q=80&fit=crop",
         title: "Next Gen Mecha",
         subtitle: "Precision engineering meets artistic vision.",
@@ -32,7 +29,6 @@ const BANNERS = [
 
 export function GuestHome() {
     const navigate = useNavigate();
-
     const [latestProducts, setLatestProducts] = useState<any[]>([]);
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -216,9 +212,8 @@ export function GuestHome() {
                                     Full Price: {formatPrice(getPreorderFullPrice(product))}
                                 </p>
                             </div>
-                        </motion.div>
+                        </div>
                     </div>
-
                 </div>
             </div>
         );
@@ -305,6 +300,7 @@ export function GuestHome() {
                         </Button>
                     </div>
                 </section>
+
             </div>
         </GuestLayout>
     );

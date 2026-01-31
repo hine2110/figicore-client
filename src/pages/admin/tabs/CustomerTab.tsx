@@ -19,6 +19,7 @@ import { userService } from "@/services/user.service";
 import { useAuthStore } from "@/store/useAuthStore";
 
 import CustomerDetailSheet from "@/features/admin/components/CustomerDetailSheet";
+import BanUserDialog from "@/features/admin/components/BanUserDialog";
 
 export default function CustomerTab() {
     const { toast } = useToast();
@@ -29,6 +30,7 @@ export default function CustomerTab() {
     const [totalPages, setTotalPages] = useState(1);
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [statusConfirm, setStatusConfirm] = useState<{id: number, status: string} | null>(null);
+    const [banDialog, setBanDialog] = useState<{id: number, name: string} | null>(null);
 
     const fetchCustomers = async () => {
         setIsLoading(true);
@@ -95,18 +97,22 @@ export default function CustomerTab() {
                                 <tr key={cust.user_id} className="hover:bg-neutral-50">
                                     <td className="px-6 py-4 flex items-center gap-3">
                                         <Avatar className="h-8 w-8">
-                                            <AvatarFallback>{cust.users.full_name?.charAt(0) || "U"}</AvatarFallback>
+                                            <AvatarFallback>{cust.full_name?.charAt(0) || "U"}</AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <div className="font-medium text-neutral-900">{cust.users.full_name}</div>
-                                            <div className="text-xs text-neutral-500">{cust.users.email}</div>
+                                            <div className="font-medium text-neutral-900">{cust.full_name}</div>
+                                            <div className="text-xs text-neutral-500">{cust.email}</div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-neutral-600">{cust.users.phone}</td>
+                                    <td className="px-6 py-4 text-neutral-600">{cust.phone}</td>
                                     <td className="px-6 py-4 font-mono">{cust.loyalty_points ?? 0}</td>
                                     <td className="px-6 py-4">
-                                        <Badge variant="outline" className={`${cust.users.status_code === 'ACTIVE' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                                            {cust.users.status_code}
+                                        <Badge variant="outline" className={`
+                                            ${cust.status_code === 'ACTIVE' ? 'bg-green-50 text-green-700 border-green-200' : 
+                                              cust.status_code === 'BANNED' ? 'bg-red-50 text-red-700 border-red-200' :
+                                              'bg-gray-50 text-gray-700 border-gray-200'}
+                                        `}>
+                                            {cust.status_code}
                                         </Badge>
                                     </td>
                                     <td className="px-6 py-4 text-right">
@@ -120,12 +126,37 @@ export default function CustomerTab() {
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem>Edit Details</DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem 
-                                                    className={cust.users.status_code === 'ACTIVE' ? "text-red-600" : "text-green-600"}
-                                                    onClick={() => setStatusConfirm({ id: cust.user_id, status: cust.users.status_code })}
-                                                >
-                                                    {cust.users.status_code === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
-                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                
+                                                {/* Active/Inactive Toggle */}
+                                                {cust.status_code !== 'BANNED' && (
+                                                    <DropdownMenuItem 
+                                                        className={cust.status_code === 'ACTIVE' ? "text-orange-600" : "text-green-600"}
+                                                        onClick={() => setStatusConfirm({ id: cust.user_id, status: cust.status_code })}
+                                                    >
+                                                        {cust.status_code === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
+                                                    </DropdownMenuItem>
+                                                )}
+
+                                                {/* Ban Action */}
+                                                {cust.status_code !== 'BANNED' && (
+                                                    <DropdownMenuItem 
+                                                        className="text-red-600 font-medium"
+                                                        onClick={() => setBanDialog({ id: cust.user_id, name: cust.full_name })}
+                                                    >
+                                                        Ban Permanently
+                                                    </DropdownMenuItem>
+                                                )}
+
+                                                {/* Unban Action (Manual Only) */}
+                                                {cust.status_code === 'BANNED' && (
+                                                    <DropdownMenuItem 
+                                                        className="text-green-600 font-medium"
+                                                        onClick={() => setStatusConfirm({ id: cust.user_id, status: 'BANNED' })}
+                                                    >
+                                                        Unban Account
+                                                    </DropdownMenuItem>
+                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </td>
@@ -171,7 +202,7 @@ export default function CustomerTab() {
                     currentStatus={statusConfirm.status}
                     onConfirm={async () => {
                         try {
-                            await userService.updateStatus(statusConfirm.id, statusConfirm.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE');
+                            await userService.updateStatus(statusConfirm.id, 'ACTIVE'); 
                             toast({ title: "Success", description: "User status updated successfully." });
                             fetchCustomers();
                         } catch (error) {
