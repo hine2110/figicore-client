@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { axiosInstance } from '@/lib/axiosInstance';
 import { format, startOfWeek, addDays, subDays, endOfWeek, isSameDay } from 'date-fns';
+import StaffSummaryTable from './StaffSummaryTable';
 
 // --- Types ---
 
@@ -606,6 +607,13 @@ export default function ShiftManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+
+            {/* Staff Work Summary Table */}
+            < StaffSummaryTable
+                fromDate={format(currentWeekStart, 'yyyy-MM-dd')}
+                toDate={format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+                }
+            />
+        </div >
     );
 }
