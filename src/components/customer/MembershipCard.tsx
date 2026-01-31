@@ -26,7 +26,7 @@ const RANKS: RankConfig[] = [
     {
         code: 'SILVER',
         label: 'Active Collector',
-        threshold: 2000000,
+        threshold: 100,
         color: 'text-gray-700 bg-gray-100',
         icon: ArrowUpCircle,
         benefits: ['2% Discount', 'Birthday Gift']
@@ -34,7 +34,7 @@ const RANKS: RankConfig[] = [
     {
         code: 'GOLD',
         label: 'Elite Collector',
-        threshold: 10000000,
+        threshold: 500,
         color: 'text-yellow-700 bg-yellow-100',
         icon: Crown,
         benefits: ['5% Discount', 'Pre-order Priority', 'Free Shipping > 1M']
@@ -42,7 +42,7 @@ const RANKS: RankConfig[] = [
     {
         code: 'DIAMOND',
         label: 'Legendary Collector',
-        threshold: 50000000,
+        threshold: 2000,
         color: 'text-cyan-700 bg-cyan-100',
         icon: Gift,
         benefits: ['10% Discount', 'Private Assistant', 'Free Shipping All', 'Exclusive Events']
@@ -54,7 +54,7 @@ interface MembershipCardProps {
 }
 
 export default function MembershipCard({ user }: MembershipCardProps) {
-    const totalSpent = Number(user?.customers?.total_spent || 0);
+    const currentPoints = Number(user?.customers?.loyalty_points || 0);
     const currentRankCode = user?.customers?.current_rank_code || 'BRONZE';
 
     // Find current rank index based on code, fallback to 0
@@ -69,20 +69,14 @@ export default function MembershipCard({ user }: MembershipCardProps) {
     let remaining = 0;
 
     if (nextRank) {
-        remaining = nextRank.threshold - totalSpent;
-        // Progress based on current tier range? Or absolute? 
-        // Let's do absolute relative to next threshold for simplicity or range-based for better UX.
-        // Range based:
+        remaining = nextRank.threshold - currentPoints;
         const prevThreshold = RANKS[safeRankIndex].threshold;
         const range = nextRank.threshold - prevThreshold;
-        const currentInTier = totalSpent - prevThreshold;
+        const currentInTier = currentPoints - prevThreshold;
         progress = Math.min(Math.max((currentInTier / range) * 100, 0), 100);
     } else {
         progress = 100; // Max rank reached
     }
-
-    const formatCurrency = (val: number) =>
-        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
     return (
         <Card className="border-neutral-200 shadow-sm mb-8 overflow-hidden">
@@ -113,15 +107,15 @@ export default function MembershipCard({ user }: MembershipCardProps) {
                 {/* Progress Section */}
                 <div className="mb-8">
                     <div className="flex justify-between text-sm mb-2">
-                        <span className="font-medium text-neutral-900">Total Spent: {formatCurrency(totalSpent)}</span>
+                        <span className="font-medium text-neutral-900">My Points: {currentPoints} pts</span>
                         {nextRank && (
-                            <span className="text-neutral-500">Goal: {formatCurrency(nextRank.threshold)}</span>
+                            <span className="text-neutral-500">Goal: {nextRank.threshold} pts</span>
                         )}
                     </div>
                     <Progress value={progress} className="h-3" />
                     {nextRank && (
                         <p className="text-sm text-neutral-500 mt-2 text-center">
-                            Spend <strong>{formatCurrency(remaining)}</strong> more to unlock <span className="font-medium text-neutral-900">{nextRank.label}</span> perks!
+                            Earn <span className="font-bold text-neutral-900">{remaining} pts</span> more to unlock <span className="font-medium text-neutral-900">{nextRank.label}</span> perks!
                         </p>
                     )}
                 </div>
@@ -143,7 +137,7 @@ export default function MembershipCard({ user }: MembershipCardProps) {
                                 {rank.code === currentRankCode && <Badge className="ml-1 h-5 text-[10px] px-1 bg-blue-600">YOU</Badge>}
                             </div>
                             <div className="col-span-3 text-right text-neutral-600 font-mono text-xs">
-                                {formatCurrency(rank.threshold)}
+                                {rank.threshold} pts
                             </div>
                             <div className="col-span-5 pl-4 text-neutral-600 text-xs">
                                 <ul className="list-disc list-inside">
