@@ -15,6 +15,7 @@ export default function SignIn() {
     const redirectUrl = searchParams.get('redirect') || '/';
     // const { login } = useAuthStore();
     const [isLoading, setIsLoading] = useState(false);
+    const [rememberMe, setRememberMe] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
 
@@ -38,9 +39,15 @@ export default function SignIn() {
             const accessToken = responseData.access_token || responseData.token;
             const user = responseData.user;
 
-            // Save token and user info
-            localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('user', JSON.stringify(user));
+            // Save token and user info based on "Remember Me"
+            const storage = rememberMe ? localStorage : sessionStorage;
+            storage.setItem('accessToken', accessToken);
+            storage.setItem('user', JSON.stringify(user));
+
+            // Clean other storage to ensure no conflict (e.g. if switching from remember to not remember)
+            const otherStorage = rememberMe ? sessionStorage : localStorage;
+            otherStorage.removeItem('accessToken');
+            otherStorage.removeItem('user');
 
             // Sync with Global State
             useAuthStore.getState().setUser(user);
@@ -96,11 +103,11 @@ export default function SignIn() {
 
     return (
         <GuestLayout activePage="login">
-            <div className="min-h-screen flex bg-neutral-900 text-white font-sans">
+            <div className="min-h-screen flex bg-gray-200 text-gray-900 font-sans">
                 {/* LEFT PANEL: VISUAL */}
                 <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
                     {/* Background Image - Matches Register Page */}
-                    <div className="absolute inset-0 opacity-60 bg-[url('/images/grok-video-27f76232-6cb0-405b-ab9b-60697fafb4dd-ezgif.com-video-to-gif-converter.gif')] bg-cover bg-center" />
+                    <div className="absolute inset-0 opacity-60 bg-[url('/images/grok-video-40c4aa93-7e91-46c5-9b9b-99e9da1af522-ezgif.com-video-to-gif-converter.gif')] bg-cover bg-center" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
 
                     <div className="relative z-10 flex flex-col justify-end p-16 h-full">
@@ -113,7 +120,7 @@ export default function SignIn() {
                                 <Sparkles className="w-5 h-5" />
                                 Welcome Back
                             </div>
-                            <h1 className="text-6xl font-serif mb-6 leading-tight">
+                            <h1 className="text-6xl font-serif mb-6 leading-tight text-white">
                                 Continue Your <br /> Collection <br /> <span className="text-amber-500 italic">FigiCore</span>
                             </h1>
                             <p className="text-xl text-neutral-400 max-w-md font-light leading-relaxed">
@@ -124,11 +131,11 @@ export default function SignIn() {
                 </div>
 
                 {/* RIGHT PANEL: FORM */}
-                <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-neutral-900">
+                <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-gray-200">
                     <div className="max-w-md w-full space-y-8">
                         <div className="text-center lg:text-left">
-                            <h2 className="text-3xl font-serif font-bold text-white mb-2">Sign In</h2>
-                            <p className="text-neutral-400">Welcome back to FigiCore</p>
+                            <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">Sign In</h2>
+                            <p className="text-gray-500">Welcome back to FigiCore</p>
                         </div>
 
                         {error && (
@@ -160,7 +167,7 @@ export default function SignIn() {
                                         <Input
                                             id="email"
                                             type="email"
-                                            className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
+                                            className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
                                             placeholder="Email Address"
                                             value={formData.email}
                                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -176,15 +183,26 @@ export default function SignIn() {
                                         <Input
                                             id="password"
                                             type="password"
-                                            className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
+                                            className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
                                             placeholder="Password"
                                             value={formData.password}
                                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                             required
                                         />
                                     </div>
-                                    <div className="flex justify-end mt-1">
-                                        <Link to="/guest/forgot-password" className="text-xs text-amber-500 hover:text-amber-400 font-medium">
+
+                                    <div className="flex items-center justify-between mt-4">
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded border-gray-300 bg-white text-amber-600 focus:ring-amber-500/20 focus:ring-offset-0 accent-amber-600"
+                                                checked={rememberMe}
+                                                onChange={(e) => setRememberMe(e.target.checked)}
+                                            />
+                                            <span className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors select-none">Remember me</span>
+                                        </label>
+
+                                        <Link to="/guest/forgot-password" className="text-xs text-amber-500 hover:text-amber-400 font-medium transition-colors">
                                             Forgot password?
                                         </Link>
                                     </div>
@@ -206,17 +224,17 @@ export default function SignIn() {
 
                             <div className="relative my-6">
                                 <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-neutral-700"></div>
+                                    <div className="w-full border-t border-gray-200"></div>
                                 </div>
                                 <div className="relative flex justify-center text-sm">
-                                    <span className="px-2 bg-neutral-900 text-neutral-500">Or continue with</span>
+                                    <span className="px-2 bg-white text-gray-500">Or continue with</span>
                                 </div>
                             </div>
 
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="w-full h-12 bg-white text-black hover:bg-neutral-200 font-medium flex items-center justify-center gap-2 border-none transition-all"
+                                className="w-full h-12 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
                                 onClick={() => window.location.href = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/auth/google`}
                             >
                                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -241,9 +259,9 @@ export default function SignIn() {
                             </Button>
 
                             {/* Footer */}
-                            <p className="text-center text-neutral-500 text-sm mt-8">
+                            <p className="text-center text-gray-500 text-sm mt-8">
                                 Don't have an account?{' '}
-                                <Link to="/guest/register" className="text-white hover:text-amber-500 font-medium transition-colors">
+                                <Link to="/guest/register" className="text-amber-600 hover:text-amber-700 font-bold transition-colors">
                                     Create Account
                                 </Link>
                             </p>

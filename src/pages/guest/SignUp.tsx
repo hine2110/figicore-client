@@ -150,11 +150,11 @@ export function SignUp() {
 
     return (
         <GuestLayout activePage="register">
-            <div className="min-h-screen flex bg-neutral-900 text-white font-sans">
+            <div className="min-h-screen flex bg-gray-200 text-gray-900 font-sans">
                 {/* LEFT PANEL: VISUAL */}
                 <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
                     {/* Background Image - Art Toy / Mystery Box Theme */}
-                    <div className="absolute inset-0 opacity-60 bg-[url('/images/grok-video-c4faf7e1-ec31-44c1-93b3-d4e34445ac7b-ezgif.com-video-to-gif-converter.gif')] bg-cover bg-center" />
+                    <div className="absolute inset-0 opacity-60 bg-[url('/images/grok-video-7969ef1c-ed4c-42e6-99bf-226b6746aa90-ezgif.com-video-to-gif-converter.gif')] bg-cover bg-center" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
 
                     <div className="relative z-10 flex flex-col justify-end p-16 h-full">
@@ -167,7 +167,7 @@ export function SignUp() {
                                 <Sparkles className="w-5 h-5" />
                                 Exclusive Access
                             </div>
-                            <h1 className="text-6xl font-serif mb-6 leading-tight">
+                            <h1 className="text-6xl font-serif mb-6 leading-tight text-white">
                                 Start Your <br /> Collection <br /> <span className="text-amber-500 italic">FigiCore</span>
                             </h1>
                             <p className="text-xl text-neutral-400 max-w-md font-light leading-relaxed">
@@ -178,11 +178,11 @@ export function SignUp() {
                 </div>
 
                 {/* RIGHT PANEL: FORM */}
-                <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-neutral-900">
+                <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-gray-200">
                     <div className="max-w-md w-full space-y-8">
                         <div className="text-center lg:text-left">
-                            <h2 className="text-3xl font-serif font-bold text-white mb-2">Create Account</h2>
-                            <p className="text-neutral-400">Enter your details to join FigiCore</p>
+                            <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">Create Account</h2>
+                            <p className="text-gray-500">Enter your details to join FigiCore</p>
                         </div>
 
                         {generalError && (
@@ -213,7 +213,7 @@ export function SignUp() {
                                         <User className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
                                         <Input
                                             id="fullName"
-                                            className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
+                                            className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
                                             placeholder="Full Name"
                                             value={formData.fullName}
                                             onChange={handleChange}
@@ -229,7 +229,7 @@ export function SignUp() {
                                         <Phone className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
                                         <Input
                                             id="phone"
-                                            className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
+                                            className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
                                             placeholder="Phone Number"
                                             value={formData.phone}
                                             onChange={handleChange}
@@ -246,7 +246,7 @@ export function SignUp() {
                                         <Input
                                             id="email"
                                             type="email"
-                                            className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
+                                            className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
                                             placeholder="Email Address"
                                             value={formData.email}
                                             onChange={handleChange}
@@ -264,7 +264,7 @@ export function SignUp() {
                                             <Input
                                                 id="password"
                                                 type="password"
-                                                className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
+                                                className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
                                                 placeholder="Password"
                                                 value={formData.password}
                                                 onChange={handleChange}
@@ -279,7 +279,7 @@ export function SignUp() {
                                             <Input
                                                 id="confirmPassword"
                                                 type="password"
-                                                className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
+                                                className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
                                                 placeholder="Confirm"
                                                 value={formData.confirmPassword}
                                                 onChange={handleChange}
@@ -298,7 +298,7 @@ export function SignUp() {
                                             onClick={handleSendOtp}
                                             disabled={isLoading}
                                             variant="outline"
-                                            className="w-full h-12 border-amber-600/30 text-amber-500 hover:bg-amber-950 hover:text-amber-400 bg-amber-950/10 font-bold uppercase tracking-wider text-xs"
+                                            className="w-full h-12 border-amber-600/30 text-amber-600 hover:bg-amber-50 bg-amber-50/50 font-bold uppercase tracking-wider text-xs"
                                         >
                                             {isLoading ? 'Sending...' : 'Send Verification Code'}
                                         </Button>
@@ -307,7 +307,7 @@ export function SignUp() {
                                             <div className="flex gap-2">
                                                 <Input
                                                     id="otp"
-                                                    className="bg-neutral-800 border-amber-500/50 text-amber-500 text-center tracking-[0.5em] text-lg font-bold h-12 focus:border-amber-500 focus:ring-amber-500/20"
+                                                    className="bg-white border-amber-500/50 text-amber-600 text-center tracking-[0.5em] text-lg font-bold h-12 focus:border-amber-500 focus:ring-amber-500/20"
                                                     placeholder="• • • • • •"
                                                     value={formData.otp}
                                                     onChange={handleChange}
@@ -319,7 +319,7 @@ export function SignUp() {
                                                 <button
                                                     type="button"
                                                     onClick={handleSendOtp}
-                                                    className="text-amber-500 hover:text-amber-400 underline font-medium"
+                                                    className="text-amber-600 hover:text-amber-700 underline font-medium"
                                                     disabled={timer > 0}
                                                 >
                                                     Resend Code
@@ -344,10 +344,10 @@ export function SignUp() {
                             </Button>
 
                             {/* Footer */}
-                            <p className="text-center text-neutral-500 text-sm mt-8">
+                            <p className="text-center text-gray-500 text-sm mt-8">
                                 Already have an account?{' '}
                                 <span
-                                    className="text-white hover:text-amber-500 font-medium cursor-pointer transition-colors"
+                                    className="text-amber-600 hover:text-amber-700 font-bold cursor-pointer transition-colors"
                                     onClick={() => navigate('/guest/login')}
                                 >
                                     Sign In

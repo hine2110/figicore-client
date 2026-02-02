@@ -30,7 +30,7 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
     };
 
     return (
-        <div className={`min-h-screen flex flex-col font-sans text-gray-900 ${activePage === 'register' || activePage === 'login' ? 'bg-neutral-900' : 'bg-white'}`}>
+        <div className={`min-h-screen flex flex-col font-sans text-gray-900 ${activePage === 'register' || activePage === 'login' ? 'bg-gray-200' : 'bg-white'}`}>
             {/* Top Navigation */}
             <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
                 <div className="container mx-auto px-4">
