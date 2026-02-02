@@ -114,19 +114,13 @@ export default function WarehouseSchedule() {
         });
     };
 
-    const formatTime = (isoString?: string | null) => {
+    // Convert ISO String -> HH:mm (String Manipulation for strict accuracy)
+    const getTimeFromIso = (isoString?: string | null) => {
         if (!isoString) return '--:--';
-        try {
-            const date = new Date(isoString);
-            return new Intl.DateTimeFormat('en-GB', {
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZone: 'Asia/Ho_Chi_Minh',
-                hour12: false
-            }).format(date);
-        } catch {
-            return '--:--';
-        }
+        // Expected format: YYYY-MM-DDTHH:mm:ss... or just Time
+        // Regex to extract HH:mm regardless of T or Z
+        const match = isoString.match(/T?(\d{2}:\d{2})/);
+        return match ? match[1] : '--:--';
     };
 
     return (
@@ -213,7 +207,7 @@ export default function WarehouseSchedule() {
                                             <div className="flex items-center gap-6 text-sm">
                                                 <div className="flex items-center gap-2 text-neutral-600">
                                                     <Clock className="w-4 h-4" />
-                                                    {formatTime(shift.expected_start)} - {formatTime(shift.expected_end)}
+                                                    {getTimeFromIso(shift.expected_start)} - {getTimeFromIso(shift.expected_end)}
                                                 </div>
                                                 {/* Overnight Indicator */}
                                                 {shift.expected_end && shift.expected_start && shift.expected_end < shift.expected_start && (
