@@ -25,7 +25,8 @@ export const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
     (config) => {
         // TODO: Lấy token từ storage thật khi implement login
-        const token = localStorage.getItem('accessToken');
+        // TODO: Lấy token từ storage thật khi implement login
+        const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -50,7 +51,7 @@ axiosInstance.interceptors.response.use(
 
         // Xử lý lỗi 401 Unauthorized (Token hết hạn hoăc bị Ban)
         if (error.response?.status === 401 && !originalRequest._retry) {
-            
+
             // 1. SAFETY CHECK: Không redirect nếu đang ở trang Login (để hiển thị lỗi sai pass)
             if (!window.location.pathname.includes('/login')) {
                 console.warn('Unauthorized (401) detected - Logging out...');

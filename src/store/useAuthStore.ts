@@ -4,7 +4,7 @@ import { AuthState, User, UserRole } from '@/types/auth.types';
 // Helper to safely parse user from local storage
 const getInitialUser = (): User | null => {
     try {
-        const storedUser = localStorage.getItem('user');
+        const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
         return storedUser ? JSON.parse(storedUser) : null;
     } catch (e) {
         console.error("Failed to parse user from local storage", e);
@@ -47,6 +47,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         });
         localStorage.removeItem('user');
         localStorage.removeItem('accessToken');
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('accessToken');
         localStorage.removeItem('figi-cart-storage'); // Clear persisted cart
         // Note: Query cache clearing should be done in the component or via a queryClient hook
     },
