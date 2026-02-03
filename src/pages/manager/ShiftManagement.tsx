@@ -10,6 +10,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { axiosInstance } from '@/lib/axiosInstance';
 import { format, startOfWeek, addDays, subDays, endOfWeek, isSameDay } from 'date-fns';
 import StaffSummaryTable from './StaffSummaryTable';
+import StationRegistrationDialog from './StationRegistrationDialog';
+import StationListDialog from './StationListDialog';
+import { ShieldCheck, MonitorX, MonitorSmartphone, Power } from 'lucide-react';
 
 // --- Types ---
 
@@ -66,8 +69,17 @@ export default function ShiftManagement() {
 
     // Modal State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
+    const [isStationListOpen, setIsStationListOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentId, setCurrentId] = useState<number | null>(null);
+
+    // Station State
+    const [stationToken, setStationToken] = useState<string | null>(localStorage.getItem('FIGICORE_STATION_TOKEN'));
+
+    const finalizeStationSetup = () => {
+        setStationToken(localStorage.getItem('FIGICORE_STATION_TOKEN'));
+    };
 
     // Form State (Time inputs allow typing HH:mm, but we convert to ISO on submit)
     const [formData, setFormData] = useState<{
@@ -429,15 +441,37 @@ export default function ShiftManagement() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Shift Management</h1>
+                    <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+                        Shift Management
+                        {stationToken ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium border border-green-200">
+                                <ShieldCheck className="w-3 h-3" /> Authorized Station
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-neutral-100 text-neutral-500 text-xs font-medium border border-neutral-200">
+                                <MonitorX className="w-3 h-3" /> Unregistered Device
+                            </span>
+                        )}
+                    </h1>
                     <p className="text-neutral-500">Weekly employee shift assignments.</p>
                 </div>
-                <Button onClick={() => openCreateModal()}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    New Assignment
-                </Button>
+                <div className="flex gap-2">
+                    {!stationToken && (
+                        <Button variant="outline" onClick={() => setIsStationListOpen(true)} className="text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100/50">
+                            <Power className="w-4 h-4 mr-2" />
+                            Finalize Setup
+                        </Button>
+                    )}
+                    <Button variant="outline" onClick={() => setIsRegisterDialogOpen(true)}>
+                        <MonitorSmartphone className="w-4 h-4 mr-2" />
+                        Register This Station
+                    </Button>
+                    <Button onClick={() => openCreateModal()}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        New Assignment
+                    </Button>
+                </div>
             </div>
-
             {/* Navigation Bar */}
             <Card className="p-4 border-neutral-200 bg-neutral-50 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <Button variant="outline" size="sm" onClick={prevWeek}>
@@ -609,11 +643,22 @@ export default function ShiftManagement() {
             </Dialog>
 
             {/* Staff Work Summary Table */}
-            < StaffSummaryTable
+            <StaffSummaryTable
                 fromDate={format(currentWeekStart, 'yyyy-MM-dd')}
-                toDate={format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-                }
+                toDate={format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd')}
             />
-        </div >
+
+            <StationRegistrationDialog
+                open={isRegisterDialogOpen}
+                onOpenChange={setIsRegisterDialogOpen}
+                onStationConnected={finalizeStationSetup}
+            />
+
+            <StationListDialog
+                open={isStationListOpen}
+                onOpenChange={setIsStationListOpen}
+                onStationConnected={finalizeStationSetup}
+            />
+        </div>
     );
 }
