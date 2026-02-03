@@ -72,6 +72,7 @@ import { SignUp } from "@/pages/guest/SignUp";
 import ForgotPassword from "@/pages/guest/ForgotPassword";
 import ResetPassword from "@/pages/guest/ResetPassword";
 import AuthSuccess from "@/pages/guest/AuthSuccess";
+import ActivationPage from "@/pages/auth/ActivationPage";
 import { Toaster } from "@/components/ui/toaster";
 
 export default function App() {
@@ -98,6 +99,7 @@ export default function App() {
 
                 {/* 1.5. AUTH CALLBACK */}
                 <Route path="/auth/success" element={<AuthSuccess />} />
+                <Route path="/auth/activate" element={<ActivationPage />} />
 
                 {/* 2. PROTECTED ROUTES */}
                 <Route element={<ProtectedRoute />}>

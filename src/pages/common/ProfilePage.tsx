@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Loader2, Camera } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -25,6 +25,8 @@ export default function ProfilePage() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<any>(null);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [error, setError] = useState<string | null>(null);
 
@@ -71,6 +73,46 @@ export default function ProfilePage() {
     };
 
 
+
+    const handleAvatarClick = () => {
+        if (!profile?.avatar_url && fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validation
+        if (!file.type.startsWith("image/")) {
+            toast({ variant: "destructive", title: "Error", description: "Only image files are allowed" });
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) { // 5MB
+            toast({ variant: "destructive", title: "Error", description: "File size must be less than 5MB" });
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const { url } = await userService.uploadAvatar(file);
+            toast({ title: "Success", description: "Avatar uploaded successfully" });
+            
+            // Optimistic Update
+            setProfile((prev: any) => ({ ...prev, avatar_url: url }));
+            // Also update form if needed, though profile state drives the UI
+        } catch (error: any) {
+            toast({ 
+                variant: "destructive", 
+                title: "Error", 
+                description: error.response?.data?.message || "Failed to upload avatar" 
+            });
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
+        }
+    };
 
     const onSubmit = async (values: z.infer<typeof personalSchema>) => {
         try {
@@ -121,12 +163,45 @@ export default function ProfilePage() {
                 {/* Left Column: Summary */}
                 <Card className="md:col-span-1 h-fit">
                     <CardHeader className="text-center">
-                        <div className="flex justify-center mb-4">
-                            <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
-                                <AvatarImage src={profile?.avatar_url} />
-                                <AvatarFallback className="text-4xl">{profile?.full_name?.charAt(0)}</AvatarFallback>
-                            </Avatar>
+                        <div className="flex justify-center mb-4 relative group">
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                accept="image/*"
+                                onChange={handleFileChange}
+                            />
+                            
+                            <div 
+                                className="relative group"
+                                title={profile.avatar_url ? "Ảnh đại diện cố định (Liên hệ Admin để reset)" : "Nhấn để tải lên ảnh đại diện (Chỉ 1 lần)"}
+                            >
+                                <div 
+                                    className={`relative overflow-hidden rounded-full w-32 h-32 border-4 border-white shadow-lg ${!profile.avatar_url ? 'cursor-pointer' : ''}`}
+                                    onClick={handleAvatarClick}
+                                >
+                                    <Avatar className="h-full w-full">
+                                        <AvatarImage src={profile?.avatar_url} className="object-cover" />
+                                        <AvatarFallback className="text-4xl">{profile?.full_name?.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    
+                                    {/* Overlay Loading */}
+                                    {uploading && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20">
+                                            <Loader2 className="h-8 w-8 text-white animate-spin" />
+                                        </div>
+                                    )}
+
+                                    {/* Camera Icon Overlay (Always visible if no avatar) */}
+                                    {!profile.avatar_url && !uploading && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 hover:bg-black/60 transition-colors z-10">
+                                            <Camera className="w-8 h-8 text-white" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
+
                         <CardTitle>{profile.full_name}</CardTitle>
                         <CardDescription>{profile.email}</CardDescription>
     {/* ... rest of the component */}

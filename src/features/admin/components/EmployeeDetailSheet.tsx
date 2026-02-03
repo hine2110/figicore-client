@@ -166,13 +166,33 @@ export default function EmployeeDetailSheet({ employeeId, open, onOpenChange, on
                         <div className="pt-6 border-t border-neutral-100 flex justify-end">
                             {/* Only ADMIN/SUPER_ADMIN can ban/unban */}
                             {['SUPER_ADMIN', 'ADMIN'].includes(useAuthStore.getState().user?.role_code || '') && (
-                                <Button
-                                    variant={employee.users.status_code === 'ACTIVE' ? "destructive" : "default"}
-                                    className={employee.users.status_code === 'ACTIVE' ? "" : "bg-green-600 hover:bg-green-700"}
-                                    onClick={() => setStatusConfirm({ status: employee.users.status_code })}
-                                >
-                                    {employee.users.status_code === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                        onClick={async () => {
+                                            if (confirm("Are you sure you want to reset this employee's avatar?")) {
+                                                try {
+                                                    await userService.resetAvatar(employeeId!);
+                                                    toast({ title: "Success", description: "Avatar reset successfully" });
+                                                    onUpdateSuccess();
+                                                    fetchEmployeeDetails(employeeId!);
+                                                } catch (e) {
+                                                     toast({ variant: "destructive", title: "Error", description: "Failed to reset avatar" });
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        Reset Avatar
+                                    </Button>
+                                    <Button
+                                        variant={employee.users.status_code === 'ACTIVE' ? "destructive" : "default"}
+                                        className={employee.users.status_code === 'ACTIVE' ? "" : "bg-green-600 hover:bg-green-700"}
+                                        onClick={() => setStatusConfirm({ status: employee.users.status_code })}
+                                    >
+                                        {employee.users.status_code === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
+                                    </Button>
+                                </div>
                             )}
                         </div>
                     </div>

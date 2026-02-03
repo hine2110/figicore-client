@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { UserPlus, MoreHorizontal, Search, Phone } from "lucide-react";
+import BulkCreateUserSheet from "@/features/admin/components/BulkCreateUserSheet";
+import BulkImportSheet from "@/features/admin/components/BulkImportSheet";
+import { UserPlus, MoreHorizontal, Search, Phone, FileSpreadsheet } from "lucide-react";
 import { employeesService, Employee } from "@/services/employees.service";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -31,7 +33,6 @@ import {
 
 import ConfirmStatusDialog from "@/features/admin/components/ConfirmStatusDialog";
 import EmployeeDetailSheet from "@/features/admin/components/EmployeeDetailSheet";
-import BulkCreateUserSheet from "@/features/admin/components/BulkCreateUserSheet";
 import BanUserDialog from "@/features/admin/components/BanUserDialog";
 import { userService } from "@/services/user.service";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -49,6 +50,7 @@ export default function EmployeeTab() {
     const [statusConfirm, setStatusConfirm] = useState<{id: number, status: string} | null>(null);
     const [banDialog, setBanDialog] = useState<{id: number, name: string} | null>(null);
     const [isBulkOpen, setIsBulkOpen] = useState(false);
+    const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
 
     const fetchEmployees = async () => {
         setIsLoading(true);
@@ -78,7 +80,10 @@ export default function EmployeeTab() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-end items-center">
+            <div className="flex justify-end items-center gap-2">
+                <Button variant="outline" onClick={() => setIsImportSheetOpen(true)}>
+                    <FileSpreadsheet className="w-4 h-4 mr-2" /> Import Excel
+                </Button>
                 <Button className="bg-neutral-900" onClick={() => setIsBulkOpen(true)}>
                     <UserPlus className="w-4 h-4 mr-2" /> Add Employee
                 </Button>
@@ -310,6 +315,12 @@ export default function EmployeeTab() {
             <BulkCreateUserSheet 
                 open={isBulkOpen}
                 onOpenChange={setIsBulkOpen}
+                onSuccess={fetchEmployees}
+            />
+            
+            <BulkImportSheet 
+                open={isImportSheetOpen}
+                onOpenChange={setIsImportSheetOpen}
                 onSuccess={fetchEmployees}
             />
         </div>
