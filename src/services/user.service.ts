@@ -47,5 +47,21 @@ export const userService = {
     requestProfileUpdate: async (data: any) => {
         const response = await axiosInstance.post(`${BASE}/profile/request-update`, data);
         return response.data;
+    },
+
+    uploadAvatar: async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await axiosInstance.post(`${BASE}/avatar`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    },
+
+    resetAvatar: async (id: number) => {
+        const response = await axiosInstance.patch(`${BASE}/${id}/reset-avatar`);
+        return response.data;
     }
 };
