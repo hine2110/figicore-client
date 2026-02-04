@@ -35,6 +35,7 @@ export interface ProductVariant {
     barcode?: string;
     media_assets?: any; // JSON, often [string] or MediaItem[]
     description?: string;
+    deposit_amount?: string | number;
 }
 
 export interface ProductBlindbox {

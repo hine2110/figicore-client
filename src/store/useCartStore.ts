@@ -75,7 +75,7 @@ export const useCartStore = create<CartState>()(
                         });
                     } catch (error) {
                         console.error("Add to cart failed", error);
-                        // toast error?
+                        throw error; // Re-throw to let components handle it
                     }
                     return;
                 }

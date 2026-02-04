@@ -1,0 +1,55 @@
+export const ORDER_STATUS = {
+    PENDING_PAYMENT: 'PENDING_PAYMENT',
+    PROCESSING: 'PROCESSING',
+    PACKED: 'PACKED',
+    AWAITING_PICKUP: 'AWAITING_PICKUP',
+    SHIPPING: 'SHIPPING',
+    COMPLETED: 'COMPLETED',
+    CANCELLED: 'CANCELLED',
+    EXPIRED: 'EXPIRED',
+    DELIVERY_FAILED: 'DELIVERY_FAILED',
+    REFUNDED: 'REFUNDED',
+    RETURNED: 'RETURNED',
+    RETURN_REQUESTED: 'RETURN_REQUESTED',
+    RETURNING: 'RETURNING',
+    RETURN_APPROVED: 'RETURN_APPROVED',
+    RETURN_REJECTED: 'RETURN_REJECTED',
+} as const;
+
+export type OrderStatus = keyof typeof ORDER_STATUS;
+
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+    PENDING_PAYMENT: 'Pending Payment',
+    PROCESSING: 'Processing',
+    PACKED: 'Packed',
+    AWAITING_PICKUP: 'Awaiting Pickup',
+    SHIPPING: 'Shipping',
+    COMPLETED: 'Completed',
+    CANCELLED: 'Cancelled',
+    EXPIRED: 'Expired',
+    DELIVERY_FAILED: 'Delivery Failed',
+    REFUNDED: 'Refunded',
+    RETURNED: 'Returned',
+    RETURN_REQUESTED: 'Return Requested',
+    RETURNING: 'Returning',
+    RETURN_APPROVED: 'Return Approved',
+    RETURN_REJECTED: 'Return Rejected',
+};
+
+export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
+    PENDING_PAYMENT: 'text-orange-600 bg-orange-50 border-orange-200',
+    PROCESSING: 'text-blue-600 bg-blue-50 border-blue-200',
+    PACKED: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+    AWAITING_PICKUP: 'text-orange-600 bg-orange-50 border-orange-200',
+    SHIPPING: 'text-purple-600 bg-purple-50 border-purple-200',
+    COMPLETED: 'text-green-600 bg-green-50 border-green-200',
+    CANCELLED: 'text-red-600 bg-red-50 border-red-200',
+    EXPIRED: 'text-gray-600 bg-gray-50 border-gray-200',
+    DELIVERY_FAILED: 'text-red-600 bg-red-50 border-red-200',
+    REFUNDED: 'text-gray-600 bg-gray-50 border-gray-200',
+    RETURNED: 'text-gray-600 bg-gray-50 border-gray-200',
+    RETURN_REQUESTED: 'text-yellow-600 bg-yellow-50 border-yellow-200',
+    RETURNING: 'text-yellow-600 bg-yellow-50 border-yellow-200',
+    RETURN_APPROVED: 'text-blue-600 bg-blue-50 border-blue-200',
+    RETURN_REJECTED: 'text-red-600 bg-red-50 border-red-200',
+};

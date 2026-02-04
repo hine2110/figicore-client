@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
+import { useToast } from "@/components/ui/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2, ChevronRight, CheckCircle2, Box, Info, Trash2, Plus, RefreshCw, X, Calendar, Tag, Image as ImageIcon, Eye, Layers, Printer, Sparkles } from "lucide-react";
@@ -21,6 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { VariantMediaManager, MediaItem } from "./VariantMediaManager";
 import { ProductMediaGallery, MediaItem as GalleryMediaItem } from "./ProductMediaGallery";
+import { MagicWriteDialog } from "./MagicWriteDialog";
 
 // --- VALIDATION SCHEMAS ---
 const baseSchema = z.object({
@@ -47,7 +49,11 @@ const retailSchema = baseSchema.extend({
         sku: z.string().min(1, "SKU is required"),
 
         media_assets: z.array(mediaItemSchema).optional(),
-        description: z.string().optional(), // NEW: Variant description
+        description: z.string().optional(),
+        weight_g: z.coerce.number().min(0).optional(),
+        length_cm: z.coerce.number().min(0).optional(),
+        width_cm: z.coerce.number().min(0).optional(),
+        height_cm: z.coerce.number().min(0).optional(),
     })).min(1, "At least one variant is required"),
 });
 
@@ -62,10 +68,26 @@ const blindboxSchema = baseSchema.extend({
 
 const preorderSchema = baseSchema.extend({
     type_code: z.literal("PREORDER"),
-    full_price: z.coerce.number().min(1000, "Full Price must be at least 1,000 VND"),
-    deposit_amount: z.coerce.number().min(1000, "Deposit must be at least 1,000 VND"),
     release_date: z.string().min(1, "Release date is required"),
-    max_slots: z.coerce.number().min(1).optional(),
+
+    variants: z.array(z.object({
+        option_name: z.string().min(1, "Option Name is required"),
+        price: z.coerce.number().min(1000, "Full Price must be at least 1,000 VND"), // Full Price
+        deposit_amount: z.coerce.number().min(1000, "Deposit must be at least 1,000 VND"), // Variant Level Deposit
+        sku: z.string().min(1, "SKU is required"),
+        stock_available: z.coerce.number().min(0).default(0), // Slots
+
+        media_assets: z.array(mediaItemSchema).optional(),
+        description: z.string().optional(),
+        weight_g: z.coerce.number().min(0).optional(),
+        length_cm: z.coerce.number().min(0).optional(),
+        width_cm: z.coerce.number().min(0).optional(),
+        height_cm: z.coerce.number().min(0).optional(),
+    })).min(1, "At least one variant is required")
+        .refine(variants => variants.every(v => v.deposit_amount < v.price), {
+            message: "Deposit must be less than Full Price",
+            path: ["0.deposit_amount"]
+        })
 });
 
 const formSchema = z.discriminatedUnion("type_code", [
@@ -390,7 +412,16 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                         {(isRetail || isPreorder) && (
                             <div className="border rounded-md overflow-hidden text-sm shadow-sm">
                                 <Table>
-                                    <TableHeader className="bg-neutral-50"><TableRow><TableHead>Variant</TableHead><TableHead>Price</TableHead><TableHead>Stock</TableHead><TableHead>SKU</TableHead><TableHead className="w-[50px]"></TableHead></TableRow></TableHeader>
+                                    <TableHeader className="bg-neutral-50">
+                                        <TableRow>
+                                            <TableHead>Variant</TableHead>
+                                            <TableHead>{isPreorder ? "Full Price" : "Price"}</TableHead>
+                                            {isPreorder && <TableHead className="text-orange-600">Deposit</TableHead>}
+                                            <TableHead>{isPreorder ? "Slots" : "Stock"}</TableHead>
+                                            <TableHead>SKU</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
                                     <TableBody>
                                         {product.product_variants?.map((v: any) => (
                                             <TableRow
@@ -403,7 +434,12 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                                                     {variantIdToMediaIndex.has(v.variant_id) && <ImageIcon className="w-3 h-3 text-blue-400" />}
                                                 </TableCell>
                                                 <TableCell>{formatPrice(Number(v.price))}</TableCell>
-                                                <TableCell>{v.stock_available || 0}</TableCell>
+                                                {isPreorder && (
+                                                    <TableCell className="text-orange-600 font-medium">
+                                                        {formatPrice(Number(v.deposit_amount || 0))}
+                                                    </TableCell>
+                                                )}
+                                                <TableCell>{isPreorder ? (v.preorder_slot_limit || 0) : (v.stock_available || 0)}</TableCell>
                                                 <TableCell className="text-neutral-500 font-mono text-xs">{v.sku}</TableCell>
                                                 <TableCell>
                                                     {variantIdToMediaIndex.has(v.variant_id) && (
@@ -493,6 +529,7 @@ interface CreateProductModalProps {
 }
 
 export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdit, isViewMode = false }: CreateProductModalProps) {
+    const { toast } = useToast();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
@@ -508,7 +545,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         defaultValues: {
             name: "", description: "", media_items: [], type_code: "RETAIL",
 
-            variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "" }], // NEW: init description
+            variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }],
             price: 0, min_value_allow: 0, max_value_allow: 0, target_margin: 20, start_date: "", end_date: "",
             full_price: 0, deposit_amount: 0, release_date: "", max_slots: 100,
         },
@@ -552,8 +589,9 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
             if (p.type_code === 'RETAIL') {
                 formValues.variants = p.product_variants?.map((v: any) => ({
-                    option_name: v.option_name, price: Number(v.price), sku: v.sku, media_assets: v.media_assets || [], description: v.description || "" // NEW: Map description
-                })) || [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "" }];
+                    option_name: v.option_name, price: Number(v.price), sku: v.sku, media_assets: v.media_assets || [], description: v.description || "",
+                    weight_g: v.weight_g || 200, length_cm: v.length_cm || 10, width_cm: v.width_cm || 10, height_cm: v.height_cm || 10
+                })) || [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }];
             } else if (p.type_code === 'BLINDBOX') {
                 const bb = p.product_blindboxes?.[0];
                 if (bb) {
@@ -576,9 +614,9 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
             form.reset({
                 name: "", description: "", media_items: [], type_code: "RETAIL",
 
-                variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "" }], // NEW: init description
+                variants: [{ option_name: "Standard", price: 0, deposit_amount: 0, stock_available: 10, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }],
                 price: 0, min_value_allow: 0, max_value_allow: 0, target_margin: 20, start_date: "", end_date: "",
-                full_price: 0, deposit_amount: 0, release_date: "", max_slots: 100,
+                release_date: "",
             });
         }
     }, [open, productToEdit, form, isViewMode]);
@@ -607,52 +645,62 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
     };
 
     // --- AI GENERATION LOGIC ---
-    const [aiLoading, setAiLoading] = useState(false);
-    // NEW: Per-variant loading state
-    const [variantAiLoading, setVariantAiLoading] = useState<Record<number, boolean>>({});
-    const handleAiGenerate = async () => {
+    // --- AI GENERATION LOGIC ---
+    const [magicWriteState, setMagicWriteState] = useState<{
+        isOpen: boolean;
+        target: 'MAIN' | 'VARIANT';
+        variantIndex?: number;
+        targetName?: string;
+        imageUrl?: string; // <--- ADD THIS
+    }>({ isOpen: false, target: 'MAIN' });
+
+    // 1. Open for Main Description
+    const handleOpenMainMagicWrite = () => {
         const name = form.getValues("name");
-        if (!name) return alert("Please enter Product Name first!");
+        const mainImage = form.getValues("media_items")?.[0]?.url; // Get Main Image
 
-        const brandId = form.getValues("brand_id");
-        const catId = form.getValues("category_id");
-        const brand = brands.find(b => b.value === brandId)?.label || "";
-        const cat = categories.find(c => c.value === catId)?.label || "";
-        const attributes = `${brand ? `Brand: ${brand}, ` : ""}${cat ? `Category: ${cat}` : ""}`;
+        if (!name) return toast({ title: "Validation Error", description: "Please enter Product Name first!", variant: "destructive" });
 
-        setAiLoading(true);
-        try {
-            const text = await productsService.generateAiDescription({ productName: name, attributes });
-            form.setValue("description", text);
-        } catch (error) {
-            console.error(error);
-            alert("AI Generation failed. Please try again.");
-        } finally {
-            setAiLoading(false);
-        }
+        setMagicWriteState({
+            isOpen: true,
+            target: 'MAIN',
+            targetName: "Main Product",
+            imageUrl: mainImage // <--- Set Main Image
+        });
     };
 
-    // NEW: Handle Variant AI Gen
-    // NEW: Handle Variant AI Gen
-    const handleVariantAiGen = async (index: number) => {
+    // 2. Open for Variant Description
+    const handleOpenVariantMagicWrite = (index: number) => {
+        const name = form.getValues("name");
         const vName = form.getValues(`variants.${index}.option_name`);
-        const pName = form.getValues("name");
-        if (!vName || !pName) return alert("Please enter Product Name and Variant Name first.");
 
-        // Set loading for THIS index only
-        setVariantAiLoading(prev => ({ ...prev, [index]: true }));
+        // Get Variant Image
+        const variantAssets = form.getValues(`variants.${index}.media_assets`);
+        const variantImage = variantAssets?.[0]?.url;
 
-        try {
-            const text = await productsService.generateAiDescription({
-                productName: pName,
-                attributes: `Phiên bản/Màu sắc: ${vName}`
-            });
-            form.setValue(`variants.${index}.description`, text);
-        } catch (e) {
-            console.error("Variant AI Gen Failed", e);
-            alert("Failed to generate variant description.");
-        } finally {
-            setVariantAiLoading(prev => ({ ...prev, [index]: false }));
+        // Fallback to Main Image if variant has no image
+        const mainImage = form.getValues("media_items")?.[0]?.url;
+        const finalImage = variantImage || mainImage;
+
+        if (!name || !vName) {
+            return toast({ title: "Validation Error", description: "Please ensure Product Name and Variant Name are filled.", variant: "destructive" });
+        }
+
+        setMagicWriteState({
+            isOpen: true,
+            target: 'VARIANT',
+            variantIndex: index,
+            targetName: vName,
+            imageUrl: finalImage // <--- Set Specific Variant Image
+        });
+    };
+
+    // 3. Handle Success from Dialog
+    const handleMagicWriteSuccess = (text: string) => {
+        if (magicWriteState.target === 'MAIN') {
+            form.setValue("description", text);
+        } else if (magicWriteState.target === 'VARIANT' && typeof magicWriteState.variantIndex === 'number') {
+            form.setValue(`variants.${magicWriteState.variantIndex}.description`, text);
         }
     };
 
@@ -669,7 +717,8 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
             if (data.type_code === "RETAIL") {
                 payload.variants = data.variants.map((v: any) => ({
-                    option_name: v.option_name, price: v.price, sku: v.sku, media_assets: v.media_assets, description: v.description, stock_available: 0 // NEW: Include description
+                    option_name: v.option_name, price: v.price, sku: v.sku, media_assets: v.media_assets, description: v.description, stock_available: 0,
+                    weight_g: v.weight_g, length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm
                 }));
             } else if (data.type_code === "BLINDBOX") {
                 payload.blindbox = {
@@ -678,22 +727,35 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                 };
             } else if (data.type_code === "PREORDER") {
                 payload.preorder = {
-                    deposit_amount: data.deposit_amount, full_price: data.full_price, release_date: data.release_date, max_slots: data.max_slots
+                    release_date: data.release_date,
+                    // Clean up: Removed deposit & max_slots from here (Moved to Variants)
                 };
+                payload.variants = data.variants.map((v: any) => ({
+                    option_name: v.option_name,
+                    price: v.price,                   // Full Price
+                    deposit_amount: v.deposit_amount, // <-- Variant Level Deposit
+                    preorder_slot_limit: v.stock_available, // <-- Form 'Slots' maps to DB 'preorder_slot_limit'
+                    stock_available: 0,               // Physical Stock is 0 initially
+                    sku: v.sku,
+                    media_assets: v.media_assets,
+                    description: v.description,
+                    weight_g: v.weight_g,
+                    length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm
+                }));
             }
 
             if (isEditMode && productToEdit) {
                 await productsService.update(productToEdit.product_id, payload);
-                alert("✅ Product Updated Successfully!");
+                toast({ title: "Success", description: "Product Updated Successfully!", variant: "default" });
             } else {
                 await productsService.create(payload);
-                alert("✅ Product Created Successfully!");
+                toast({ title: "Success", description: "Product Created Successfully!", variant: "default" });
             }
             onSuccess?.();
             handleClose();
         } catch (error: any) {
             console.error(error);
-            alert(`❌ Failed: ${error?.response?.data?.message || error.message}`);
+            toast({ title: "Error", description: error?.response?.data?.message || error.message, variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -710,9 +772,11 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         if (step === 1) fields = ["name", "description", "media_items"];
         if (step === 2) fields = ["brand_id", "category_id", "series_id"];
         if (step === 3) {
-            if (watchedType === "RETAIL") fields = ["variants"];
-            if (watchedType === "BLINDBOX") fields = ["price", "min_value_allow", "max_value_allow", "start_date", "end_date"];
-            if (watchedType === "PREORDER") fields = ["full_price", "deposit_amount", "release_date"];
+            if (step === 3) {
+                if (watchedType === "RETAIL") fields = ["variants"];
+                if (watchedType === "BLINDBOX") fields = ["price", "min_value_allow", "max_value_allow", "start_date", "end_date"];
+                if (watchedType === "PREORDER") fields = ["variants", "release_date"];
+            }
         }
         const valid = await form.trigger(fields);
         if (valid) setStep(s => s + 1);
@@ -724,7 +788,10 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[900px] w-full h-[90vh] p-0 gap-0 overflow-hidden bg-white flex flex-col [&>button]:hidden">
+            <DialogContent
+                className="sm:max-w-[900px] w-full h-[90vh] p-0 gap-0 overflow-hidden bg-white flex flex-col [&>button]:hidden"
+                onInteractOutside={(e) => { e.preventDefault(); }}
+            >
                 {isViewMode && productToEdit ? (
                     <ProductDetailView product={productToEdit} onClose={handleClose} onSuccess={onSuccess} />
                 ) : (
@@ -773,18 +840,16 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                             )} />
                                             <FormField control={form.control} name="description" render={({ field }) => (
                                                 <FormItem>
-                                                    <div className="flex justify-between items-center">
-                                                        <FormLabel>Description</FormLabel>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-semibold">Description</span>
                                                         <Button
                                                             type="button"
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-6 px-2 text-xs gap-1"
-                                                            onClick={handleAiGenerate}
-                                                            disabled={aiLoading}
+                                                            className="text-purple-600 hover:text-purple-700 h-5 px-1 text-[10px] gap-1"
+                                                            onClick={handleOpenMainMagicWrite}
                                                         >
-                                                            {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                                            {aiLoading ? "Generating..." : "AI Write"}
+                                                            <Sparkles className="w-3 h-3" /> AI Write
                                                         </Button>
                                                     </div>
                                                     <FormControl><Textarea placeholder="Details..." {...field} className="min-h-[120px]" /></FormControl>
@@ -855,7 +920,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                     <div className="space-y-4">
                                                         <div className="flex justify-between items-center">
                                                             <h4 className="text-sm font-medium">Variants</h4>
-                                                            <Button type="button" size="sm" variant="outline" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "" })}><Plus className="w-4 h-4 mr-2" />Add</Button>
+                                                            <Button type="button" size="sm" variant="outline" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add</Button>
                                                         </div>
                                                         <div className="space-y-2">
                                                             {fields.map((field, index) => (
@@ -894,6 +959,38 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                     </div>
                                                                     <div className="col-span-1 pt-8 text-right"><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="w-4 h-4 text-red-500" /></Button></div>
 
+                                                                    {/* NEW: Physical Specs Row */}
+                                                                    <div className="col-span-11 grid grid-cols-4 gap-2 mt-2">
+                                                                        <FormField control={form.control} name={`variants.${index}.weight_g`} render={({ field }) => (
+                                                                            <FormItem className="space-y-1">
+                                                                                <div className="flex justify-between"><FormLabel className="text-[10px] text-neutral-500 uppercase">Weight (g)</FormLabel></div>
+                                                                                <FormControl><Input type="number" min={0} placeholder="200" {...field} className="h-8 text-xs" /></FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
+                                                                        <FormField control={form.control} name={`variants.${index}.length_cm`} render={({ field }) => (
+                                                                            <FormItem className="space-y-1">
+                                                                                <FormLabel className="text-[10px] text-neutral-500 uppercase">Length (cm)</FormLabel>
+                                                                                <FormControl><Input type="number" min={0} placeholder="10" {...field} className="h-8 text-xs" /></FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
+                                                                        <FormField control={form.control} name={`variants.${index}.width_cm`} render={({ field }) => (
+                                                                            <FormItem className="space-y-1">
+                                                                                <FormLabel className="text-[10px] text-neutral-500 uppercase">Width (cm)</FormLabel>
+                                                                                <FormControl><Input type="number" min={0} placeholder="10" {...field} className="h-8 text-xs" /></FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
+                                                                        <FormField control={form.control} name={`variants.${index}.height_cm`} render={({ field }) => (
+                                                                            <FormItem className="space-y-1">
+                                                                                <FormLabel className="text-[10px] text-neutral-500 uppercase">Height (cm)</FormLabel>
+                                                                                <FormControl><Input type="number" min={0} placeholder="10" {...field} className="h-8 text-xs" /></FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
+                                                                    </div>
+
                                                                     {/* NEW: Variant Description Row */}
                                                                     <div className="col-span-12 mt-1">
                                                                         <FormField control={form.control} name={`variants.${index}.description`} render={({ field }) => (
@@ -910,10 +1007,9 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                                             size="icon"
                                                                                             variant="ghost"
                                                                                             className="absolute right-2 top-2 h-6 w-6 text-purple-600 hover:bg-purple-50"
-                                                                                            onClick={() => handleVariantAiGen(index)}
-                                                                                            disabled={variantAiLoading[index]}
+                                                                                            onClick={() => handleOpenVariantMagicWrite(index)}
                                                                                         >
-                                                                                            {variantAiLoading[index] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                                                                            <Sparkles className="w-3 h-3" />
                                                                                         </Button>
                                                                                     </div>
                                                                                 </FormControl>
@@ -970,12 +1066,98 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                 )}
                                                 {watchedType === "PREORDER" && (
                                                     <div className="space-y-4">
-                                                        <FormField control={form.control} name="full_price" render={({ field }) => (<FormItem><FormLabel>Full Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <FormField control={form.control} name="deposit_amount" render={({ field }) => (<FormItem><FormLabel>Deposit</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                            <FormField control={form.control} name="max_slots" render={({ field }) => (<FormItem><FormLabel>Max Slots</FormLabel><FormControl><Input type="number" min={1} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        </div>
                                                         <FormField control={form.control} name="release_date" render={({ field }) => (<FormItem><FormLabel>Release Date</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
+
+                                                        {/* Variants Section Reuse for Preorder */}
+                                                        <div className="flex justify-between items-center">
+                                                            <h4 className="text-sm font-medium">Pre-order Versions (Full Price & Deposit)</h4>
+                                                            <Button type="button" size="sm" variant="outline" onClick={() => append({ option_name: "", price: 0, deposit_amount: 0, stock_available: 10, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add</Button>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {fields.map((field, index) => (
+                                                                <div key={field.id} className="grid grid-cols-12 gap-2 items-start border-b pb-4 last:border-0 last:pb-0">
+                                                                    <div className="col-span-11 grid grid-cols-12 gap-2">
+                                                                        <div className="col-span-4"><FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] text-neutral-500 uppercase">Ver Name</FormLabel><FormControl><Input placeholder="Name" {...field} /></FormControl><FormMessage /></FormItem>)} /></div>
+
+                                                                        {/* Full Price & Deposit */}
+                                                                        <div className="col-span-2"><FormField control={form.control} name={`variants.${index}.price`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] text-neutral-500 uppercase">Full Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} /></div>
+                                                                        <div className="col-span-2"><FormField control={form.control} name={`variants.${index}.deposit_amount`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] text-neutral-500 uppercase">Deposit</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} /></div>
+
+                                                                        {/* Slots */}
+                                                                        <div className="col-span-2"><FormField control={form.control} name={`variants.${index}.stock_available`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] text-neutral-500 uppercase">Slots</FormLabel><FormControl><Input type="number" min={0} {...field} /></FormControl><FormMessage /></FormItem>)} /></div>
+
+                                                                        {/* Media Button */}
+                                                                        <div className="col-span-2 mt-6">
+                                                                            <Popover>
+                                                                                <PopoverTrigger asChild>
+                                                                                    <Button variant="outline" className="w-full relative overflow-hidden h-9">
+                                                                                        <ImageIcon className="w-4 h-4 mr-1" />
+                                                                                        Media
+                                                                                        {form.watch(`variants.${index}.media_assets`)?.length > 0 && (
+                                                                                            <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full" />
+                                                                                        )}
+                                                                                    </Button>
+                                                                                </PopoverTrigger>
+                                                                                <PopoverContent className="w-[400px]" align="end">
+                                                                                    <FormField control={form.control} name={`variants.${index}.media_assets`} render={({ field }) => (
+                                                                                        <VariantMediaManager value={field.value} onChange={field.onChange} />
+                                                                                    )} />
+                                                                                </PopoverContent>
+                                                                            </Popover>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="col-span-1 pt-8 text-right"><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="w-4 h-4 text-red-500" /></Button></div>
+
+                                                                    {/* SKU & Specs */}
+                                                                    <div className="col-span-11 grid grid-cols-12 gap-2 mt-2">
+                                                                        <div className="col-span-4">
+                                                                            <FormField control={form.control} name={`variants.${index}.sku`} render={({ field }) => (
+                                                                                <FormItem className="space-y-1">
+                                                                                    <div className="flex gap-1">
+                                                                                        <FormControl><Input placeholder="SKU" {...field} readOnly className="bg-neutral-100 text-neutral-500 font-mono text-xs h-8" /></FormControl>
+                                                                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGenSku(index)}><RefreshCw className="w-3 h-3" /></Button>
+                                                                                    </div>
+                                                                                </FormItem>
+                                                                            )} />
+                                                                        </div>
+                                                                        <div className="col-span-8 grid grid-cols-4 gap-2">
+                                                                            {/* Specs Inputs Reuse */}
+                                                                            <FormField control={form.control} name={`variants.${index}.weight_g`} render={({ field }) => (<FormItem className="space-y-1"><FormControl><Input type="number" placeholder="W(g)" {...field} className="h-8 text-xs" /></FormControl></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.length_cm`} render={({ field }) => (<FormItem className="space-y-1"><FormControl><Input type="number" placeholder="L(cm)" {...field} className="h-8 text-xs" /></FormControl></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.width_cm`} render={({ field }) => (<FormItem className="space-y-1"><FormControl><Input type="number" placeholder="W(cm)" {...field} className="h-8 text-xs" /></FormControl></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.height_cm`} render={({ field }) => (<FormItem className="space-y-1"><FormControl><Input type="number" placeholder="H(cm)" {...field} className="h-8 text-xs" /></FormControl></FormItem>)} />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Description Row (AI Write) */}
+                                                                    <div className="col-span-12 mt-1">
+                                                                        <FormField control={form.control} name={`variants.${index}.description`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormControl>
+                                                                                    <div className="relative">
+                                                                                        <Textarea
+                                                                                            placeholder="Pre-order version details..."
+                                                                                            {...field}
+                                                                                            className="min-h-[60px] text-xs resize-none bg-white font-normal pr-10"
+                                                                                        />
+                                                                                        <Button
+                                                                                            type="button"
+                                                                                            size="icon"
+                                                                                            variant="ghost"
+                                                                                            className="absolute right-2 top-2 h-6 w-6 text-purple-600 hover:bg-purple-50"
+                                                                                            onClick={() => handleOpenVariantMagicWrite(index)}
+                                                                                        >
+                                                                                            <Sparkles className="w-3 h-3" />
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                </FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -1013,6 +1195,17 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                         </div>
                     </>
                 )}
+
+                {/* AI DIALOG - Main Form Scope */}
+                <MagicWriteDialog
+                    open={magicWriteState.isOpen}
+                    onOpenChange={(open) => setMagicWriteState(prev => ({ ...prev, isOpen: open }))}
+                    productName={form.watch("name") || ""}
+                    targetName={magicWriteState.targetName}
+                    imageUrl={magicWriteState.imageUrl} // <--- Use state instead of calculating it here
+                    onSuccess={handleMagicWriteSuccess}
+                />
+
             </DialogContent>
         </Dialog>
     );

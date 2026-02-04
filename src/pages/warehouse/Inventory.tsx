@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Search, Filter, Loader2, RefreshCw, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import { Plus, Search, Loader2, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CreateProductModal } from "@/components/product/CreateProductModal";

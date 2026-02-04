@@ -66,7 +66,7 @@ export default function Cart() {
                 shipping_address_id: Number(defaultAddr.address_id),
                 payment_method_code: 'QR_BANK', // Default
                 shipping_fee: 30000,
-                original_shipping_fee: 30000,
+                // original_shipping_fee removed, calculated in backend
                 items: selectedItems.map(i => ({
                     // VITAL FIX: Send the actual Product Variant ID, not the Cart Item ID
                     variant_id: i.variantId ? Number(i.variantId) : Number(i.id),

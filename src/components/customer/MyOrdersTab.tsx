@@ -2,26 +2,32 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Clock, CheckCircle2, XCircle, AlertCircle, ArrowRight, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package, Clock, CheckCircle2, XCircle, AlertCircle, ArrowRight, Loader2, ChevronLeft, ChevronRight, Truck, RotateCcw, ArrowLeftCircle, AlertTriangle } from 'lucide-react';
 import { orderService } from '@/services/order.service';
 import { useNavigate } from 'react-router-dom';
 
-const ACTIVE_STATUSES = ['PENDING_PAYMENT', 'PROCESSING', 'SHIPPING', 'CONFIRMED'];
-const COMPLETED_STATUSES = ['COMPLETED', 'DELIVERED', 'REFUNDED'];
-const CANCELLED_STATUSES = ['CANCELLED', 'EXPIRED'];
+const ACTIVE_STATUSES = ['PENDING_PAYMENT', 'PROCESSING', 'PACKED', 'AWAITING_PICKUP', 'SHIPPING', 'RETURN_REQUESTED', 'RETURNING', 'RETURN_APPROVED'];
+const COMPLETED_STATUSES = ['COMPLETED', 'REFUNDED', 'RETURNED'];
+const CANCELLED_STATUSES = ['CANCELLED', 'EXPIRED', 'DELIVERY_FAILED', 'RETURN_REJECTED'];
 
 const ITEMS_PER_PAGE = 5;
 
 const STATUS_CONFIG: Record<string, { label: string, className: string, icon: any }> = {
-    'PENDING_PAYMENT': { label: 'Waiting Payment', className: 'bg-orange-100 text-orange-700', icon: Clock },
+    'PENDING_PAYMENT': { label: 'Pending Payment', className: 'bg-orange-100 text-orange-700', icon: Clock },
     'PROCESSING': { label: 'Processing', className: 'bg-blue-100 text-blue-700', icon: Package },
-    'SHIPPING': { label: 'Shipping', className: 'bg-purple-100 text-purple-700', icon: Package },
-    'CONFIRMED': { label: 'Confirmed', className: 'bg-blue-100 text-blue-700', icon: CheckCircle2 },
-    'DELIVERED': { label: 'Delivered', className: 'bg-green-100 text-green-700', icon: CheckCircle2 },
+    'PACKED': { label: 'Packed', className: 'bg-indigo-100 text-indigo-700', icon: Package },
+    'AWAITING_PICKUP': { label: 'Awaiting Pickup', className: 'bg-orange-100 text-orange-800', icon: Truck },
+    'SHIPPING': { label: 'Shipping', className: 'bg-purple-100 text-purple-700', icon: Truck },
     'COMPLETED': { label: 'Completed', className: 'bg-green-100 text-green-700', icon: CheckCircle2 },
     'CANCELLED': { label: 'Cancelled', className: 'bg-red-100 text-red-700', icon: XCircle },
     'EXPIRED': { label: 'Expired', className: 'bg-gray-100 text-gray-700', icon: AlertCircle },
-    'REFUNDED': { label: 'Refunded', className: 'bg-gray-100 text-gray-700', icon: AlertCircle },
+    'DELIVERY_FAILED': { label: 'Delivery Failed', className: 'bg-red-100 text-red-700', icon: AlertCircle },
+    'REFUNDED': { label: 'Refunded', className: 'bg-gray-100 text-gray-700', icon: RotateCcw },
+    'RETURNED': { label: 'Returned', className: 'bg-gray-100 text-gray-700', icon: ArrowLeftCircle },
+    'RETURN_REQUESTED': { label: 'Return Requested', className: 'bg-yellow-100 text-yellow-700', icon: AlertTriangle },
+    'RETURNING': { label: 'Returning', className: 'bg-yellow-100 text-yellow-700', icon: Truck },
+    'RETURN_APPROVED': { label: 'Return Approved', className: 'bg-blue-100 text-blue-700', icon: Clock },
+    'RETURN_REJECTED': { label: 'Return Rejected', className: 'bg-red-100 text-red-700', icon: XCircle },
 };
 
 export default function MyOrdersTab() {
@@ -126,7 +132,12 @@ export default function MyOrdersTab() {
                                     Pay Now
                                 </Button>
                             )}
-                            <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 text-xs gap-1"
+                                onClick={() => navigate(`/customer/orders/${order.order_id}`)}
+                            >
                                 Details <ArrowRight className="w-3 h-3" />
                             </Button>
                         </div>
