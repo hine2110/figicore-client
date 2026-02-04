@@ -37,3 +37,6 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// GHN Sandbox Token (Hardcoded for Thesis Demo)
+export const GHN_TOKEN = '8bbce3ff-f8fd-11f0-a3d6-dac90fb956b5';

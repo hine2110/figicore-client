@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { User } from '@/types/auth.types';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -54,8 +55,10 @@ interface MembershipCardProps {
 }
 
 export default function MembershipCard({ user }: MembershipCardProps) {
-    const currentPoints = Number(user?.customers?.loyalty_points || 0);
-    const currentRankCode = user?.customers?.current_rank_code || 'BRONZE';
+    // Use direct access first, then nested. 
+    // This fixes issues where user context structure might differ from expected API response.
+    const currentPoints = Number((user as any)?.loyalty_points ?? user?.customers?.loyalty_points ?? 0);
+    const currentRankCode = (user as any)?.current_rank_code ?? user?.customers?.current_rank_code ?? 'BRONZE';
 
     // Find current rank index based on code, fallback to 0
     const currentRankIndex = RANKS.findIndex(r => r.code === currentRankCode);

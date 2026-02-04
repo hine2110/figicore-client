@@ -41,7 +41,7 @@ import BlindBoxShop from "@/pages/customer/BlindBoxShop";
 import PreOrderShop from "@/pages/customer/PreOrderShop";
 import Cart from "@/pages/customer/Cart";
 import Checkout from "@/pages/customer/Checkout";
-import MyOrders from "@/pages/customer/MyOrders";
+
 import CustomerWallet from "@/pages/customer/CustomerWallet";
 import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
@@ -181,7 +181,7 @@ export default function App() {
                             <Route path="cart" element={<Cart />} />
                             <Route path="checkout" element={<Checkout />} />
                             <Route path="order-success" element={<OrderSuccess />} />
-                            <Route path="orders" element={<MyOrders />} />
+
                             <Route path="orders/:id" element={<OrderDetail />} /> {/* New Route */}
                             <Route path="wallet" element={<CustomerWallet />} />
                             <Route path="profile" element={<CustomerProfile />} />

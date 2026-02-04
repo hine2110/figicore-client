@@ -70,8 +70,13 @@ export const productsService = {
         return response.data;
     },
 
-    generateAiDescription: async (payload: { productName: string, attributes?: string }): Promise<string> => {
-        const response = await axiosInstance.post('/products/gen-description', payload);
+    generateAiDescription: async (payload: {
+        productName: string,
+        variantName?: string,
+        userContext?: string,
+        imageUrl?: string
+    }): Promise<string> => {
+        const response = await axiosInstance.post('/products/gen-description', payload, { timeout: 60000 });
         return response.data.text;
     }
 };

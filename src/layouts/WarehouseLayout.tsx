@@ -10,15 +10,94 @@ import {
     X,
     CalendarDays,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { io } from 'socket.io-client';
+import { useToast } from "@/components/ui/use-toast";
+// import { useQueryClient } from "@tanstack/react-query"; // Not installed yet
+
+// Helper for Audio Feedback
+const playNotificationSound = (orderCode: string) => {
+    try {
+        // 1. Play "Ding" Sound
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.volume = 0.5;
+        audio.play().catch((err) => console.warn("Audio blocked. User must interact with page first.", err));
+
+        // 2. Voice Notification
+        setTimeout(() => {
+            if ('speechSynthesis' in window) {
+                const text = `Bạn có đơn hàng mới. Mã đơn: ${orderCode.split('-')[1] || 'mới'}`; // Read partial code
+                const utterance = new SpeechSynthesisUtterance(text);
+
+                // --- VOICE SELECTION LOGIC ---
+                const voices = window.speechSynthesis.getVoices();
+
+                // Try to find a specific Vietnamese Female voice
+                const vnVoice = voices.find(v =>
+                    v.lang.includes('vi') &&
+                    (v.name.includes('Google') || v.name.includes('HoaiMy') || v.name.includes('Female'))
+                );
+
+                // Fallback to any Vietnamese voice if specific one not found
+                if (vnVoice) {
+                    utterance.voice = vnVoice;
+                } else {
+                    const anyVnVoice = voices.find(v => v.lang.includes('vi'));
+                    if (anyVnVoice) utterance.voice = anyVnVoice;
+                }
+
+                utterance.rate = 1.0; // Normal speed
+                utterance.pitch = 1.1; // Slightly higher pitch (more feminine)
+                utterance.volume = 1;
+
+                window.speechSynthesis.speak(utterance);
+            }
+        }, 800);
+    } catch (error) {
+        console.error("Audio Notification Error:", error);
+    }
+};
 
 export default function WarehouseLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const location = useLocation();
     const { user, logout } = useAuthStore();
+    const { toast } = useToast();
+    // const queryClient = useQueryClient();
+
+    useEffect(() => {
+        // Connect to WebSocket Namespace
+        const socket = io('http://localhost:3000/events');
+
+        socket.on('connect', () => {
+            console.log('✅ Connected to Warehouse Events');
+        });
+
+        socket.on('warehouse:new_order', (data: any) => {
+            // 1. Play Sound & TTS
+            playNotificationSound(data.order_code);
+
+            // 2. Refresh Data
+            // queryClient.invalidateQueries({ queryKey: ['warehouse-orders'] }); 
+            // queryClient.invalidateQueries({ queryKey: ['orders'] });
+            // TODO: Implement Real Refresh when Dashboard is connected to API
+
+            // 2. Show Toast
+            toast({
+                title: "🔔 New Order Received!",
+                description: `Order #${data.order_code} - ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(data.total_amount)}`,
+                className: "bg-orange-600 text-white border-orange-700",
+                duration: 10000,
+            });
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
 
     const navItems = [
         { name: 'Dashboard', path: '/warehouse/dashboard', icon: LayoutDashboard },

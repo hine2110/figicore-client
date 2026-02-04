@@ -141,8 +141,12 @@ export default function ProductDetail() {
             displayPrice = formatPrice(Number(product.product_variants[0].price));
         }
     } else if (product.type_code === 'PREORDER') {
-        const dep = Number(product.product_preorders?.deposit_amount || 0);
-        const full = Number(product.product_preorders?.full_price || 0);
+        // Use selected variant if available, otherwise fallback to first variant or preorder config
+        const variant = selectedVariant || product.product_variants?.[0];
+        // For variants: price is full price, deposit_amount is deposit
+        // Fallback to product_preorders only if no variants (shouldn't happen for valid products)
+        const dep = Number(variant?.deposit_amount || product.product_preorders?.deposit_amount || 0);
+        const full = Number(variant?.price || product.product_preorders?.full_price || 0);
 
         if (paymentMode === 'DEPOSIT') {
             displayPrice = formatPrice(dep);
@@ -191,12 +195,22 @@ export default function ProductDetail() {
         return null;
     };
 
+    // Determine Max Stock
+    const maxStock = product.type_code === 'RETAIL'
+        ? (selectedVariant?.stock_available || 0)
+        : (product.type_code === 'PREORDER' ? (product.product_variants?.[0]?.stock_available || 0) : 999);
+
     // Handlers
     const handleQuantityChange = (delta: number) => {
-        setQuantity(prev => Math.max(1, prev + delta));
+        setQuantity(prev => {
+            const newValue = prev + delta;
+            if (newValue > maxStock) return maxStock;
+            if (newValue < 1) return 1;
+            return newValue;
+        });
     };
 
-    const handleAddToCart = () => {
+    const handleAddToCart = async () => {
         if (!product) return;
 
         // Define types for payload components to avoid TS errors
@@ -250,13 +264,20 @@ export default function ProductDetail() {
         };
 
         console.log("Adding to cart:", payload);
-        useCartStore.getState().addToCart(payload);
-
-        toast({
-            title: "Added to cart",
-            description: `${quantity} x ${product.name} has been added to your cart.`,
-            className: "bg-white/80 backdrop-blur-md border border-white/40 shadow-lg rounded-2xl",
-        });
+        try {
+            await useCartStore.getState().addToCart(payload);
+            toast({
+                title: "Added to cart",
+                description: `${quantity} x ${product.name} has been added to your cart.`,
+                className: "bg-white/80 backdrop-blur-md border border-white/40 shadow-lg rounded-2xl",
+            });
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Failed to add",
+                description: error.response?.data?.message || "Out of stock or server error"
+            });
+        }
     };
 
     const handleBuyNow = () => {
@@ -540,7 +561,7 @@ export default function ProductDetail() {
                             <div className="space-y-8 backdrop-blur-2xl bg-white/50 border border-white/60 p-6 md:p-8 rounded-[2rem] shadow-[0_8px_40px_rgba(0,0,0,0.04)]">
 
                                 {/* PRE-ORDER PAYMENT SELECTOR */}
-                                {product.type_code === 'PREORDER' && (
+                                {product.type_code === 'PREORDER' && selectedVariant && (
                                     <div className="space-y-4">
                                         <span className="text-xs font-bold text-slate-900 uppercase tracking-widest">
                                             Payment Option
@@ -556,7 +577,7 @@ export default function ProductDetail() {
                                                 )}
                                             >
                                                 <span className="font-bold">Deposit</span>
-                                                <span className="opacity-90">{formatPrice(Number(product.product_preorders?.deposit_amount || 0))}</span>
+                                                <span className="opacity-90">{formatPrice(Number(selectedVariant.deposit_amount || 0))}</span>
                                             </button>
                                             <button
                                                 onClick={() => setPaymentMode('FULL')}
@@ -568,17 +589,17 @@ export default function ProductDetail() {
                                                 )}
                                             >
                                                 <span className="font-bold">Full Payment</span>
-                                                <span className="opacity-90">{formatPrice(Number(product.product_preorders?.full_price || 0))}</span>
+                                                <span className="opacity-90">{formatPrice(Number(selectedVariant.price || 0))}</span>
                                             </button>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Variants: Retail */}
-                                {product.type_code === 'RETAIL' && product.product_variants && product.product_variants.length > 0 && (
+                                {/* Variants: Retail & Preorder */}
+                                {(product.type_code === 'RETAIL' || product.type_code === 'PREORDER') && product.product_variants && product.product_variants.length > 0 && (
                                     <div className="space-y-4">
                                         <span className="text-xs font-bold text-slate-900 uppercase tracking-widest">
-                                            Model
+                                            {product.type_code === 'PREORDER' ? 'Version / Scale' : 'Model'}
                                         </span>
                                         <div className="flex flex-wrap gap-3">
                                             {product.product_variants.map((variant: any) => (
@@ -595,8 +616,8 @@ export default function ProductDetail() {
                                                             : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-900"
                                                     )}
                                                 >
-                                                    {variant.sku}
-                                                    {variant.stock_quantity < 5 && (
+                                                    {product.type_code === 'PREORDER' ? variant.option_name : variant.sku}
+                                                    {variant.stock_available < 5 && variant.stock_available > 0 && (
                                                         <span className="ml-2 text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">Low Stock</span>
                                                     )}
                                                 </button>
@@ -624,6 +645,7 @@ export default function ProductDetail() {
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleQuantityChange(1)}
+                                                disabled={quantity >= maxStock}
                                                 className="h-9 w-9 rounded-md hover:bg-slate-100 text-slate-600"
                                             >
                                                 <Plus className="w-3.5 h-3.5" />
@@ -638,12 +660,13 @@ export default function ProductDetail() {
                                             size="lg"
                                             disabled={
                                                 (product.type_code === 'RETAIL' && (!selectedVariant || selectedVariant.stock_available <= 0)) ||
-                                                (product.type_code !== 'RETAIL' && product.status_code !== 'ACTIVE')
+                                                (product.type_code === 'PREORDER' && (!selectedVariant || (selectedVariant.stock_available || 0) <= 0)) ||
+                                                (product.type_code !== 'RETAIL' && product.type_code !== 'PREORDER' && product.status_code !== 'ACTIVE')
                                             }
                                             className="h-14 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-base tracking-wide shadow-xl shadow-slate-900/10 hover:shadow-slate-900/20 hover:-translate-y-0.5 transition-all duration-300 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none disabled:translate-y-0"
                                             onClick={handleAddToCart}
                                         >
-                                            {product.type_code === 'RETAIL' && selectedVariant && selectedVariant.stock_available <= 0 ? (
+                                            {((product.type_code === 'RETAIL' || product.type_code === 'PREORDER') && selectedVariant && (selectedVariant.stock_available || 0) <= 0) ? (
                                                 'Out of Stock'
                                             ) : (
                                                 <>
@@ -656,7 +679,8 @@ export default function ProductDetail() {
                                             variant="outline"
                                             disabled={
                                                 (product.type_code === 'RETAIL' && (!selectedVariant || selectedVariant.stock_available <= 0)) ||
-                                                (product.type_code !== 'RETAIL' && product.status_code !== 'ACTIVE')
+                                                (product.type_code === 'PREORDER' && (!selectedVariant || (selectedVariant.stock_available || 0) <= 0)) ||
+                                                (product.type_code !== 'RETAIL' && product.type_code !== 'PREORDER' && product.status_code !== 'ACTIVE')
                                             }
                                             className="h-14 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-900 font-bold text-base tracking-wide transition-all hover:border-slate-300 disabled:opacity-50"
                                             onClick={handleBuyNow}

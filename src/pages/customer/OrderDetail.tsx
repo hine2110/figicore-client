@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 import {
     Package, Clock, CheckCircle2, XCircle, AlertCircle,
     ArrowLeft, MapPin, CreditCard, Truck, Upload
 } from 'lucide-react';
 import { orderService } from '@/services/order.service';
+import { cartService } from '@/services/cart.service';
 import CustomerLayout from '@/layouts/CustomerLayout';
 import { useToast } from '@/components/ui/use-toast';
+import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/constants/order-status';
 
 export default function OrderDetail() {
     const { id } = useParams();
@@ -19,6 +19,7 @@ export default function OrderDetail() {
     const { toast } = useToast();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [isBuyAgainLoading, setIsBuyAgainLoading] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -50,15 +51,26 @@ export default function OrderDetail() {
     });
 
     const getStatusInfo = (status: string) => {
-        const config: Record<string, any> = {
-            'PENDING_PAYMENT': { label: 'Waiting for Payment', color: 'text-orange-600 bg-orange-50 border-orange-200', icon: Clock },
-            'PROCESSING': { label: 'Processing', color: 'text-blue-600 bg-blue-50 border-blue-200', icon: Package },
-            'SHIPPING': { label: 'Shipping', color: 'text-purple-600 bg-purple-50 border-purple-200', icon: Truck },
-            'COMPLETED': { label: 'Completed', color: 'text-green-600 bg-green-50 border-green-200', icon: CheckCircle2 },
-            'CANCELLED': { label: 'Cancelled', color: 'text-red-600 bg-red-50 border-red-200', icon: XCircle },
-            'EXPIRED': { label: 'Expired', color: 'text-gray-600 bg-gray-50 border-gray-200', icon: AlertCircle },
-        };
-        return config[status] || { label: status, color: 'text-gray-600 bg-gray-50', icon: Package };
+        // Fallback for icons if not in main config (could also be moved to constants if we export icons)
+        // For now, keep icon mapping simple here
+        const icon = {
+            'PENDING_PAYMENT': Clock,
+            'PROCESSING': Package,
+            'PACKED': Package,
+            'AWAITING_PICKUP': Truck,
+            'SHIPPING': Truck,
+            'COMPLETED': CheckCircle2,
+            'CANCELLED': XCircle,
+            'EXPIRED': AlertCircle,
+            'DELIVERY_FAILED': AlertCircle,
+        }[status] || Package;
+
+        // Use imported constants or defaults
+        // Note: We need to import constants in the file header
+        const label = (ORDER_STATUS_LABELS as any)[status] || status;
+        const color = (ORDER_STATUS_COLORS as any)[status] || 'text-gray-600 bg-gray-50';
+
+        return { label, color, icon };
     };
 
     if (loading) {
@@ -78,24 +90,87 @@ export default function OrderDetail() {
     const StatusIcon = statusInfo.icon;
 
     // Determine Logic for Timeline
-    // Simplify for now: PENDING -> PROCESSING -> SHIPPING -> COMPLETED
+    // Simplified Linear Flow: PENDING -> PROCESSING -> PACKED -> AWAITING -> SHIPPING -> COMPLETED
     const TIMELINE_STEPS = [
         { label: 'Order Placed', code: 'PENDING_PAYMENT', date: order.created_at },
-        { label: 'Payment Confirmed', code: 'PROCESSING', date: order.updated_at }, // Approximation
+        { label: 'Payment Confirmed', code: 'PROCESSING', date: order.updated_at },
         { label: 'Packed', code: 'PACKED', date: null },
+        { label: 'Awaiting Pickup', code: 'AWAITING_PICKUP', date: null },
         { label: 'Shipping', code: 'SHIPPING', date: null },
-        { label: 'Delivered', code: 'COMPLETED', date: null },
+        { label: 'Completed', code: 'COMPLETED', date: null },
     ];
 
-    const currentStepIndex = TIMELINE_STEPS.findIndex(s => s.code === order.status_code);
-    // Simple logic: if status is beyond processing, assume confirmed.
-    // This is rudimentary visualization.
+    const getCurrentStepIndex = (status: string) => {
+        // Map status to step index logic
+        const statusMap: Record<string, number> = {
+            'PENDING_PAYMENT': 0,
+            'PROCESSING': 1,
+            'PACKED': 2,
+            'AWAITING_PICKUP': 3,
+            'SHIPPING': 4,
+            'COMPLETED': 5,
+            'DELIVERY_FAILED': 4, // Show as stuck at shipping
+            // Cancelled/Returned/Etc could be handled separately or show no active step
+        };
+        return statusMap[status] ?? -1;
+    };
+
+    const currentStepIndex = getCurrentStepIndex(order.status_code);
+
+    const handleBuyAgain = async () => {
+        setIsBuyAgainLoading(true);
+        let successCount = 0;
+        let failCount = 0;
+
+        // Process items sequentially to prevent race conditions
+        for (const item of order.order_items) {
+            try {
+                // Attempt to add to cart
+                await cartService.addToCart({
+                    productId: item.product_variants.product_id,
+                    variantId: item.variant_id,
+                    quantity: 1 // Default to 1 as requested for safe re-ordering
+                });
+                successCount++;
+            } catch (error) {
+                console.warn(`Item ${item.variant_id} OOS`, error);
+                failCount++;
+            }
+        }
+
+        setIsBuyAgainLoading(false);
+
+        // DECISION MATRIX
+        if (successCount > 0 && failCount === 0) {
+            toast({
+                title: "Added to Cart",
+                description: "All items have been added to your cart!",
+                className: "bg-green-50 border-green-200 text-green-800"
+            });
+            navigate('/customer/cart');
+        } else if (successCount > 0 && failCount > 0) {
+            toast({
+                title: "Partially Successful",
+                description: `Added ${successCount} items. ${failCount} items are out of stock.`,
+                className: "bg-yellow-50 border-yellow-200 text-yellow-800"
+            });
+            navigate('/customer/cart'); // Redirect to checkout available items
+        } else {
+            // All failed
+            toast({
+                variant: "destructive",
+                title: "Out of Stock",
+                description: "These products are currently unavailable.",
+            });
+            // DO NOT REDIRECT
+        }
+    };
 
     return (
         <CustomerLayout>
             <div className="bg-neutral-50/50 min-h-screen py-8">
                 <div className="container mx-auto px-4 max-w-4xl">
-                    <Button variant="ghost" className="mb-4 pl-0 hover:pl-2 transition-all" onClick={() => navigate('/customer/profile')}>
+                    <Button variant="ghost" className="mb-4 pl-0 hover:pl-2 transition-all" onClick={() => navigate('/customer/profile?tab=orders')}>
                         <ArrowLeft className="w-4 h-4 mr-2" /> Back to My Orders
                     </Button>
 
@@ -120,9 +195,16 @@ export default function OrderDetail() {
                                         <MapPin className="w-4 h-4" /> Receiver Info
                                     </h3>
                                     <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-sm text-slate-700 space-y-1">
-                                        <p className="font-bold text-slate-900">{order.addresses?.recipient_name || 'N/A'}</p>
-                                        <p>{order.addresses?.recipient_phone || 'N/A'}</p>
-                                        <p className="text-slate-500 mt-2">{order.addresses?.detail_address}, {order.addresses?.ward_code}, {order.addresses?.district_id}</p>
+                                        <p className="font-bold text-slate-900">{order.addresses?.recipient_name || order.users?.full_name || 'N/A'}</p>
+                                        <p>{order.addresses?.recipient_phone || order.users?.phone || 'N/A'}</p>
+                                        <p className="text-slate-500 mt-2">
+                                            {[
+                                                order.addresses?.detail_address,
+                                                order.addresses?.ward_name,
+                                                order.addresses?.district_name,
+                                                order.addresses?.province_name
+                                            ].filter(Boolean).join(", ")}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="space-y-3">
@@ -143,15 +225,14 @@ export default function OrderDetail() {
                             </div>
 
                             {/* Section B: Timeline (Visual) */}
-                            {['PENDING_PAYMENT', 'PROCESSING', 'SHIPPING', 'COMPLETED'].includes(order.status_code) && (
+                            {currentStepIndex !== -1 && (
                                 <div className="py-6 border-y border-slate-100">
                                     <div className="flex justify-between items-center relative">
                                         {/* Line */}
                                         <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-slate-100 -z-10"></div>
 
-                                        {TIMELINE_STEPS.slice(0, 4).map((step, idx) => {
-                                            // Hacky active check
-                                            const isActive = idx <= (['PENDING_PAYMENT', 'PROCESSING', 'SHIPPING', 'COMPLETED'].indexOf(order.status_code));
+                                        {TIMELINE_STEPS.map((step, idx) => {
+                                            const isActive = idx <= currentStepIndex;
 
                                             return (
                                                 <div key={idx} className="flex flex-col items-center bg-white px-2">
@@ -222,16 +303,65 @@ export default function OrderDetail() {
                                 </div>
                             </div>
 
-                            {/* Section E: Evidence Placeholder */}
-                            <div className="border border-dashed border-slate-300 rounded-lg p-6 bg-slate-50 text-center">
-                                <div className="flex justify-center mb-2">
-                                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                        <Upload className="w-5 h-5 text-slate-400" />
+                            {/* Section E: Package Info (Tracking & Evidence) */}
+                            {order.shipments?.tracking_code ? (
+                                <div className="border border-slate-200 rounded-lg p-6 bg-slate-50">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100">
+                                            <Package className="w-6 h-6 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-slate-900">Package Information</h3>
+                                            <p className="text-xs text-slate-500 mt-1">Tracking Code: <span className="font-mono bg-white px-2 py-0.5 rounded border ml-1 text-slate-900">{order.shipments.tracking_code}</span></p>
+
+                                            {order.packing_video_urls ? (
+                                                <div className="mt-4">
+                                                    <p className="text-xs font-semibold text-slate-900 mb-2">Packing Evidence:</p>
+                                                    {(() => {
+                                                        try {
+                                                            let urls = typeof order.packing_video_urls === 'string'
+                                                                ? JSON.parse(order.packing_video_urls)
+                                                                : order.packing_video_urls;
+
+                                                            // Ensure it's an array
+                                                            if (!Array.isArray(urls)) urls = [urls];
+
+                                                            return (
+                                                                <div className="space-y-4">
+                                                                    {urls.map((url: string, index: number) => (
+                                                                        <video
+                                                                            key={index}
+                                                                            controls
+                                                                            className="w-full rounded-lg bg-black aspect-video"
+                                                                            src={url}
+                                                                        >
+                                                                            Your browser does not support the video tag.
+                                                                        </video>
+                                                                    ))}
+                                                                </div>
+                                                            );
+                                                        } catch (e) {
+                                                            return <p className="text-xs text-red-500">Error loading packing video.</p>;
+                                                        }
+                                                    })()}
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-slate-500 mt-2 italic">No packing video available yet.</p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                                <h3 className="text-sm font-medium text-slate-900">Packing Evidence</h3>
-                                <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Video/Images will be available here once the warehouse updates the status.</p>
-                            </div>
+                            ) : (
+                                <div className="border border-dashed border-slate-300 rounded-lg p-6 bg-slate-50 text-center">
+                                    <div className="flex justify-center mb-2">
+                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
+                                            <Upload className="w-5 h-5 text-slate-400" />
+                                        </div>
+                                    </div>
+                                    <h3 className="text-sm font-medium text-slate-900">Packing Evidence</h3>
+                                    <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Tracking code and evidence will be available once the order is packed.</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Footer Actions */}
@@ -243,7 +373,14 @@ export default function OrderDetail() {
                                 </>
                             )}
                             {['COMPLETED', 'CANCELLED'].includes(order.status_code) && (
-                                <Button variant="outline" onClick={() => navigate('/customer/retail')}>Buy Again</Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleBuyAgain}
+                                    disabled={isBuyAgainLoading}
+                                >
+                                    {isBuyAgainLoading ? <span className="animate-spin mr-2">⏳</span> : null}
+                                    Buy Again
+                                </Button>
                             )}
                         </div>
                     </Card>

@@ -29,8 +29,8 @@ export default function CustomerTab() {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [selectedId, setSelectedId] = useState<number | null>(null);
-    const [statusConfirm, setStatusConfirm] = useState<{id: number, status: string} | null>(null);
-    const [banDialog, setBanDialog] = useState<{id: number, name: string} | null>(null);
+    const [statusConfirm, setStatusConfirm] = useState<{ id: number, status: string } | null>(null);
+    const [banDialog, setBanDialog] = useState<{ id: number, name: string } | null>(null);
 
     const fetchCustomers = async () => {
         setIsLoading(true);
@@ -63,10 +63,10 @@ export default function CustomerTab() {
                 <div className="p-4 border-b border-neutral-100 flex gap-4 bg-neutral-50/50">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                        <Input 
-                            type="text" 
-                            placeholder="Search customers..." 
-                            className="w-full pl-9 pr-4 bg-white" 
+                        <Input
+                            type="text"
+                            placeholder="Search customers..."
+                            className="w-full pl-9 pr-4 bg-white"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -108,9 +108,9 @@ export default function CustomerTab() {
                                     <td className="px-6 py-4 font-mono">{cust.loyalty_points ?? 0}</td>
                                     <td className="px-6 py-4">
                                         <Badge variant="outline" className={`
-                                            ${cust.status_code === 'ACTIVE' ? 'bg-green-50 text-green-700 border-green-200' : 
-                                              cust.status_code === 'BANNED' ? 'bg-red-50 text-red-700 border-red-200' :
-                                              'bg-gray-50 text-gray-700 border-gray-200'}
+                                            ${cust.status_code === 'ACTIVE' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                cust.status_code === 'BANNED' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                    'bg-gray-50 text-gray-700 border-gray-200'}
                                         `}>
                                             {cust.status_code}
                                         </Badge>
@@ -127,10 +127,10 @@ export default function CustomerTab() {
                                                 <DropdownMenuItem>Edit Details</DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuSeparator />
-                                                
+
                                                 {/* Active/Inactive Toggle */}
                                                 {cust.status_code !== 'BANNED' && (
-                                                    <DropdownMenuItem 
+                                                    <DropdownMenuItem
                                                         className={cust.status_code === 'ACTIVE' ? "text-orange-600" : "text-green-600"}
                                                         onClick={() => setStatusConfirm({ id: cust.user_id, status: cust.status_code })}
                                                     >
@@ -140,7 +140,7 @@ export default function CustomerTab() {
 
                                                 {/* Ban Action */}
                                                 {cust.status_code !== 'BANNED' && (
-                                                    <DropdownMenuItem 
+                                                    <DropdownMenuItem
                                                         className="text-red-600 font-medium"
                                                         onClick={() => setBanDialog({ id: cust.user_id, name: cust.full_name })}
                                                     >
@@ -150,7 +150,7 @@ export default function CustomerTab() {
 
                                                 {/* Unban Action (Manual Only) */}
                                                 {cust.status_code === 'BANNED' && (
-                                                    <DropdownMenuItem 
+                                                    <DropdownMenuItem
                                                         className="text-green-600 font-medium"
                                                         onClick={() => setStatusConfirm({ id: cust.user_id, status: 'BANNED' })}
                                                     >
@@ -168,17 +168,17 @@ export default function CustomerTab() {
                 <div className="p-4 border-t border-neutral-200 flex justify-between items-center">
                     <span className="text-sm text-neutral-500">Page {page} of {totalPages}</span>
                     <div className="space-x-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
+                        <Button
+                            variant="outline"
+                            size="sm"
                             disabled={page <= 1}
                             onClick={() => setPage(p => p - 1)}
                         >
                             Previous
                         </Button>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
+                        <Button
+                            variant="outline"
+                            size="sm"
                             disabled={page >= totalPages}
                             onClick={() => setPage(p => p + 1)}
                         >
@@ -188,21 +188,21 @@ export default function CustomerTab() {
                 </div>
             </Card>
 
-            <CustomerDetailSheet 
-                customerId={selectedId} 
-                open={!!selectedId} 
-                onOpenChange={(open) => !open && setSelectedId(null)} 
+            <CustomerDetailSheet
+                customerId={selectedId}
+                open={!!selectedId}
+                onOpenChange={(open) => !open && setSelectedId(null)}
                 onUpdateSuccess={fetchCustomers}
             />
 
             {statusConfirm && (
-                <ConfirmStatusDialog 
+                <ConfirmStatusDialog
                     open={!!statusConfirm}
                     onOpenChange={(open) => !open && setStatusConfirm(null)}
                     currentStatus={statusConfirm.status}
                     onConfirm={async () => {
                         try {
-                            await userService.updateStatus(statusConfirm.id, 'ACTIVE'); 
+                            await userService.updateStatus(statusConfirm.id, 'ACTIVE');
                             toast({ title: "Success", description: "User status updated successfully." });
                             fetchCustomers();
                         } catch (error) {

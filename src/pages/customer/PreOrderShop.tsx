@@ -14,6 +14,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { productsService } from '@/services/products.service';
+import { cn } from '@/lib/utils';
 import {
     Select,
     SelectContent,
@@ -149,8 +150,23 @@ export default function PreOrderShop() {
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
-        const dep = Number(product.product_preorders?.deposit_amount || 0);
-        return isNaN(dep) ? 'Contact' : `Dep: ${formatPrice(dep)}`;
+        if (!product.product_variants || product.product_variants.length === 0) return 'Contact';
+
+        // Get all deposit amounts (fallback to 0 if null)
+        const deposits = product.product_variants.map((v: any) => Number(v.deposit_amount || 0));
+
+        // Find min > 0, or just min
+        const validDeposits = deposits.filter((d: number) => d > 0);
+        const minDep = validDeposits.length > 0 ? Math.min(...validDeposits) : 0;
+
+        if (minDep === 0) return 'Coming Soon';
+
+        return (
+            <span className="flex flex-col leading-tight">
+                <span className="text-xs font-normal text-slate-500 uppercase">Deposit From</span>
+                <span className="text-lg font-bold text-orange-600">{formatPrice(minDep)}</span>
+            </span>
+        );
     };
 
     const hasActiveFilters = useMemo(() => {
@@ -280,30 +296,59 @@ export default function PreOrderShop() {
                     ) : (
                         <>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                                {paginatedProducts.map(product => (
-                                    <div key={product.product_id} className="group relative flex flex-col gap-3 cursor-pointer gpu-layer" onClick={() => navigate(`/customer/product/${product.product_id}`)}>
-                                        <div className="aspect-[4/5] relative overflow-hidden rounded-3xl bg-white/40 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-white/30 transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] group-hover:-translate-y-2 group-hover:bg-white/60">
-                                            {product.media_urls?.[0] ? <img src={product.media_urls[0]} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><Package className="w-10 h-10" /></div>}
-                                            {/* Floating Badge */}
-                                            {product.status_code === 'OUT_OF_STOCK' || product.status_code === 'CLOSED' ? (
-                                                <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                                                    <span className="bg-black/80 text-yellow-400 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg backdrop-blur-sm">
-                                                        SOLD OUT
-                                                    </span>
+                                {paginatedProducts.map(product => {
+                                    // Image Swap Logic
+                                    const mainImage = product.media_urls?.[0];
+                                    const hoverImage = product.media_urls?.[1] || product.product_variants?.[0]?.media_assets?.[0]?.url;
+
+                                    return (
+                                        <div key={product.product_id} className="group relative flex flex-col gap-3 cursor-pointer gpu-layer" onClick={() => navigate(`/customer/product/${product.product_id}`)}>
+                                            <div className="aspect-[4/5] relative overflow-hidden rounded-3xl bg-white/40 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-white/30 transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] group-hover:-translate-y-2 group-hover:bg-white/60">
+                                                {mainImage ? (
+                                                    <img
+                                                        src={mainImage}
+                                                        alt={product.name}
+                                                        className={cn( // @ts-ignore
+                                                            "w-full h-full object-cover transition-all duration-700 ease-out",
+                                                            hoverImage ? "group-hover:opacity-0" : "group-hover:scale-105"
+                                                        )}
+                                                        loading="lazy"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-300"><Package className="w-10 h-10" /></div>
+                                                )}
+
+                                                {/* Hover Image */}
+                                                {hoverImage && (
+                                                    <img
+                                                        src={hoverImage}
+                                                        alt={product.name + " hover"}
+                                                        className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out scale-105"
+                                                        loading="lazy"
+                                                    />
+                                                )}
+
+                                                {/* Floating Badge */}
+                                                {product.status_code === 'OUT_OF_STOCK' || product.status_code === 'CLOSED' ? (
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                                        <span className="bg-black/80 text-yellow-400 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg backdrop-blur-sm">
+                                                            SOLD OUT
+                                                        </span>
+                                                    </div>
+                                                ) : product.status_code === 'IN_STOCK' && <div className="absolute top-3 left-3"><div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">IN STOCK</div></div>}
+                                                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0">
+                                                    <button className="h-10 w-10 rounded-full bg-white/80 backdrop-blur-xl flex items-center justify-center text-slate-800 shadow-lg hover:bg-white hover:scale-110 transition-all border border-white/50"><Eye className="w-5 h-5" /></button>
+                                                    <button className="h-10 w-10 rounded-full bg-slate-900/80 backdrop-blur-xl flex items-center justify-center text-white shadow-lg hover:bg-slate-900 hover:scale-110 transition-all border border-white/10"><ShoppingCart className="w-5 h-5" /></button>
                                                 </div>
-                                            ) : product.status_code === 'IN_STOCK' && <div className="absolute top-3 left-3"><div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">IN STOCK</div></div>}
-                                            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0">
-                                                <button className="h-10 w-10 rounded-full bg-white/80 backdrop-blur-xl flex items-center justify-center text-slate-800 shadow-lg hover:bg-white hover:scale-110 transition-all border border-white/50"><Eye className="w-5 h-5" /></button>
-                                                <button className="h-10 w-10 rounded-full bg-slate-900/80 backdrop-blur-xl flex items-center justify-center text-white shadow-lg hover:bg-slate-900 hover:scale-110 transition-all border border-white/10"><ShoppingCart className="w-5 h-5" /></button>
+                                            </div>
+                                            <div className="px-2 space-y-1">
+                                                <div className="text-[11px] font-bold tracking-wider uppercase text-slate-400">{product.brands?.name || 'FigiCore'}</div>
+                                                <h3 className="text-base font-medium leading-tight text-slate-800 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
+                                                <div className="text-lg font-semibold text-slate-900/90 pt-1">{getDisplayPrice(product)}</div>
                                             </div>
                                         </div>
-                                        <div className="px-2 space-y-1">
-                                            <div className="text-[11px] font-bold tracking-wider uppercase text-slate-400">{product.brands?.name || 'FigiCore'}</div>
-                                            <h3 className="text-base font-medium leading-tight text-slate-800 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
-                                            <div className="text-lg font-semibold text-slate-900/90 pt-1">{getDisplayPrice(product)}</div>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                             {totalPages > 1 && (
                                 <div className="mt-20 flex justify-center items-center gap-6">

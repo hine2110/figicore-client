@@ -23,12 +23,17 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
     const addToCart = useCartStore((state) => state.addToCart);
     const [isAdded, setIsAdded] = useState(false);
 
-    const handleAddToCart = (e: React.MouseEvent) => {
+    const handleAddToCart = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        addToCart(product);
-        setIsAdded(true);
-        setTimeout(() => setIsAdded(false), 2000);
+        try {
+            await addToCart(product);
+            setIsAdded(true);
+            setTimeout(() => setIsAdded(false), 2000);
+        } catch (error) {
+            console.error("Quick add failed", error);
+            // Optionally add toast here if you want to notify user of quick add failure
+        }
     };
 
     return (

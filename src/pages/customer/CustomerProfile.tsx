@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import CustomerLayout from '@/layouts/CustomerLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,24 @@ export default function CustomerProfile() {
     const { toast } = useToast();
     const { user, setUser } = useAuthStore();
     const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'membership' | 'security' | 'notifications'>('profile');
+
+    // Add Query Param Support
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get('tab');
+        if (tab && ['profile', 'orders', 'membership', 'security', 'notifications'].includes(tab)) {
+            setActiveTab(tab as any);
+        }
+    }, [location.search]);
+
+    // Update URL when tab changes (Optional but good UX)
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab as any);
+        navigate(`/customer/profile?tab=${tab}`, { replace: true });
+    };
 
     // Address State
     const [isAddressOpen, setIsAddressOpen] = useState(false);
@@ -178,7 +197,7 @@ export default function CustomerProfile() {
                             <Card className="p-4 border-neutral-200">
                                 <div className="space-y-1">
                                     <button
-                                        onClick={() => setActiveTab('profile')}
+                                        onClick={() => handleTabChange('profile')}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'profile'
                                             ? 'bg-neutral-100 text-neutral-900'
                                             : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
@@ -188,7 +207,7 @@ export default function CustomerProfile() {
                                         Personal Info
                                     </button>
                                     <button
-                                        onClick={() => setActiveTab('membership')}
+                                        onClick={() => handleTabChange('membership')}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'membership'
                                             ? 'bg-neutral-100 text-neutral-900'
                                             : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
@@ -198,7 +217,7 @@ export default function CustomerProfile() {
                                         Membership
                                     </button>
                                     <button
-                                        onClick={() => setActiveTab('orders')}
+                                        onClick={() => handleTabChange('orders')}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'orders'
                                             ? 'bg-neutral-100 text-neutral-900'
                                             : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
@@ -208,7 +227,7 @@ export default function CustomerProfile() {
                                         My Orders
                                     </button>
                                     <button
-                                        onClick={() => setActiveTab('security')}
+                                        onClick={() => handleTabChange('security')}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'security'
                                             ? 'bg-neutral-100 text-neutral-900'
                                             : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
@@ -218,7 +237,7 @@ export default function CustomerProfile() {
                                         Login & Security
                                     </button>
                                     <button
-                                        onClick={() => setActiveTab('notifications')}
+                                        onClick={() => handleTabChange('notifications')}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'notifications'
                                             ? 'bg-neutral-100 text-neutral-900'
                                             : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
@@ -251,7 +270,7 @@ export default function CustomerProfile() {
 
                                                 {/* Dynamic Rank Badge */}
                                                 {(() => {
-                                                    const rankCode = user?.customers?.current_rank_code || 'BRONZE';
+                                                    const rankCode = (user as any)?.current_rank_code ?? user?.customers?.current_rank_code ?? 'BRONZE';
                                                     const rankInfo = RANK_CONFIG[rankCode] || RANK_CONFIG['BRONZE'];
                                                     return (
                                                         <Badge className={`mt-2 border-0 ${rankInfo.className}`}>
