@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Edit2, Trash2, Copy, ChevronLeft, ChevronRight, User as UserIcon, Calendar as CalendarIcon, CopyPlus } from 'lucide-react';
+import { Plus, Edit2, Trash2, Copy, ChevronLeft, ChevronRight, User as UserIcon, Calendar as CalendarIcon, CopyPlus, ShieldAlert, ShieldCheck, MonitorX, MonitorSmartphone, Power } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -12,7 +12,6 @@ import { format, startOfWeek, addDays, subDays, endOfWeek, isSameDay } from 'dat
 import StaffSummaryTable from './StaffSummaryTable';
 import StationRegistrationDialog from './StationRegistrationDialog';
 import StationListDialog from './StationListDialog';
-import { ShieldCheck, MonitorX, MonitorSmartphone, Power } from 'lucide-react';
 
 // --- Types ---
 
@@ -63,6 +62,7 @@ export default function ShiftManagement() {
     const [users, setUsers] = useState<User[]>([]);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [loading, setLoading] = useState(false);
+    const [accessDeniedError, setAccessDeniedError] = useState<string | null>(null);
 
     // Date Navigation State (Start of the week - Monday)
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -152,6 +152,7 @@ export default function ShiftManagement() {
 
     const fetchSchedules = async () => {
         setLoading(true);
+        setAccessDeniedError(null); // Reset error on retry
         try {
             const from = format(currentWeekStart, 'yyyy-MM-dd');
             const to = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd');
@@ -161,9 +162,13 @@ export default function ShiftManagement() {
             });
             const data = Array.isArray(res.data) ? res.data : (res.data.data || []);
             setSchedules(data);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to fetch schedules", error);
-            toast({ title: "Error", description: "Failed to load schedules", variant: "destructive" });
+            if (error.response?.status === 403) {
+                setAccessDeniedError("Access denied. Please go to the office to resolve this issue.");
+            } else {
+                toast({ title: "Error", description: "Failed to load schedules", variant: "destructive" });
+            }
         } finally {
             setLoading(false);
         }
@@ -443,15 +448,7 @@ export default function ShiftManagement() {
                 <div>
                     <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
                         Shift Management
-                        {stationToken ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium border border-green-200">
-                                <ShieldCheck className="w-3 h-3" /> Authorized Station
-                            </span>
-                        ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-neutral-100 text-neutral-500 text-xs font-medium border border-neutral-200">
-                                <MonitorX className="w-3 h-3" /> Unregistered Device
-                            </span>
-                        )}
+
                     </h1>
                     <p className="text-neutral-500">Weekly employee shift assignments.</p>
                 </div>
@@ -462,10 +459,6 @@ export default function ShiftManagement() {
                             Finalize Setup
                         </Button>
                     )}
-                    <Button variant="outline" onClick={() => setIsRegisterDialogOpen(true)}>
-                        <MonitorSmartphone className="w-4 h-4 mr-2" />
-                        Register This Station
-                    </Button>
                     <Button onClick={() => openCreateModal()}>
                         <Plus className="w-4 h-4 mr-2" />
                         New Assignment
@@ -493,50 +486,66 @@ export default function ShiftManagement() {
                 </div>
             </Card>
 
-            {/* Weekly View Table/Grid */}
-            <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
-                {/* Header for Shifts */}
-                <div className="hidden md:grid grid-cols-[150px_1fr_1fr_1fr] bg-neutral-50 border-b border-neutral-200">
-                    <div className="p-4 font-medium text-neutral-500">Day / Date</div>
-                    {SHIFTS.map(shift => (
-                        <div key={shift.code} className={`p-4 font-medium border-l border-neutral-200 ${shift.color.split(' ')[0]}`}>
-                            {shift.label}
-                            <div className="text-xs font-normal opacity-70">{shift.time}</div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Days Rows */}
-                <div className="divide-y divide-neutral-200">
-                    {Array.from({ length: 7 }).map((_, i) => {
-                        const date = addDays(currentWeekStart, i);
-                        const isToday = isSameDay(date, new Date());
-
-                        return (
-                            <div key={i} className="flex flex-col md:grid md:grid-cols-[150px_1fr_1fr_1fr] group">
-                                {/* Date Column */}
-                                <div className={`p-4 flex flex-row md:flex-col justify-between md:justify-start items-center md:items-start gap-1 ${isToday ? 'bg-blue-50/50' : ''}`}>
-                                    <span className="font-bold text-neutral-900">{format(date, 'EEEE')}</span>
-                                    <span className={`text-sm ${isToday ? 'text-blue-600 font-bold' : 'text-neutral-500'}`}>
-                                        {format(date, 'MMM dd')}
-                                    </span>
-                                </div>
-
-                                {/* Shift Columns */}
-                                {SHIFTS.map(shift => (
-                                    <div key={shift.code} className="p-3 border-t md:border-t-0 md:border-l border-neutral-200 min-h-[140px]">
-                                        {/* Mobile Label */}
-                                        <div className="md:hidden text-xs font-bold text-neutral-500 mb-2 uppercase tracking-wider">
-                                            {shift.label}
-                                        </div>
-                                        {renderShiftCell(date, shift.code)}
-                                    </div>
-                                ))}
+            {/* Access Denied Error Card */}
+            {accessDeniedError ? (
+                <Card className="p-8 border-red-200 bg-red-50 flex flex-col items-center justify-center text-center gap-4 min-h-[400px]">
+                    <div className="p-4 rounded-full bg-red-100 mb-2">
+                        <ShieldAlert className="w-8 h-8 text-red-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-red-900">Access Restricted</h3>
+                    <p className="text-red-700 max-w-md">
+                        {accessDeniedError}
+                    </p>
+                    <Button onClick={() => fetchSchedules()} className="bg-red-600 hover:bg-red-700 text-white mt-4">
+                        Retry Connection
+                    </Button>
+                </Card>
+            ) : (
+                /* Weekly View Table/Grid */
+                <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
+                    {/* Header for Shifts */}
+                    <div className="hidden md:grid grid-cols-[150px_1fr_1fr_1fr] bg-neutral-50 border-b border-neutral-200">
+                        <div className="p-4 font-medium text-neutral-500">Day / Date</div>
+                        {SHIFTS.map(shift => (
+                            <div key={shift.code} className={`p-4 font-medium border-l border-neutral-200 ${shift.color.split(' ')[0]}`}>
+                                {shift.label}
+                                <div className="text-xs font-normal opacity-70">{shift.time}</div>
                             </div>
-                        );
-                    })}
+                        ))}
+                    </div>
+
+                    {/* Days Rows */}
+                    <div className="divide-y divide-neutral-200">
+                        {Array.from({ length: 7 }).map((_, i) => {
+                            const date = addDays(currentWeekStart, i);
+                            const isToday = isSameDay(date, new Date());
+
+                            return (
+                                <div key={i} className="flex flex-col md:grid md:grid-cols-[150px_1fr_1fr_1fr] group">
+                                    {/* Date Column */}
+                                    <div className={`p-4 flex flex-row md:flex-col justify-between md:justify-start items-center md:items-start gap-1 ${isToday ? 'bg-blue-50/50' : ''}`}>
+                                        <span className="font-bold text-neutral-900">{format(date, 'EEEE')}</span>
+                                        <span className={`text-sm ${isToday ? 'text-blue-600 font-bold' : 'text-neutral-500'}`}>
+                                            {format(date, 'MMM dd')}
+                                        </span>
+                                    </div>
+
+                                    {/* Shift Columns */}
+                                    {SHIFTS.map(shift => (
+                                        <div key={shift.code} className="p-3 border-t md:border-t-0 md:border-l border-neutral-200 min-h-[140px]">
+                                            {/* Mobile Label */}
+                                            <div className="md:hidden text-xs font-bold text-neutral-500 mb-2 uppercase tracking-wider">
+                                                {shift.label}
+                                            </div>
+                                            {renderShiftCell(date, shift.code)}
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Create/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
