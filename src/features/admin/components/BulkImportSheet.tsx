@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { Upload, X, FileSpreadsheet, AlertCircle, CheckCircle, FileArchive } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Upload, X, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -49,6 +49,12 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
         setFile(selectedFile);
         setReport(null);
 
+        // Check if ZIP and skip parsing
+        if (selectedFile.name.endsWith('.zip') || selectedFile.type.includes('zip') || selectedFile.type.includes('compressed')) {
+            setPreviewData([]);
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -80,17 +86,34 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
         onDrop,
         accept: {
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-            'application/vnd.ms-excel': ['.xls']
+            'application/vnd.ms-excel': ['.xls'],
+            'application/zip': ['.zip'],
+            'application/x-zip-compressed': ['.zip']
         },
         maxFiles: 1
     });
 
+    const isZip = file?.name.endsWith('.zip');
+
     const handleUpload = async () => {
-        if (previewData.length === 0) return;
+        if (!file) return;
         setIsLoading(true);
 
         try {
-            const res = await api.post('/employees/import', previewData);
+            let res;
+            if (isZip) {
+                // ZIP: Direct Upload
+                const formData = new FormData();
+                formData.append('file', file);
+                res = await api.post('/users/import-zip', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                // EXCEL: Regular JSON Import
+                if (previewData.length === 0) return;
+                res = await api.post('/employees/import', previewData);
+            }
+
             setReport(res.data);
             
             if (res.data.success > 0) {
@@ -121,7 +144,9 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
                 <SheetHeader>
                     <SheetTitle>Bulk Import Employees</SheetTitle>
                     <SheetDescription>
-                        Upload an Excel file (.xlsx) with columns: Tên, Số điện thoại, Email, Role, Lương.
+                        Upload Excel (.xlsx) or ZIP file (Excel + Images).
+                        <br />
+                        Columns: Tên, Số điện thoại, Email, Role, Lương, Avatar File (ZIP only).
                     </SheetDescription>
                 </SheetHeader>
 
@@ -139,9 +164,9 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
                             <div className="flex flex-col items-center gap-2">
                                 <FileSpreadsheet className="h-10 w-10 text-neutral-400" />
                                 <p className="text-sm font-medium text-neutral-600">
-                                    {isDragActive ? "Drop file here" : "Drag & drop Excel file, or click to select"}
+                                    {isDragActive ? "Drop file here" : "Drag & drop Excel or ZIP file"}
                                 </p>
-                                <p className="text-xs text-neutral-400">.xlsx, .xls</p>
+                                <p className="text-xs text-neutral-400">.xlsx, .xls, .zip</p>
                             </div>
                         </div>
                     )}
@@ -151,12 +176,12 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
                         <div className="space-y-4">
                             <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-8 w-8 bg-green-100 text-green-600 rounded flex items-center justify-center">
-                                        <FileSpreadsheet className="h-5 w-5" />
+                                    <div className={`h-8 w-8 rounded flex items-center justify-center ${isZip ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
+                                        {isZip ? <FileArchive className="h-5 w-5" /> : <FileSpreadsheet className="h-5 w-5" />}
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium text-neutral-900">{file.name}</p>
-                                        <p className="text-xs text-neutral-500">{(file.size / 1024).toFixed(1)} KB • {previewData.length} rows</p>
+                                        <p className="text-xs text-neutral-500">{(file.size / 1024).toFixed(1)} KB • {isZip ? 'ZIP Archive' : `${previewData.length} rows`}</p>
                                     </div>
                                 </div>
                                 <Button variant="ghost" size="icon" onClick={() => { setFile(null); setPreviewData([]); }}>
@@ -164,28 +189,41 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
                                 </Button>
                             </div>
 
-                            <ScrollArea className="h-[300px] rounded-md border text-sm">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Full Name</TableHead>
-                                            <TableHead>Email</TableHead>
-                                            <TableHead>Role</TableHead>
-                                            <TableHead className="text-right">Salary</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {previewData.map((row, idx) => (
-                                            <TableRow key={idx}>
-                                                <TableCell className="font-medium">{row.full_name}</TableCell>
-                                                <TableCell>{row.email}</TableCell>
-                                                <TableCell>{row.role_code}</TableCell>
-                                                <TableCell className="text-right">{new Intl.NumberFormat('vi-VN').format(row.base_salary)}</TableCell>
+                            {/* Show Table ONLY if NOT ZIP */}
+                            {!isZip && (
+                                <ScrollArea className="h-[300px] rounded-md border text-sm">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Full Name</TableHead>
+                                                <TableHead>Email</TableHead>
+                                                <TableHead>Role</TableHead>
+                                                <TableHead className="text-right">Salary</TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </ScrollArea>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {previewData.map((row, idx) => (
+                                                <TableRow key={idx}>
+                                                    <TableCell className="font-medium">{row.full_name}</TableCell>
+                                                    <TableCell>{row.email}</TableCell>
+                                                    <TableCell>{row.role_code}</TableCell>
+                                                    <TableCell className="text-right">{new Intl.NumberFormat('vi-VN').format(row.base_salary)}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </ScrollArea>
+                            )}
+
+                            {isZip && (
+                                <div className="p-4 bg-blue-50 text-blue-700 rounded-md border border-blue-200 flex gap-3 text-sm">
+                                    <AlertCircle className="w-5 h-5 shrink-0" />
+                                    <div>
+                                        <p className="font-semibold">Ready to upload ZIP archive</p>
+                                        <p>The system will extract the Excel file and map avatar images automatically. Please ensure "Avatar File" column matches filenames exactly.</p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="flex justify-end gap-3">
                                 <Button variant="outline" onClick={() => { setFile(null); setPreviewData([]); }}>Cancel</Button>
