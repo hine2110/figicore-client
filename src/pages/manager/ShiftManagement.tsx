@@ -10,8 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { axiosInstance } from '@/lib/axiosInstance';
 import { format, startOfWeek, addDays, subDays, endOfWeek, isSameDay } from 'date-fns';
 import StaffSummaryTable from './StaffSummaryTable';
-import StationRegistrationDialog from './StationRegistrationDialog';
-import StationListDialog from './StationListDialog';
+import { useSecurityCheck } from '@/hooks/useSecurityCheck';
 
 // --- Types ---
 
@@ -62,7 +61,7 @@ export default function ShiftManagement() {
     const [users, setUsers] = useState<User[]>([]);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [loading, setLoading] = useState(false);
-    const [accessDeniedError, setAccessDeniedError] = useState<string | null>(null);
+    const { accessDeniedError, handleApiError, resetSecurityError } = useSecurityCheck();
 
     // Date Navigation State (Start of the week - Monday)
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -152,7 +151,7 @@ export default function ShiftManagement() {
 
     const fetchSchedules = async () => {
         setLoading(true);
-        setAccessDeniedError(null); // Reset error on retry
+        resetSecurityError(); // Reset error on retry
         try {
             const from = format(currentWeekStart, 'yyyy-MM-dd');
             const to = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd');
@@ -164,11 +163,7 @@ export default function ShiftManagement() {
             setSchedules(data);
         } catch (error: any) {
             console.error("Failed to fetch schedules", error);
-            if (error.response?.status === 403) {
-                setAccessDeniedError("Access denied. Please go to the office to resolve this issue.");
-            } else {
-                toast({ title: "Error", description: "Failed to load schedules", variant: "destructive" });
-            }
+            handleApiError(error);
         } finally {
             setLoading(false);
         }
@@ -194,11 +189,7 @@ export default function ShiftManagement() {
             setIsDialogOpen(false);
             fetchSchedules();
         } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.response?.data?.message || "Failed to create schedule",
-                variant: "destructive"
-            });
+            handleApiError(error);
         }
     };
 
@@ -218,11 +209,7 @@ export default function ShiftManagement() {
             setIsDialogOpen(false);
             fetchSchedules();
         } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.response?.data?.message || "Failed to update schedule",
-                variant: "destructive"
-            });
+            handleApiError(error);
         }
     };
 
@@ -233,11 +220,7 @@ export default function ShiftManagement() {
             toast({ title: "Success", description: "Schedule deleted" });
             fetchSchedules();
         } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.response?.data?.message || "Failed to delete schedule",
-                variant: "destructive"
-            });
+            handleApiError(error);
         }
     };
 
@@ -278,11 +261,7 @@ export default function ShiftManagement() {
             fetchSchedules();
         } catch (error: any) {
             console.error("Clone error", error);
-            toast({
-                title: "Error",
-                description: error.response?.data?.message || "Failed to clone shifts",
-                variant: "destructive"
-            });
+            handleApiError(error);
         }
     };
 
@@ -496,7 +475,7 @@ export default function ShiftManagement() {
                     <p className="text-red-700 max-w-md">
                         {accessDeniedError}
                     </p>
-                    <Button onClick={() => fetchSchedules()} className="bg-red-600 hover:bg-red-700 text-white mt-4">
+                    <Button onClick={() => { resetSecurityError(); fetchSchedules(); }} className="bg-red-600 hover:bg-red-700 text-white mt-4">
                         Retry Connection
                     </Button>
                 </Card>
@@ -655,18 +634,6 @@ export default function ShiftManagement() {
             <StaffSummaryTable
                 fromDate={format(currentWeekStart, 'yyyy-MM-dd')}
                 toDate={format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd')}
-            />
-
-            <StationRegistrationDialog
-                open={isRegisterDialogOpen}
-                onOpenChange={setIsRegisterDialogOpen}
-                onStationConnected={finalizeStationSetup}
-            />
-
-            <StationListDialog
-                open={isStationListOpen}
-                onOpenChange={setIsStationListOpen}
-                onStationConnected={finalizeStationSetup}
             />
         </div>
     );

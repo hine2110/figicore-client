@@ -30,7 +30,6 @@ import MarketingCampaigns from "@/pages/manager/MarketingCampaigns";
 import ReturnApprovals from "@/pages/manager/ReturnApprovals";
 import ShiftManagement from "@/pages/manager/ShiftManagement";
 import CustomerFeedback from "@/pages/manager/CustomerFeedback";
-import StationConfirmPage from "@/pages/manager/StationConfirmPage";
 // import StaffDashboard from "@/pages/staff/StaffDashboard"; // Deprecated
 
 // Customer Pages
@@ -138,7 +137,6 @@ export default function App() {
                             <Route path="shifts" element={<ShiftManagement />} />
                             <Route path="feedback" element={<CustomerFeedback />} />
                             <Route path="profile" element={<ProfilePage />} />
-                            <Route path="station-confirm" element={<StationConfirmPage />} />
                         </Route>
                     </Route>
 
