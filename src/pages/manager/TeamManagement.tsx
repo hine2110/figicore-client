@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { MoreHorizontal, Shield, Mail, Phone, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Employee, employeesService } from "@/services/employees.service";
 import { Badge } from "@/components/ui/badge";
@@ -107,6 +107,7 @@ export default function TeamManagement() {
                 <table className="w-full text-left text-sm">
                     <thead className="bg-neutral-50 text-neutral-500 font-medium border-b border-neutral-200">
                         <tr>
+                            <th className="px-6 py-4 w-[50px]">Avatar</th>
                             <th className="px-6 py-4 w-[300px]">Employee Info</th>
                             <th className="px-6 py-4">Role</th>
                             <th className="px-6 py-4">Phone</th>
@@ -131,12 +132,15 @@ export default function TeamManagement() {
                                     onClick={() => setSelectedId(employee.user_id)}
                                 >
                                     <td className="px-6 py-4">
+                                        <Avatar className="h-10 w-10 border border-neutral-200">
+                                            <AvatarImage src={employee.users?.avatar_url || ""} />
+                                            <AvatarFallback className="bg-neutral-100 text-neutral-600 font-medium">
+                                                {employee.users?.full_name?.charAt(0) || "U"}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    </td>
+                                    <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <Avatar className="h-10 w-10 border border-neutral-200">
-                                                <AvatarFallback className="bg-neutral-100 text-neutral-600 font-medium">
-                                                    {employee.users.full_name?.charAt(0) || "U"}
-                                                </AvatarFallback>
-                                            </Avatar>
                                             <div>
                                                 <p className="font-semibold text-neutral-900 leading-tight">{employee.users.full_name}</p>
                                                 <div className="flex items-center gap-1.5 mt-0.5 text-xs text-neutral-500">
