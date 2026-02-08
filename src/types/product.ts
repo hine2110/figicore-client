@@ -24,6 +24,18 @@ export interface MediaItem {
     thumbnail?: string;
 }
 
+export interface ProductPreorderConfig {
+    config_id: number;
+    variant_id: number;
+    deposit_amount: string | number;
+    full_price: string | number;
+    total_slots: number;
+    sold_slots: number;
+    max_qty_per_user: number;
+    release_date?: string;
+    // stock_held?
+}
+
 export interface ProductVariant {
     variant_id: number;
     product_id: number;
@@ -36,6 +48,7 @@ export interface ProductVariant {
     media_assets?: any; // JSON, often [string] or MediaItem[]
     description?: string;
     deposit_amount?: string | number;
+    product_preorder_configs?: ProductPreorderConfig;
 }
 
 export interface ProductBlindbox {
@@ -44,14 +57,6 @@ export interface ProductBlindbox {
     min_value: string | number;
     max_value: string | number;
     tier_config?: any;
-}
-
-export interface ProductPreorder {
-    product_id: number;
-    deposit_amount?: string | number;
-    full_price?: string | number;
-    release_date?: string;
-    max_slots?: number;
 }
 
 export interface Product {
@@ -73,5 +78,4 @@ export interface Product {
     series?: Series;
     product_variants: ProductVariant[];
     product_blindboxes?: ProductBlindbox; // One-to-one
-    product_preorders?: ProductPreorder; // One-to-one
 }

@@ -46,6 +46,7 @@ import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
 import OrderDetail from "@/pages/customer/OrderDetail"; // New Import
+import PreOrderPayment from "@/pages/customer/PreOrderPayment";
 import OrderSuccess from "@/pages/customer/OrderSuccess";
 import ScrollToTop from "@/components/ScrollToTop";
 
@@ -181,6 +182,7 @@ export default function App() {
                             <Route path="order-success" element={<OrderSuccess />} />
 
                             <Route path="orders/:id" element={<OrderDetail />} /> {/* New Route */}
+                            <Route path="preorders/:id/pay" element={<PreOrderPayment />} />
                             <Route path="wallet" element={<CustomerWallet />} />
                             <Route path="profile" element={<CustomerProfile />} />
                             <Route path="auctions" element={<CustomerAuctions />} />

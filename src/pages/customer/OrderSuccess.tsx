@@ -28,7 +28,7 @@ export default function OrderSuccess() {
                     <div className="flex flex-col gap-3">
                         <Button
                             className="w-full bg-neutral-900 hover:bg-black text-white h-12 rounded-xl text-md font-medium shadow-lg"
-                            onClick={() => navigate('/customer/orders')}
+                            onClick={() => navigate('/customer/profile?tab=orders')}
                         >
                             View My Orders
                         </Button>

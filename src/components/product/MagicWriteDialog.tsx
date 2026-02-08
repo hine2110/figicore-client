@@ -12,10 +12,11 @@ interface MagicWriteDialogProps {
     productName: string;
     targetName?: string; // e.g. "Red Ver." or "Main"
     imageUrl?: string;
+    richContext?: any; // <--- Added
     onSuccess: (text: string) => void;
 }
 
-export function MagicWriteDialog({ open, onOpenChange, productName, targetName, imageUrl, onSuccess }: MagicWriteDialogProps) {
+export function MagicWriteDialog({ open, onOpenChange, productName, targetName, imageUrl, richContext, onSuccess }: MagicWriteDialogProps) {
     const [loading, setLoading] = useState(false);
     const [userContext, setUserContext] = useState("");
 
@@ -26,7 +27,8 @@ export function MagicWriteDialog({ open, onOpenChange, productName, targetName, 
                 productName,
                 variantName: targetName,
                 userContext: userContext,
-                imageUrl: imageUrl
+                imageUrl: imageUrl,
+                richContext: richContext
             });
             onSuccess(text);
             onOpenChange(false);

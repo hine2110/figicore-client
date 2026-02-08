@@ -14,10 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { SmartCreatableSelect } from "@/components/common/SmartCreatableSelect";
+import { SmartCreatableStringSelect } from "@/components/common/SmartCreatableStringSelect";
 import { productsService } from "@/services/products.service";
 import { optionsService } from "@/services/options.service";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { VariantMediaManager, MediaItem } from "./VariantMediaManager";
@@ -54,6 +57,9 @@ const retailSchema = baseSchema.extend({
         length_cm: z.coerce.number().min(0).optional(),
         width_cm: z.coerce.number().min(0).optional(),
         height_cm: z.coerce.number().min(0).optional(),
+        scale: z.string().optional(),
+        material: z.string().optional(),
+        included_items: z.string().optional(),
     })).min(1, "At least one variant is required"),
 });
 
@@ -62,6 +68,9 @@ const blindboxSchema = baseSchema.extend({
     price: z.coerce.number().min(1000, "Ticket Price must be at least 1,000 VND"),
     min_value_allow: z.coerce.number().min(0),
     max_value_allow: z.coerce.number().min(0),
+    scale: z.string().optional(),
+    material: z.string().optional(),
+    included_items: z.string().optional(),
     start_date: z.string().min(1, "Start Date is required"),
     end_date: z.string().min(1, "End Date is required"),
 });
@@ -72,10 +81,12 @@ const preorderSchema = baseSchema.extend({
 
     variants: z.array(z.object({
         option_name: z.string().min(1, "Option Name is required"),
-        price: z.coerce.number().min(1000, "Full Price must be at least 1,000 VND"), // Full Price
-        deposit_amount: z.coerce.number().min(1000, "Deposit must be at least 1,000 VND"), // Variant Level Deposit
+        price: z.coerce.number().min(1000, "Full Price must be at least 1,000 VND"),
+        deposit_amount: z.coerce.number().min(1000, "Deposit must be at least 1,000 VND"),
+        slot_limit: z.coerce.number().min(0, "Slots must be positive").default(0), // Maps to preorder_slot_limit
+        max_qty_per_user: z.coerce.number().min(1, "Min limit is 1").default(2),   // Maps to max_qty_per_user
         sku: z.string().min(1, "SKU is required"),
-        stock_available: z.coerce.number().min(0).default(0), // Slots
+        // stock_available is NOT required for input, will be set to 0 by backend/transformer
 
         media_assets: z.array(mediaItemSchema).optional(),
         description: z.string().optional(),
@@ -83,6 +94,9 @@ const preorderSchema = baseSchema.extend({
         length_cm: z.coerce.number().min(0).optional(),
         width_cm: z.coerce.number().min(0).optional(),
         height_cm: z.coerce.number().min(0).optional(),
+        scale: z.string().optional(),
+        material: z.string().optional(),
+        included_items: z.string().optional(),
     })).min(1, "At least one variant is required")
         .refine(variants => variants.every(v => v.deposit_amount < v.price), {
             message: "Deposit must be less than Full Price",
@@ -128,6 +142,15 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
     // --- PRINT STATE ---
     const [showPrintConfig, setShowPrintConfig] = useState(false);
     const [printQuantities, setPrintQuantities] = useState<Record<number, number>>({});
+
+    const [selectedVariant, setSelectedVariant] = useState<any>(product.product_variants?.[0] || null);
+
+    // Update selected variant if product changes
+    useEffect(() => {
+        if (product.product_variants?.length > 0) {
+            setSelectedVariant(product.product_variants[0]);
+        }
+    }, [product]);
 
     useEffect(() => {
         if (product.product_variants) {
@@ -184,6 +207,9 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
     };
 
     const handleVariantClick = (variantId: number) => {
+        const variant = product.product_variants?.find((v: any) => v.variant_id === variantId);
+        if (variant) setSelectedVariant(variant);
+
         if (variantIdToMediaIndex.has(variantId)) {
             setGalleryIndex(variantIdToMediaIndex.get(variantId)!);
         }
@@ -398,11 +424,18 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                     </div>
 
                     <div>
-                        <h3 className="text-sm font-bold border-b pb-2 mb-2 flex items-center gap-2">
-                            <Info className="w-4 h-4 text-neutral-400" /> Description
+                        <h3 className="text-sm font-bold border-b pb-2 mb-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Info className="w-4 h-4 text-neutral-400" /> Description
+                            </div>
+                            {selectedVariant && (
+                                <Badge variant="outline" className="text-[10px] font-normal h-5 border-blue-200 text-blue-700 bg-blue-50">
+                                    {selectedVariant.option_name}
+                                </Badge>
+                            )}
                         </h3>
                         <div className="text-sm text-neutral-600 leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none bg-neutral-50 p-3 rounded-lg border">
-                            {product.description || "No description."}
+                            {selectedVariant?.description || product.description || "No description."}
                         </div>
                     </div>
 
@@ -423,33 +456,40 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {product.product_variants?.map((v: any) => (
-                                            <TableRow
-                                                key={v.variant_id}
-                                                className={cn("group cursor-pointer transition-colors", variantIdToMediaIndex.has(v.variant_id) ? "hover:bg-blue-50" : "hover:bg-neutral-50")}
-                                                onClick={() => handleVariantClick(v.variant_id)}
-                                            >
-                                                <TableCell className="font-medium flex items-center gap-2">
-                                                    {v.option_name}
-                                                    {variantIdToMediaIndex.has(v.variant_id) && <ImageIcon className="w-3 h-3 text-blue-400" />}
-                                                </TableCell>
-                                                <TableCell>{formatPrice(Number(v.price))}</TableCell>
-                                                {isPreorder && (
-                                                    <TableCell className="text-orange-600 font-medium">
-                                                        {formatPrice(Number(v.deposit_amount || 0))}
+                                        {product.product_variants?.map((v: any) => {
+                                            const preDef = v.product_preorder_configs;
+                                            const displayPrice = isPreorder ? (preDef?.full_price || 0) : v.price;
+                                            const displayDeposit = isPreorder ? (preDef?.deposit_amount || 0) : 0;
+                                            const displaySlots = isPreorder ? (preDef?.total_slots || 0) : v.stock_available;
+
+                                            return (
+                                                <TableRow
+                                                    key={v.variant_id}
+                                                    className={cn("group cursor-pointer transition-colors", variantIdToMediaIndex.has(v.variant_id) ? "hover:bg-blue-50" : "hover:bg-neutral-50")}
+                                                    onClick={() => handleVariantClick(v.variant_id)}
+                                                >
+                                                    <TableCell className="font-medium flex items-center gap-2">
+                                                        {v.option_name}
+                                                        {variantIdToMediaIndex.has(v.variant_id) && <ImageIcon className="w-3 h-3 text-blue-400" />}
                                                     </TableCell>
-                                                )}
-                                                <TableCell>{isPreorder ? (v.preorder_slot_limit || 0) : (v.stock_available || 0)}</TableCell>
-                                                <TableCell className="text-neutral-500 font-mono text-xs">{v.sku}</TableCell>
-                                                <TableCell>
-                                                    {variantIdToMediaIndex.has(v.variant_id) && (
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <Eye className="w-3 h-3 text-blue-600" />
-                                                        </Button>
+                                                    <TableCell>{formatPrice(Number(displayPrice))}</TableCell>
+                                                    {isPreorder && (
+                                                        <TableCell className="text-orange-600 font-medium">
+                                                            {formatPrice(Number(displayDeposit))}
+                                                        </TableCell>
                                                     )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
+                                                    <TableCell>{displaySlots}</TableCell>
+                                                    <TableCell className="text-neutral-500 font-mono text-xs">{v.sku}</TableCell>
+                                                    <TableCell>
+                                                        {variantIdToMediaIndex.has(v.variant_id) && (
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <Eye className="w-3 h-3 text-blue-600" />
+                                                            </Button>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
                                     </TableBody>
                                 </Table>
                             </div>
@@ -530,7 +570,6 @@ interface CreateProductModalProps {
 
 export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdit, isViewMode = false }: CreateProductModalProps) {
     const { toast } = useToast();
-    const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
     // Local Options
@@ -545,7 +584,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         defaultValues: {
             name: "", description: "", media_items: [], type_code: "RETAIL",
 
-            variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }],
+            variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" }],
             price: 0, min_value_allow: 0, max_value_allow: 0, target_margin: 20, start_date: "", end_date: "",
             full_price: 0, deposit_amount: 0, release_date: "", max_slots: 100,
         },
@@ -603,18 +642,27 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
             } else if (p.type_code === 'PREORDER') {
                 const pre = p.product_preorders?.[0];
                 if (pre) {
-                    formValues.deposit_amount = Number(pre.deposit_amount);
-                    formValues.full_price = Number(pre.full_price || 0);
                     formValues.release_date = pre.release_date ? new Date(pre.release_date).toISOString().split('T')[0] : "";
-                    formValues.max_slots = pre.max_slots;
                 }
+                // Map Pre-order Variants
+                formValues.variants = p.product_variants?.map((v: any) => ({
+                    option_name: v.option_name,
+                    price: Number(v.price), // Full Price
+                    deposit_amount: Number(v.deposit_amount || 0),
+                    slot_limit: v.preorder_slot_limit || 0,
+                    max_qty_per_user: v.max_qty_per_user || 2,
+                    sku: v.sku,
+                    media_assets: v.media_assets || [],
+                    description: v.description || "",
+                    weight_g: v.weight_g || 200, length_cm: v.length_cm || 10, width_cm: v.width_cm || 10, height_cm: v.height_cm || 10
+                })) || [{ option_name: "Standard", price: 0, deposit_amount: 0, slot_limit: 50, max_qty_per_user: 2, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }];
             }
             form.reset(formValues);
         } else if (open && !productToEdit) {
             form.reset({
                 name: "", description: "", media_items: [], type_code: "RETAIL",
 
-                variants: [{ option_name: "Standard", price: 0, deposit_amount: 0, stock_available: 10, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }],
+                variants: [{ option_name: "Standard", price: 0, deposit_amount: 0, slot_limit: 50, max_qty_per_user: 2, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }],
                 price: 0, min_value_allow: 0, max_value_allow: 0, target_margin: 20, start_date: "", end_date: "",
                 release_date: "",
             });
@@ -651,48 +699,82 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         target: 'MAIN' | 'VARIANT';
         variantIndex?: number;
         targetName?: string;
-        imageUrl?: string; // <--- ADD THIS
+        imageUrl?: string;
+        richContext?: any; // <--- Added Rich Context
     }>({ isOpen: false, target: 'MAIN' });
 
-    // 1. Open for Main Description
-    const handleOpenMainMagicWrite = () => {
-        const name = form.getValues("name");
-        const mainImage = form.getValues("media_items")?.[0]?.url; // Get Main Image
 
-        if (!name) return toast({ title: "Validation Error", description: "Please enter Product Name first!", variant: "destructive" });
 
-        setMagicWriteState({
-            isOpen: true,
-            target: 'MAIN',
-            targetName: "Main Product",
-            imageUrl: mainImage // <--- Set Main Image
-        });
-    };
+    const [generatingIndex, setGeneratingIndex] = useState<number | null>(null); // Track which variant is generating
+    const [scaleSuggestions, setScaleSuggestions] = useState<string[]>([]);
+    const [materialSuggestions, setMaterialSuggestions] = useState<string[]>([]);
 
-    // 2. Open for Variant Description
-    const handleOpenVariantMagicWrite = (index: number) => {
-        const name = form.getValues("name");
-        const vName = form.getValues(`variants.${index}.option_name`);
+    useEffect(() => {
+        const fetchAttributes = async () => {
+            try {
+                const [scales, materials] = await Promise.all([
+                    productsService.getAttributeSuggestions('scale'),
+                    productsService.getAttributeSuggestions('material')
+                ]);
+                setScaleSuggestions(scales);
+                setMaterialSuggestions(materials);
+            } catch (error) {
+                console.error("Failed to fetch attribute suggestions", error);
+            }
+        };
+        fetchAttributes();
+    }, []);
+
+
+
+    // 2. Auto-Generate for Variant Description (No Dialog)
+    const handleAutoGenerateVariantDescription = async (index: number) => {
+        const values = form.getValues();
+        const name = values.name;
+        const variant = values.variants[index];
+        const vName = variant.option_name;
 
         // Get Variant Image
-        const variantAssets = form.getValues(`variants.${index}.media_assets`);
-        const variantImage = variantAssets?.[0]?.url;
-
+        const variantImage = variant.media_assets?.[0]?.url;
         // Fallback to Main Image if variant has no image
-        const mainImage = form.getValues("media_items")?.[0]?.url;
+        const mainImage = values.media_items?.[0]?.url;
         const finalImage = variantImage || mainImage;
 
         if (!name || !vName) {
-            return toast({ title: "Validation Error", description: "Please ensure Product Name and Variant Name are filled.", variant: "destructive" });
+            return toast({ title: "Validation Error", description: "Product Name and Variant Name are required.", variant: "destructive" });
         }
 
-        setMagicWriteState({
-            isOpen: true,
-            target: 'VARIANT',
-            variantIndex: index,
-            targetName: vName,
-            imageUrl: finalImage // <--- Set Specific Variant Image
-        });
+        // Gather Rich Context
+        const brandName = brands.find(b => b.value === values.brand_id)?.label;
+        const catName = categories.find(c => c.value === values.category_id)?.label;
+        const seriesName = series.find(s => s.value === values.series_id)?.label;
+
+        setGeneratingIndex(index);
+        try {
+            const text = await productsService.generateAiDescription({
+                productName: name,
+                variantName: vName,
+                imageUrl: finalImage,
+                richContext: {
+                    brand: brandName,
+                    category: catName,
+                    series: seriesName,
+                    variants: {
+                        price: variant.price,
+                        scale: variant.scale,
+                        material: variant.material,
+                        included_items: variant.included_items
+                    }
+                }
+            });
+            form.setValue(`variants.${index}.description`, text);
+            toast({ title: "Magic Write", description: "Description generated successfully!" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Failed to generate description.", variant: "destructive" });
+        } finally {
+            setGeneratingIndex(null);
+        }
     };
 
     // 3. Handle Success from Dialog
@@ -718,7 +800,8 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
             if (data.type_code === "RETAIL") {
                 payload.variants = data.variants.map((v: any) => ({
                     option_name: v.option_name, price: v.price, sku: v.sku, media_assets: v.media_assets, description: v.description, stock_available: 0,
-                    weight_g: v.weight_g, length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm
+                    weight_g: v.weight_g, length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm,
+                    scale: v.scale, material: v.material, included_items: v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : []
                 }));
             } else if (data.type_code === "BLINDBOX") {
                 payload.blindbox = {
@@ -732,15 +815,23 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                 };
                 payload.variants = data.variants.map((v: any) => ({
                     option_name: v.option_name,
-                    price: v.price,                   // Full Price
-                    deposit_amount: v.deposit_amount, // <-- Variant Level Deposit
-                    preorder_slot_limit: v.stock_available, // <-- Form 'Slots' maps to DB 'preorder_slot_limit'
+                    price: 0,                         // Retail Price is 0
                     stock_available: 0,               // Physical Stock is 0 initially
                     sku: v.sku,
                     media_assets: v.media_assets,
                     description: v.description,
                     weight_g: v.weight_g,
-                    length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm
+                    length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm,
+                    scale: v.scale, material: v.material, included_items: v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : [],
+
+                    // NEW: Nested Pre-order Definition
+                    preorder_config: {
+                        deposit_amount: v.deposit_amount,
+                        full_price: v.price,          // Mapped from form 'price' input
+                        total_slots: v.slot_limit,    // Maps form 'slot_limit' -> DB 'total_slots'
+                        max_qty_per_user: v.max_qty_per_user,
+                        release_date: data.release_date // Sync with parent release date
+                    }
                 }));
             }
 
@@ -763,23 +854,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
     const handleClose = () => {
         onOpenChange(false);
-        setStep(1);
         if (!isEditMode) form.reset();
-    };
-
-    const nextStep = async () => {
-        let fields: any[] = [];
-        if (step === 1) fields = ["name", "description", "media_items"];
-        if (step === 2) fields = ["brand_id", "category_id", "series_id"];
-        if (step === 3) {
-            if (step === 3) {
-                if (watchedType === "RETAIL") fields = ["variants"];
-                if (watchedType === "BLINDBOX") fields = ["price", "min_value_allow", "max_value_allow", "start_date", "end_date"];
-                if (watchedType === "PREORDER") fields = ["variants", "release_date"];
-            }
-        }
-        const valid = await form.trigger(fields);
-        if (valid) setStep(s => s + 1);
     };
 
     const getBrandName = (id: number) => brands.find(b => b.value === id)?.label || "Unknown";
@@ -806,73 +881,49 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                             </DialogDescription>
                         </DialogHeader>
 
-                        {/* STEPPER */}
-                        <div className="px-6 py-4 bg-neutral-50 border-b border-t border-neutral-100 flex justify-between shrink-0">
-                            {[1, 2, 3, 4].map((s) => (
-                                <div key={s} className="flex flex-col items-center gap-1 w-1/4">
-                                    <div className={cn(
-                                        "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2",
-                                        step === s ? "bg-blue-600 text-white border-blue-600 shadow-md scale-110" :
-                                            step > s ? "bg-green-500 text-white border-green-500" : "bg-white text-neutral-300 border-neutral-200"
-                                    )}>
-                                        {step > s ? <CheckCircle2 className="w-5 h-5" /> : s}
-                                    </div>
-                                    <span className={cn("text-[10px] font-medium uppercase tracking-wider", step === s ? "text-blue-700" : "text-neutral-400")}>
-                                        {s === 1 && "Basic"} {s === 2 && "Classify"} {s === 3 && "Pricing"} {s === 4 && "Review"}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* FORM */}
-                        <div className="p-6 flex-1 overflow-y-auto">
+                        <div className="p-6 flex-1 overflow-y-auto space-y-8">
                             <Form {...form}>
-                                <form className="space-y-4">
-                                    {/* STEP 1: BASIC */}
-                                    {step === 1 && (
-                                        <div className="space-y-4 animate-in slide-in-from-right-8 fade-in duration-300">
-                                            <FormField control={form.control} name="name" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Product Name <span className="text-red-500">*</span></FormLabel>
-                                                    <FormControl><Input placeholder="Name" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                            <FormField control={form.control} name="description" render={({ field }) => (
-                                                <FormItem>
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <span className="text-xs font-semibold">Description</span>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-purple-600 hover:text-purple-700 h-5 px-1 text-[10px] gap-1"
-                                                            onClick={handleOpenMainMagicWrite}
-                                                        >
-                                                            <Sparkles className="w-3 h-3" /> AI Write
-                                                        </Button>
-                                                    </div>
-                                                    <FormControl><Textarea placeholder="Details..." {...field} className="min-h-[120px]" /></FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                            <FormField control={form.control} name="media_items" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Cover Media (Max 1 Recommended)</FormLabel>
-                                                    <FormControl>
-                                                        <VariantMediaManager value={field.value} onChange={(vals) => {
-                                                            if (vals.length > 1) { field.onChange([vals[vals.length - 1]]); } else { field.onChange(vals); }
-                                                        }} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                        </div>
-                                    )}
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 
-                                    {/* STEP 2: CLASSIFY */}
-                                    {step === 2 && (
-                                        <div className="space-y-5 animate-in slide-in-from-right-8 fade-in duration-300">
+                                    {/* SECTION 1: BASIC INFO */}
+                                    <Card>
+                                        <CardHeader className="pb-3 border-b bg-neutral-50/50 rounded-t-lg">
+                                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-neutral-900">1. Basic Information</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-4">
+                                                <FormField control={form.control} name="name" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Product Name <span className="text-red-500">*</span></FormLabel>
+                                                        <FormControl><Input placeholder="E.g. Gundam RX-78-2 Ver.Ka" {...field} className="text-base" /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+
+                                            </div>
+
+                                            <div>
+                                                <FormField control={form.control} name="media_items" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Cover Media (Max 1)</FormLabel>
+                                                        <FormControl>
+                                                            <VariantMediaManager value={field.value} onChange={(vals) => {
+                                                                if (vals.length > 1) { field.onChange([vals[vals.length - 1]]); } else { field.onChange(vals); }
+                                                            }} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* SECTION 2: CLASSIFICATION */}
+                                    <Card>
+                                        <CardHeader className="pb-3 border-b bg-neutral-50/50 rounded-t-lg">
+                                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-neutral-900">2. Classification</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <FormField control={form.control} name="brand_id" render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Brand <span className="text-red-500">*</span></FormLabel>
@@ -894,59 +945,70 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
-                                        </div>
-                                    )}
+                                        </CardContent>
+                                    </Card>
 
-                                    {/* STEP 3: LOGIC */}
-                                    {step === 3 && (
-                                        <div className="space-y-6 animate-in slide-in-from-right-8 fade-in duration-300">
+                                    {/* SECTION 3: TYPE & DETAILS */}
+                                    <Card>
+                                        <CardHeader className="pb-3 border-b bg-neutral-50/50 rounded-t-lg">
+                                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-neutral-900">3. Product Details</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-6 space-y-6">
+
                                             <FormField control={form.control} name="type_code" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Product Type</FormLabel>
+                                                <FormItem className="md:w-1/3">
+                                                    <FormLabel>Product Type <span className="text-red-500">*</span></FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditMode}>
                                                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                                         <SelectContent>
-                                                            <SelectItem value="RETAIL">Retail</SelectItem>
-                                                            <SelectItem value="BLINDBOX">Blind Box</SelectItem>
-                                                            <SelectItem value="PREORDER">Pre-order</SelectItem>
+                                                            <SelectItem value="RETAIL">Retail Product</SelectItem>
+                                                            <SelectItem value="BLINDBOX">Blind Box Set</SelectItem>
+                                                            <SelectItem value="PREORDER">Pre-order Item</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
 
-                                            <div className="p-4 border rounded-md bg-neutral-50/50 space-y-4">
+                                            {/* DYNAMIC FIELDS based on Type */}
+                                            <div className="space-y-6">
+                                                {/* RETAIL VARIANTS */}
                                                 {watchedType === "RETAIL" && (
-                                                    <div className="space-y-4">
+                                                    <div className="space-y-5">
                                                         <div className="flex justify-between items-center">
-                                                            <h4 className="text-sm font-medium">Variants</h4>
-                                                            <Button type="button" size="sm" variant="outline" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add</Button>
+                                                            <h4 className="font-semibold text-sm">Retail Variants</h4>
+                                                            <Button type="button" size="sm" variant="outline" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add Variant</Button>
                                                         </div>
-                                                        <div className="space-y-2">
+                                                        <div className="space-y-4">
                                                             {fields.map((field, index) => (
-                                                                <div key={field.id} className="grid grid-cols-12 gap-2 items-start border-b pb-4 last:border-0 last:pb-0">
-                                                                    <div className="col-span-11 grid grid-cols-12 gap-2">
-                                                                        <div className="col-span-4"><FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (<FormItem><FormControl><Input placeholder="Name" {...field} /></FormControl><FormMessage /></FormItem>)} /></div>
-                                                                        <div className="col-span-3"><FormField control={form.control} name={`variants.${index}.price`} render={({ field }) => (<FormItem><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} /></div>
+                                                                <div key={field.id} className="bg-white p-4 rounded-lg border shadow-sm relative group">
+                                                                    <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-neutral-400 hover:text-red-500" onClick={() => remove(index)}><Trash2 className="w-4 h-4" /></Button>
+
+                                                                    <div className="grid grid-cols-12 gap-4">
+                                                                        {/* Row 1: Basic Stats */}
+                                                                        <div className="col-span-4">
+                                                                            <FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Name</FormLabel><FormControl><Input placeholder="Variant Name" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                        </div>
+                                                                        <div className="col-span-3">
+                                                                            <FormField control={form.control} name={`variants.${index}.price`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Retail Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                        </div>
                                                                         <div className="col-span-3">
                                                                             <FormField control={form.control} name={`variants.${index}.sku`} render={({ field }) => (
                                                                                 <FormItem>
+                                                                                    <FormLabel className="text-xs text-neutral-500">SKU</FormLabel>
                                                                                     <div className="flex gap-1">
-                                                                                        <FormControl><Input placeholder="SKU" {...field} readOnly className="bg-neutral-100 text-neutral-500 font-mono text-xs" /></FormControl>
+                                                                                        <FormControl><Input placeholder="SKU" {...field} readOnly className="bg-neutral-100 font-mono text-xs" /></FormControl>
                                                                                         <Button type="button" variant="outline" size="icon" onClick={() => handleGenSku(index)}><RefreshCw className="w-3 h-3" /></Button>
                                                                                     </div>
                                                                                 </FormItem>
                                                                             )} />
                                                                         </div>
-                                                                        <div className="col-span-2">
+                                                                        <div className="col-span-2 flex items-end">
                                                                             <Popover>
                                                                                 <PopoverTrigger asChild>
                                                                                     <Button variant="outline" className="w-full relative overflow-hidden">
-                                                                                        <ImageIcon className="w-4 h-4 mr-1" />
-                                                                                        Media
-                                                                                        {form.watch(`variants.${index}.media_assets`)?.length > 0 && (
-                                                                                            <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full" />
-                                                                                        )}
+                                                                                        <ImageIcon className="w-4 h-4 mr-2" /> Media
+                                                                                        {form.watch(`variants.${index}.media_assets`)?.length > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full" />}
                                                                                     </Button>
                                                                                 </PopoverTrigger>
                                                                                 <PopoverContent className="w-[400px]" align="end">
@@ -956,257 +1018,255 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                                 </PopoverContent>
                                                                             </Popover>
                                                                         </div>
-                                                                    </div>
-                                                                    <div className="col-span-1 pt-8 text-right"><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="w-4 h-4 text-red-500" /></Button></div>
 
-                                                                    {/* NEW: Physical Specs Row */}
-                                                                    <div className="col-span-11 grid grid-cols-4 gap-2 mt-2">
-                                                                        <FormField control={form.control} name={`variants.${index}.weight_g`} render={({ field }) => (
-                                                                            <FormItem className="space-y-1">
-                                                                                <div className="flex justify-between"><FormLabel className="text-[10px] text-neutral-500 uppercase">Weight (g)</FormLabel></div>
-                                                                                <FormControl><Input type="number" min={0} placeholder="200" {...field} className="h-8 text-xs" /></FormControl>
-                                                                                <FormMessage />
-                                                                            </FormItem>
-                                                                        )} />
-                                                                        <FormField control={form.control} name={`variants.${index}.length_cm`} render={({ field }) => (
-                                                                            <FormItem className="space-y-1">
-                                                                                <FormLabel className="text-[10px] text-neutral-500 uppercase">Length (cm)</FormLabel>
-                                                                                <FormControl><Input type="number" min={0} placeholder="10" {...field} className="h-8 text-xs" /></FormControl>
-                                                                                <FormMessage />
-                                                                            </FormItem>
-                                                                        )} />
-                                                                        <FormField control={form.control} name={`variants.${index}.width_cm`} render={({ field }) => (
-                                                                            <FormItem className="space-y-1">
-                                                                                <FormLabel className="text-[10px] text-neutral-500 uppercase">Width (cm)</FormLabel>
-                                                                                <FormControl><Input type="number" min={0} placeholder="10" {...field} className="h-8 text-xs" /></FormControl>
-                                                                                <FormMessage />
-                                                                            </FormItem>
-                                                                        )} />
-                                                                        <FormField control={form.control} name={`variants.${index}.height_cm`} render={({ field }) => (
-                                                                            <FormItem className="space-y-1">
-                                                                                <FormLabel className="text-[10px] text-neutral-500 uppercase">Height (cm)</FormLabel>
-                                                                                <FormControl><Input type="number" min={0} placeholder="10" {...field} className="h-8 text-xs" /></FormControl>
-                                                                                <FormMessage />
-                                                                            </FormItem>
-                                                                        )} />
-                                                                    </div>
 
-                                                                    {/* NEW: Variant Description Row */}
-                                                                    <div className="col-span-12 mt-1">
-                                                                        <FormField control={form.control} name={`variants.${index}.description`} render={({ field }) => (
-                                                                            <FormItem>
-                                                                                <FormControl>
-                                                                                    <div className="relative">
-                                                                                        <Textarea
-                                                                                            placeholder="Variant details (e.g. specific features, size info)..."
-                                                                                            {...field}
-                                                                                            className="min-h-[60px] text-xs resize-none bg-white font-normal pr-10"
+
+                                                                        {/* Row 2: Physical Specs */}
+                                                                        <div className="col-span-12 grid grid-cols-4 gap-4 bg-neutral-50 p-3 rounded-md">
+                                                                            <FormField control={form.control} name={`variants.${index}.weight_g`} render={({ field }) => (<FormItem className="space-y-0"><FormLabel className="text-[10px] uppercase text-neutral-500">Weight (g)</FormLabel><FormControl><Input type="number" min={0} {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.length_cm`} render={({ field }) => (<FormItem className="space-y-0"><FormLabel className="text-[10px] uppercase text-neutral-500">Length (cm)</FormLabel><FormControl><Input type="number" min={0} {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.width_cm`} render={({ field }) => (<FormItem className="space-y-0"><FormLabel className="text-[10px] uppercase text-neutral-500">Width (cm)</FormLabel><FormControl><Input type="number" min={0} {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.height_cm`} render={({ field }) => (<FormItem className="space-y-0"><FormLabel className="text-[10px] uppercase text-neutral-500">Height (cm)</FormLabel><FormControl><Input type="number" min={0} {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
+                                                                        </div>
+
+                                                                        {/* Row 3: Extra Info */}
+                                                                        <div className="col-span-12 grid grid-cols-3 gap-4">
+                                                                            <FormField control={form.control} name={`variants.${index}.scale`} render={({ field }) => (
+                                                                                <FormItem>
+                                                                                    <FormLabel className="text-xs text-neutral-500">Scale</FormLabel>
+                                                                                    <FormControl>
+                                                                                        <SmartCreatableStringSelect
+                                                                                            options={scaleSuggestions}
+                                                                                            value={field.value}
+                                                                                            onChange={field.onChange}
+                                                                                            placeholder="1/144"
+                                                                                            label="Scale"
                                                                                         />
+                                                                                    </FormControl>
+                                                                                </FormItem>
+                                                                            )} />
+                                                                            <FormField control={form.control} name={`variants.${index}.material`} render={({ field }) => (
+                                                                                <FormItem>
+                                                                                    <FormLabel className="text-xs text-neutral-500">Material</FormLabel>
+                                                                                    <FormControl>
+                                                                                        <SmartCreatableStringSelect
+                                                                                            options={materialSuggestions}
+                                                                                            value={field.value}
+                                                                                            onChange={field.onChange}
+                                                                                            placeholder="PVC, ABS"
+                                                                                            label="Material"
+                                                                                        />
+                                                                                    </FormControl>
+                                                                                </FormItem>
+                                                                            )} />
+                                                                            <FormField control={form.control} name={`variants.${index}.included_items`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Included Items (comma separated)</FormLabel><FormControl><Input placeholder="Base, Weapon..." {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
+                                                                        </div>
+
+                                                                        {/* Variant Description (Moved to Bottom) */}
+                                                                        <div className="col-span-12 mt-2">
+                                                                            <FormField control={form.control} name={`variants.${index}.description`} render={({ field }) => (
+                                                                                <FormItem>
+                                                                                    <div className="flex justify-between items-center mb-1">
+                                                                                        <FormLabel className="text-xs text-neutral-500">Variant Description</FormLabel>
                                                                                         <Button
                                                                                             type="button"
-                                                                                            size="icon"
                                                                                             variant="ghost"
-                                                                                            className="absolute right-2 top-2 h-6 w-6 text-purple-600 hover:bg-purple-50"
-                                                                                            onClick={() => handleOpenVariantMagicWrite(index)}
+                                                                                            size="sm"
+                                                                                            className="h-6 text-purple-600 gap-1 hover:bg-purple-50"
+                                                                                            onClick={() => handleAutoGenerateVariantDescription(index)}
+                                                                                            disabled={generatingIndex === index}
                                                                                         >
-                                                                                            <Sparkles className="w-3 h-3" />
+                                                                                            {generatingIndex === index ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                                                                            <span className="text-xs">Auto-Generate</span>
                                                                                         </Button>
                                                                                     </div>
-                                                                                </FormControl>
-                                                                                <FormMessage />
-                                                                            </FormItem>
-                                                                        )} />
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {watchedType === "BLINDBOX" && (
-                                                    <div className="space-y-4">
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <FormField control={form.control} name="min_value_allow" render={({ field }) => (<FormItem><FormLabel>Min Value</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                            <FormField control={form.control} name="max_value_allow" render={({ field }) => (<FormItem><FormLabel>Max Value</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        </div>
-
-                                                        {/* Smart Tier Preview */}
-                                                        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-100 space-y-3">
-                                                            <div className="flex items-center gap-2 text-xs font-bold uppercase text-purple-700">
-                                                                <Layers className="w-3 h-3" /> Smart Tier Distribution
-                                                            </div>
-                                                            <div className="grid grid-cols-3 gap-2">
-                                                                <div className="bg-white/60 p-2 rounded-lg border border-purple-100/50">
-                                                                    <div className="text-[10px] font-bold text-neutral-500 uppercase">Common (80%)</div>
-                                                                    <div className="text-xs font-medium text-purple-900 mt-0.5">
-                                                                        {formatPrice(form.watch('min_value_allow') || 0)} - {formatPrice(form.watch('price') || 0)}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="bg-white/60 p-2 rounded-lg border border-purple-100/50">
-                                                                    <div className="text-[10px] font-bold text-blue-500 uppercase">Rare (15%)</div>
-                                                                    <div className="text-xs font-medium text-purple-900 mt-0.5">
-                                                                        &gt; {formatPrice(form.watch('price') || 0)}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="bg-white/60 p-2 rounded-lg border border-purple-100/50">
-                                                                    <div className="text-[10px] font-bold text-amber-500 uppercase">Legend (5%)</div>
-                                                                    <div className="text-xs font-medium text-purple-900 mt-0.5">
-                                                                        Max: {formatPrice(form.watch('max_value_allow') || 0)}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <FormField control={form.control} name="start_date" render={({ field }) => (<FormItem><FormLabel>Start</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                            <FormField control={form.control} name="end_date" render={({ field }) => (<FormItem><FormLabel>End</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {watchedType === "PREORDER" && (
-                                                    <div className="space-y-4">
-                                                        <FormField control={form.control} name="release_date" render={({ field }) => (<FormItem><FormLabel>Release Date</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
-
-                                                        {/* Variants Section Reuse for Preorder */}
-                                                        <div className="flex justify-between items-center">
-                                                            <h4 className="text-sm font-medium">Pre-order Versions (Full Price & Deposit)</h4>
-                                                            <Button type="button" size="sm" variant="outline" onClick={() => append({ option_name: "", price: 0, deposit_amount: 0, stock_available: 10, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add</Button>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            {fields.map((field, index) => (
-                                                                <div key={field.id} className="grid grid-cols-12 gap-2 items-start border-b pb-4 last:border-0 last:pb-0">
-                                                                    <div className="col-span-11 grid grid-cols-12 gap-2">
-                                                                        <div className="col-span-4"><FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] text-neutral-500 uppercase">Ver Name</FormLabel><FormControl><Input placeholder="Name" {...field} /></FormControl><FormMessage /></FormItem>)} /></div>
-
-                                                                        {/* Full Price & Deposit */}
-                                                                        <div className="col-span-2"><FormField control={form.control} name={`variants.${index}.price`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] text-neutral-500 uppercase">Full Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} /></div>
-                                                                        <div className="col-span-2"><FormField control={form.control} name={`variants.${index}.deposit_amount`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] text-neutral-500 uppercase">Deposit</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} /></div>
-
-                                                                        {/* Slots */}
-                                                                        <div className="col-span-2"><FormField control={form.control} name={`variants.${index}.stock_available`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] text-neutral-500 uppercase">Slots</FormLabel><FormControl><Input type="number" min={0} {...field} /></FormControl><FormMessage /></FormItem>)} /></div>
-
-                                                                        {/* Media Button */}
-                                                                        <div className="col-span-2 mt-6">
-                                                                            <Popover>
-                                                                                <PopoverTrigger asChild>
-                                                                                    <Button variant="outline" className="w-full relative overflow-hidden h-9">
-                                                                                        <ImageIcon className="w-4 h-4 mr-1" />
-                                                                                        Media
-                                                                                        {form.watch(`variants.${index}.media_assets`)?.length > 0 && (
-                                                                                            <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full" />
-                                                                                        )}
-                                                                                    </Button>
-                                                                                </PopoverTrigger>
-                                                                                <PopoverContent className="w-[400px]" align="end">
-                                                                                    <FormField control={form.control} name={`variants.${index}.media_assets`} render={({ field }) => (
-                                                                                        <VariantMediaManager value={field.value} onChange={field.onChange} />
-                                                                                    )} />
-                                                                                </PopoverContent>
-                                                                            </Popover>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="col-span-1 pt-8 text-right"><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="w-4 h-4 text-red-500" /></Button></div>
-
-                                                                    {/* SKU & Specs */}
-                                                                    <div className="col-span-11 grid grid-cols-12 gap-2 mt-2">
-                                                                        <div className="col-span-4">
-                                                                            <FormField control={form.control} name={`variants.${index}.sku`} render={({ field }) => (
-                                                                                <FormItem className="space-y-1">
-                                                                                    <div className="flex gap-1">
-                                                                                        <FormControl><Input placeholder="SKU" {...field} readOnly className="bg-neutral-100 text-neutral-500 font-mono text-xs h-8" /></FormControl>
-                                                                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGenSku(index)}><RefreshCw className="w-3 h-3" /></Button>
-                                                                                    </div>
+                                                                                    <FormControl><Textarea placeholder="Generated description based on details..." {...field} className="min-h-[80px] text-xs bg-neutral-50" /></FormControl>
+                                                                                    <FormMessage />
                                                                                 </FormItem>
                                                                             )} />
                                                                         </div>
-                                                                        <div className="col-span-8 grid grid-cols-4 gap-2">
-                                                                            {/* Specs Inputs Reuse */}
-                                                                            <FormField control={form.control} name={`variants.${index}.weight_g`} render={({ field }) => (<FormItem className="space-y-1"><FormControl><Input type="number" placeholder="W(g)" {...field} className="h-8 text-xs" /></FormControl></FormItem>)} />
-                                                                            <FormField control={form.control} name={`variants.${index}.length_cm`} render={({ field }) => (<FormItem className="space-y-1"><FormControl><Input type="number" placeholder="L(cm)" {...field} className="h-8 text-xs" /></FormControl></FormItem>)} />
-                                                                            <FormField control={form.control} name={`variants.${index}.width_cm`} render={({ field }) => (<FormItem className="space-y-1"><FormControl><Input type="number" placeholder="W(cm)" {...field} className="h-8 text-xs" /></FormControl></FormItem>)} />
-                                                                            <FormField control={form.control} name={`variants.${index}.height_cm`} render={({ field }) => (<FormItem className="space-y-1"><FormControl><Input type="number" placeholder="H(cm)" {...field} className="h-8 text-xs" /></FormControl></FormItem>)} />
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Description Row (AI Write) */}
-                                                                    <div className="col-span-12 mt-1">
-                                                                        <FormField control={form.control} name={`variants.${index}.description`} render={({ field }) => (
-                                                                            <FormItem>
-                                                                                <FormControl>
-                                                                                    <div className="relative">
-                                                                                        <Textarea
-                                                                                            placeholder="Pre-order version details..."
-                                                                                            {...field}
-                                                                                            className="min-h-[60px] text-xs resize-none bg-white font-normal pr-10"
-                                                                                        />
-                                                                                        <Button
-                                                                                            type="button"
-                                                                                            size="icon"
-                                                                                            variant="ghost"
-                                                                                            className="absolute right-2 top-2 h-6 w-6 text-purple-600 hover:bg-purple-50"
-                                                                                            onClick={() => handleOpenVariantMagicWrite(index)}
-                                                                                        >
-                                                                                            <Sparkles className="w-3 h-3" />
-                                                                                        </Button>
-                                                                                    </div>
-                                                                                </FormControl>
-                                                                                <FormMessage />
-                                                                            </FormItem>
-                                                                        )} />
                                                                     </div>
                                                                 </div>
                                                             ))}
                                                         </div>
                                                     </div>
                                                 )}
-                                            </div>
-                                        </div>
-                                    )}
 
-                                    {/* STEP 4: REVIEW */}
-                                    {step === 4 && (
-                                        <div className="space-y-6">
-                                            <div className="flex gap-4">
-                                                <div className="w-24 h-24 bg-neutral-100 rounded-md shrink-0 border overflow-hidden">
-                                                    {form.getValues("media_items")?.[0]?.url ? <img src={form.getValues("media_items")[0].url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-neutral-300"><Box className="w-8 h-8" /></div>}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-lg">{form.getValues("name")}</h4>
-                                                    <div className="flex gap-2 text-sm text-neutral-500 mt-1">
-                                                        <Badge variant="outline">{watchedType}</Badge>
-                                                        <span>{getBrandName(form.getValues("brand_id"))}</span>
+                                                {/* BLINDBOX FIELDS */}
+                                                {watchedType === "BLINDBOX" && (
+                                                    <div className="space-y-6">
+                                                        <div className="grid grid-cols-2 gap-6">
+                                                            <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Ticket Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-6 p-4 bg-white rounded-lg border">
+                                                            <FormField control={form.control} name="min_value_allow" render={({ field }) => (<FormItem><FormLabel>Min Value (Common)</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                            <FormField control={form.control} name="max_value_allow" render={({ field }) => (<FormItem><FormLabel>Max Value (Secret)</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-6">
+                                                            <FormField control={form.control} name="start_date" render={({ field }) => (<FormItem><FormLabel>Sale Start</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                            <FormField control={form.control} name="end_date" render={({ field }) => (<FormItem><FormLabel>Sale End</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                )}
+
+                                                {/* PREORDER FIELDS */}
+                                                {watchedType === "PREORDER" && (
+                                                    <div className="space-y-6">
+                                                        <FormField control={form.control} name="release_date" render={({ field }) => (<FormItem className="md:w-1/2"><FormLabel>Target Release Date</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
+
+                                                        <div className="space-y-4">
+                                                            <div className="flex justify-between items-center bg-orange-50 p-3 rounded-lg border border-orange-100">
+                                                                <div>
+                                                                    <h4 className="font-bold text-orange-900 text-sm">Pre-order Options</h4>
+                                                                    <p className="text-xs text-orange-700">Define versions (e.g. Standard, Deluxe) with separate deposit rules.</p>
+                                                                </div>
+                                                                <Button type="button" size="sm" variant="outline" className="bg-white border-orange-200 text-orange-700 hover:bg-orange-100" onClick={() => append({ option_name: "", price: 0, deposit_amount: 0, slot_limit: 50, max_qty_per_user: 2, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add Version</Button>
+                                                            </div>
+
+                                                            <div className="space-y-4">
+                                                                {fields.map((field, index) => (
+                                                                    <Card key={field.id} className="relative group overflow-hidden border border-orange-200 shadow-sm">
+                                                                        <div className="absolute top-0 left-0 w-1 h-full bg-orange-500" />
+                                                                        <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-neutral-400 hover:text-red-500 z-10" onClick={() => remove(index)}><Trash2 className="w-4 h-4" /></Button>
+
+                                                                        <CardContent className="p-4 space-y-4">
+
+                                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                                                                                <div className="md:col-span-2">
+                                                                                    <FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Version Name</FormLabel><FormControl><Input placeholder="e.g. Deluxe Edition" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                                </div>
+                                                                                <FormField control={form.control} name={`variants.${index}.sku`} render={({ field }) => (
+                                                                                    <FormItem>
+                                                                                        <FormLabel className="text-xs text-neutral-500">SKU</FormLabel>
+                                                                                        <div className="flex gap-1">
+                                                                                            <FormControl><Input placeholder="SKU" {...field} readOnly className="bg-neutral-100 font-mono text-xs" /></FormControl>
+                                                                                            <Button type="button" variant="outline" size="icon" onClick={() => handleGenSku(index)}><RefreshCw className="w-3 h-3" /></Button>
+                                                                                        </div>
+                                                                                    </FormItem>
+                                                                                )} />
+                                                                                <div className="md:col-span-1 pt-6 text-right">
+                                                                                    {/* Media Trigger */}
+                                                                                    <Popover>
+                                                                                        <PopoverTrigger asChild>
+                                                                                            <Button variant="outline" size="sm" className="relative">
+                                                                                                <ImageIcon className="w-4 h-4 mr-2" /> Media
+                                                                                                {form.watch(`variants.${index}.media_assets`)?.length > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />}
+                                                                                            </Button>
+                                                                                        </PopoverTrigger>
+                                                                                        <PopoverContent className="w-[400px]" align="end">
+                                                                                            <FormField control={form.control} name={`variants.${index}.media_assets`} render={({ field }) => (<VariantMediaManager value={field.value} onChange={field.onChange} />)} />
+                                                                                        </PopoverContent>
+                                                                                    </Popover>
+                                                                                </div>
+                                                                            </div>
+
+
+
+                                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-orange-50/50 p-4 rounded-lg border border-orange-100">
+                                                                                <FormField control={form.control} name={`variants.${index}.price`} render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold text-orange-800">Full Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                                <FormField control={form.control} name={`variants.${index}.deposit_amount`} render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold text-orange-800">Deposit</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                                <FormField control={form.control} name={`variants.${index}.slot_limit`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Total Slots</FormLabel><FormControl><Input type="number" {...field} className="font-mono" /></FormControl></FormItem>)} />
+                                                                                <FormField control={form.control} name={`variants.${index}.max_qty_per_user`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Max / User</FormLabel><FormControl><Input type="number" {...field} className="font-mono" /></FormControl></FormItem>)} />
+                                                                            </div>
+
+                                                                            <div className="grid grid-cols-3 gap-4 mt-4">
+                                                                                <FormField control={form.control} name={`variants.${index}.scale`} render={({ field }) => (
+                                                                                    <FormItem>
+                                                                                        <FormLabel className="text-xs text-neutral-500">Scale</FormLabel>
+                                                                                        <FormControl>
+                                                                                            <SmartCreatableStringSelect
+                                                                                                options={scaleSuggestions}
+                                                                                                value={field.value}
+                                                                                                onChange={field.onChange}
+                                                                                                placeholder="1/144"
+                                                                                                label="Scale"
+                                                                                            />
+                                                                                        </FormControl>
+                                                                                    </FormItem>
+                                                                                )} />
+                                                                                <FormField control={form.control} name={`variants.${index}.material`} render={({ field }) => (
+                                                                                    <FormItem>
+                                                                                        <FormLabel className="text-xs text-neutral-500">Material</FormLabel>
+                                                                                        <FormControl>
+                                                                                            <SmartCreatableStringSelect
+                                                                                                options={materialSuggestions}
+                                                                                                value={field.value}
+                                                                                                onChange={field.onChange}
+                                                                                                placeholder="PVC, ABS"
+                                                                                                label="Material"
+                                                                                            />
+                                                                                        </FormControl>
+                                                                                    </FormItem>
+                                                                                )} />
+                                                                                <FormField control={form.control} name={`variants.${index}.included_items`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Included Items</FormLabel><FormControl><Input placeholder="Base, Weapon..." {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
+                                                                            </div>
+
+
+                                                                            <div className="col-span-12 mt-2">
+                                                                                <FormField
+                                                                                    control={form.control}
+                                                                                    name={`variants.${index}.description`}
+                                                                                    render={({ field }) => (
+                                                                                        <FormItem>
+                                                                                            <div className="flex justify-between items-center mb-1">
+                                                                                                <FormLabel className="text-xs text-neutral-500">Variant Description</FormLabel>
+                                                                                                <Button
+                                                                                                    type="button"
+                                                                                                    variant="ghost"
+                                                                                                    size="sm"
+                                                                                                    className="h-6 text-purple-600 gap-1 hover:bg-purple-50"
+                                                                                                    onClick={() => handleAutoGenerateVariantDescription(index)}
+                                                                                                    disabled={generatingIndex === index}
+                                                                                                >
+                                                                                                    {generatingIndex === index ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                                                                                    <span className="text-xs">Auto-Generate</span>
+                                                                                                </Button>
+                                                                                            </div>
+                                                                                            <FormControl>
+                                                                                                <Textarea placeholder="Generated description based on details..." {...field} className="min-h-[80px] text-xs bg-neutral-50" />
+                                                                                            </FormControl>
+                                                                                            <FormMessage />
+                                                                                        </FormItem>
+                                                                                    )}
+                                                                                />
+                                                                            </div>
+                                                                        </CardContent>
+                                                                    </Card>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="p-4 bg-green-50 text-green-800 rounded-md border border-green-200">
-                                                Everything looks good! Ready to create product.
-                                            </div>
-                                        </div>
-                                    )}
+
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* FOOTER ACTIONS */}
+                                    <div className="p-4 border-t bg-neutral-50 flex justify-end gap-3 shrink-0">
+                                        <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+                                        <Button type="button" onClick={form.handleSubmit(onSubmit)} disabled={loading} className="min-w-[120px]">
+                                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isEditMode ? "Update Product" : "Create Product")}
+                                        </Button>
+                                    </div>
                                 </form>
                             </Form>
-                        </div>
-                        <div className="p-4 border-t bg-neutral-50 flex justify-between shrink-0">
-                            <Button type="button" variant="ghost" onClick={() => step > 1 ? setStep(s => s - 1) : handleClose()}>Back</Button>
-                            <Button type="button" onClick={step < 4 ? nextStep : form.handleSubmit(onSubmit)} disabled={loading}>
-                                {step < 4 ? <><span className="mr-2">Next</span> <ChevronRight className="w-4 h-4" /></> : <>{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} {isEditMode ? "Update" : "Create"}</>}
-                            </Button>
+
+
+                            {/* AI DIALOG - Main Form Scope */}
+                            <MagicWriteDialog
+                                open={magicWriteState.isOpen}
+                                onOpenChange={(open) => setMagicWriteState(prev => ({ ...prev, isOpen: open }))}
+                                productName={form.watch("name") || ""}
+                                targetName={magicWriteState.targetName}
+                                imageUrl={magicWriteState.imageUrl}
+                                richContext={magicWriteState.richContext}
+                                onSuccess={handleMagicWriteSuccess}
+                            />
                         </div>
                     </>
                 )}
-
-                {/* AI DIALOG - Main Form Scope */}
-                <MagicWriteDialog
-                    open={magicWriteState.isOpen}
-                    onOpenChange={(open) => setMagicWriteState(prev => ({ ...prev, isOpen: open }))}
-                    productName={form.watch("name") || ""}
-                    targetName={magicWriteState.targetName}
-                    imageUrl={magicWriteState.imageUrl} // <--- Use state instead of calculating it here
-                    onSuccess={handleMagicWriteSuccess}
-                />
-
             </DialogContent>
-        </Dialog>
+        </Dialog >
     );
 }

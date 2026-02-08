@@ -16,10 +16,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import ConfirmStatusDialog from "@/features/admin/components/ConfirmStatusDialog";
 import { userService } from "@/services/user.service";
-import { useAuthStore } from "@/store/useAuthStore";
-
 import CustomerDetailSheet from "@/features/admin/components/CustomerDetailSheet";
-import BanUserDialog from "@/features/admin/components/BanUserDialog";
 
 export default function CustomerTab() {
     const { toast } = useToast();
@@ -30,7 +27,6 @@ export default function CustomerTab() {
     const [totalPages, setTotalPages] = useState(1);
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [statusConfirm, setStatusConfirm] = useState<{ id: number, status: string } | null>(null);
-    const [banDialog, setBanDialog] = useState<{ id: number, name: string } | null>(null);
 
     const fetchCustomers = async () => {
         setIsLoading(true);
@@ -138,15 +134,7 @@ export default function CustomerTab() {
                                                     </DropdownMenuItem>
                                                 )}
 
-                                                {/* Ban Action */}
-                                                {cust.status_code !== 'BANNED' && (
-                                                    <DropdownMenuItem
-                                                        className="text-red-600 font-medium"
-                                                        onClick={() => setBanDialog({ id: cust.user_id, name: cust.full_name })}
-                                                    >
-                                                        Ban Permanently
-                                                    </DropdownMenuItem>
-                                                )}
+
 
                                                 {/* Unban Action (Manual Only) */}
                                                 {cust.status_code === 'BANNED' && (

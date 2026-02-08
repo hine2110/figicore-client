@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import { axiosInstance } from '@/lib/axiosInstance';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
 
 interface Timesheet {
     timesheet_id: number;
@@ -44,7 +43,6 @@ interface ScheduleSummary {
 }
 
 export default function WarehouseSchedule() {
-    const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
     const [schedules, setSchedules] = useState<WorkSchedule[]>([]);

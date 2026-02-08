@@ -4,7 +4,6 @@ import CustomerLayout from '@/layouts/CustomerLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-
     Package,
     Minus,
     Plus,
@@ -29,7 +28,7 @@ export default function ProductDetail() {
     const [selectedImage, setSelectedImage] = useState(0);
     const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
     const [quantity, setQuantity] = useState(1);
-    const [paymentMode, setPaymentMode] = useState<'DEPOSIT' | 'FULL'>('DEPOSIT');
+    const [paymentMode, setPaymentMode] = useState<'DEPOSIT' | 'FULL_PAYMENT'>('DEPOSIT');
     const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
 
     useEffect(() => {
@@ -130,6 +129,9 @@ export default function ProductDetail() {
 
     if (!product) return null;
 
+    // --- ADAPTIVE THEME LOGIC ---
+    const isPreorder = product.type_code === 'PREORDER';
+
     // Determine displayed price
     let displayPrice = 'Contact';
     // Removed originalPrice logic
@@ -141,12 +143,15 @@ export default function ProductDetail() {
             displayPrice = formatPrice(Number(product.product_variants[0].price));
         }
     } else if (product.type_code === 'PREORDER') {
-        // Use selected variant if available, otherwise fallback to first variant or preorder config
+        // Use selected variant if available, otherwise fallback to first variant
         const variant = selectedVariant || product.product_variants?.[0];
-        // For variants: price is full price, deposit_amount is deposit
-        // Fallback to product_preorders only if no variants (shouldn't happen for valid products)
-        const dep = Number(variant?.deposit_amount || product.product_preorders?.deposit_amount || 0);
-        const full = Number(variant?.price || product.product_preorders?.full_price || 0);
+
+        // Correctly access nested product_preorder_configs
+        // Use optional chaining as retail variants won't have this, but type_code check protects us
+        const preDef = variant?.product_preorder_configs;
+
+        const dep = Number(preDef?.deposit_amount || 0);
+        const full = Number(preDef?.full_price || 0);
 
         if (paymentMode === 'DEPOSIT') {
             displayPrice = formatPrice(dep);
@@ -180,13 +185,19 @@ export default function ProductDetail() {
         }
 
         if (product.type_code === 'PREORDER') {
-            const slots = product.product_variants?.[0]?.stock_available || 0;
+            const config = product.product_variants?.[0]?.product_preorder_configs;
+            const slots = (config?.total_slots || 0) - (config?.sold_slots || 0);
+
             if (slots <= 0) return null;
 
             return (
                 <div className="text-sm font-medium">
-                    <span className="text-blue-600 font-bold block">Open for Pre-order</span>
-                    {slots} slots remaining
+                    <span className={isPreorder ? "text-amber-500 font-bold font-mono block uppercase" : "text-blue-600 font-bold block"}>
+                        {isPreorder ? '// OPEN FOR PRE-ORDER' : 'Open for Pre-order'}
+                    </span>
+                    <span className={isPreorder ? "text-slate-400 font-mono text-xs" : ""}>
+                        {slots} slots remaining
+                    </span>
                 </div>
             );
         }
@@ -213,69 +224,38 @@ export default function ProductDetail() {
     const handleAddToCart = async () => {
         if (!product) return;
 
-        // Define types for payload components to avoid TS errors
-        let price = 0;
-        let variantId: number | null | undefined = null;
-        let sku: string | null | undefined = null;
-        let finalId = product.product_id.toString();
-
-        let nameSuffix = '';
-
-        if (product.type_code === 'RETAIL') {
-            if (!selectedVariant) {
-                toast({
-                    variant: "destructive",
-                    title: "Selection Required",
-                    description: "Please select a model/variant before adding to cart.",
-                });
-                return;
-            }
-            price = Number(selectedVariant.price);
-            variantId = selectedVariant.variant_id;
-            sku = selectedVariant.sku;
-            finalId += variantId ? `-${variantId}` : '';
-        } else if (product.type_code === 'PREORDER') {
-            // Auto-select first variant for stock tracking
-            if (product.product_variants?.length > 0) {
-                variantId = product.product_variants[0].variant_id;
-            }
-
-            if (paymentMode === 'DEPOSIT') {
-                price = Number(product.product_preorders?.deposit_amount || 0);
-                finalId += '-DEP';
-                nameSuffix = ' (Deposit Only)';
-            } else {
-                price = Number(product.product_preorders?.full_price || 0);
-                finalId += '-FULL';
-                nameSuffix = ' (Full Payment)';
-            }
-        } else if (product.type_code === 'BLINDBOX') {
-            price = Number(product.product_blindboxes?.price || 0);
-        }
-
-        const payload = {
-            id: finalId,
-            productId: product.product_id.toString(),
-            name: product.name + (sku ? ` (${sku})` : '') + nameSuffix,
-            price: price,
-            quantity: quantity,
-            image: product.media_urls?.[0] || '',
-            variantId: variantId
-        };
-
-        console.log("Adding to cart:", payload);
         try {
-            await useCartStore.getState().addToCart(payload);
+            // Use store's addToCart directly
+            await useCartStore.getState().addToCart({
+                id: Number(product.product_id), // <--- EXPLICIT CASTING
+                name: product.name,
+                price: Number((product as any).price || 0), // Base price if needed, but store logic handles effective price
+                // Map image correctly (handle string or array)
+                image: Array.isArray(product.media_urls) ? product.media_urls[0] : (typeof product.media_urls === 'string' ? product.media_urls : ''),
+                variantId: selectedVariant?.variant_id ? Number(selectedVariant.variant_id) : undefined,
+                quantity: quantity,
+                type_code: product.type_code,
+                // Pre-order fields - PRIORITIZE VARIANT CONFIG
+                deposit_amount: Number(selectedVariant?.product_preorder_configs?.deposit_amount || 0),
+                full_price: Number(selectedVariant?.product_preorder_configs?.full_price || 0),
+                // Payment Mode
+                paymentOption: paymentMode,
+                // Limits
+                max_qty_per_user: Number(selectedVariant?.product_preorder_configs?.max_qty_per_user || 0) || undefined
+            });
+
             toast({
                 title: "Added to cart",
                 description: `${quantity} x ${product.name} has been added to your cart.`,
-                className: "bg-white/80 backdrop-blur-md border border-white/40 shadow-lg rounded-2xl",
+                className: isPreorder
+                    ? "bg-zinc-900 border border-white/10 text-white backdrop-blur-md"
+                    : "bg-white/80 backdrop-blur-md border border-white/40 shadow-lg rounded-2xl",
             });
         } catch (error: any) {
             toast({
                 variant: "destructive",
-                title: "Failed to add",
-                description: error.response?.data?.message || "Out of stock or server error"
+                title: "Cannot add item",
+                description: error.message || "An error occurred while adding to cart.",
             });
         }
     };
@@ -287,33 +267,46 @@ export default function ProductDetail() {
 
     return (
         <CustomerLayout activePage="products">
-            <div className="min-h-screen bg-[#F2F2F7] pb-20 font-sans relative overflow-hidden">
-                {/* Ambient Background */}
-                {/* Ambient Background */}
-                {/* Ambient Background - Optimized for Low End */}
-                <div className="fixed inset-0 pointer-events-none z-0 opacity-50">
-                    <div className="absolute top-[-10%] right-[-5%] w-[60%] h-[60%] ambient-glow-blue rounded-full animate-breathe gpu-accelerated blob-optimized" />
-                    <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] ambient-glow-purple rounded-full animate-breathe gpu-accelerated blob-optimized" />
-                </div>
-                {/* Noise overlay removed for performance */}
+            <div className={cn(
+                "min-h-screen pb-20 font-sans relative overflow-hidden transition-colors duration-500",
+                isPreorder ? "bg-slate-950" : "bg-[#F2F2F7]"
+            )}>
+
+                {/* Ambient Background - Adaptive */}
+                {isPreorder ? (
+                    <div className="fixed inset-0 pointer-events-none z-0">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[500px] bg-amber-500/5 blur-[120px] rounded-full opacity-50" />
+                    </div>
+                ) : (
+                    <div className="fixed inset-0 pointer-events-none z-0 opacity-50">
+                        <div className="absolute top-[-10%] right-[-5%] w-[60%] h-[60%] ambient-glow-blue rounded-full animate-breathe gpu-accelerated blob-optimized" />
+                        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] ambient-glow-purple rounded-full animate-breathe gpu-accelerated blob-optimized" />
+                    </div>
+                )}
+
 
                 <div className="container mx-auto px-4 py-8 relative z-10 max-w-7xl">
 
-                    {/* Breadcrumbs (Glass Pill) */}
-                    <div className="flex items-center gap-2 text-sm text-slate-500 mb-8 overflow-x-auto no-scrollbar">
-                        <Link to="/customer/home" className="hover:text-slate-900 transition-colors whitespace-nowrap">Home</Link>
-                        <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
+                    {/* Breadcrumbs (Adaptive Glass Pill) */}
+                    <div className="flex items-center gap-2 text-sm mb-8 overflow-x-auto no-scrollbar">
+                        <Link to="/customer/home" className={cn("transition-colors whitespace-nowrap", isPreorder ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900")}>Home</Link>
+                        <ChevronRight className={cn("w-4 h-4 flex-shrink-0", isPreorder ? "text-white/20" : "text-slate-300")} />
                         <Link to={
                             product.type_code === 'BLINDBOX' ? '/customer/blindbox' :
                                 product.type_code === 'PREORDER' ? '/customer/preorder' :
                                     '/customer/retail'
-                        } className="hover:text-slate-900 transition-colors whitespace-nowrap">
+                        } className={cn("transition-colors whitespace-nowrap", isPreorder ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900")}>
                             {product.type_code === 'BLINDBOX' ? 'Blind Box' :
                                 product.type_code === 'PREORDER' ? 'Pre-Order' :
                                     'Retail Shop'}
                         </Link>
-                        <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
-                        <span className="text-slate-900 font-medium truncate bg-white/50 px-3 py-1 rounded-full backdrop-blur-md border border-white/40 shadow-sm">
+                        <ChevronRight className={cn("w-4 h-4 flex-shrink-0", isPreorder ? "text-white/20" : "text-slate-300")} />
+                        <span className={cn(
+                            "font-medium truncate px-3 py-1 rounded-full backdrop-blur-md shadow-sm border",
+                            isPreorder
+                                ? "text-white bg-white/5 border-white/10"
+                                : "text-slate-900 bg-white/50 border-white/40"
+                        )}>
                             {product.name}
                         </span>
                     </div>
@@ -321,9 +314,12 @@ export default function ProductDetail() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
 
 
-                        {/* LEFT: Media Gallery (Glass Box) */}
+                        {/* LEFT: Media Gallery (Adaptive Glass Box) */}
                         <div className="space-y-6 lg:sticky lg:top-24">
-                            <div className="aspect-square relative overflow-hidden rounded-[2.5rem] bg-white/60 backdrop-blur-xl border border-white/40 shadow-[0_24px_64px_rgba(0,0,0,0.06)] group gpu-layer">
+                            <div className={cn(
+                                "aspect-square relative overflow-hidden rounded-[2.5rem] backdrop-blur-xl border shadow-[0_24px_64px_rgba(0,0,0,0.06)] group gpu-layer transition-colors duration-500",
+                                isPreorder ? "bg-zinc-900/40 border-white/5" : "bg-white/60 border-white/40"
+                            )}>
                                 {(() => {
                                     // 1. Determine local active media list
                                     let activeMedia: { url: string, type: 'IMAGE' | 'VIDEO' }[] = [];
@@ -433,9 +429,11 @@ export default function ProductDetail() {
                                             <div className="absolute top-6 left-6 pointer-events-none">
                                                 <Badge className={cn(
                                                     "backdrop-blur-md border-white/20 px-4 py-1.5 text-xs font-bold tracking-widest shadow-lg",
-                                                    product.status_code === 'IN_STOCK' ? "bg-emerald-500/90 hover:bg-emerald-600 text-white" : "bg-slate-900/90 text-white"
+                                                    isPreorder
+                                                        ? "bg-amber-500 text-black border-0 rounded-none font-mono"
+                                                        : (product.status_code === 'IN_STOCK' ? "bg-emerald-500/90 hover:bg-emerald-600 text-white" : "bg-slate-900/90 text-white")
                                                 )}>
-                                                    {product.status_code?.replace('_', ' ')}
+                                                    {isPreorder ? 'PRE-ORDER' : product.status_code?.replace('_', ' ')}
                                                 </Badge>
                                             </div>
                                         </>
@@ -499,7 +497,7 @@ export default function ProductDetail() {
                                                 className={cn(
                                                     "relative w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 transition-all duration-300 border-2",
                                                     selectedImage === idx
-                                                        ? "ring-4 ring-slate-900/20 border-white scale-110 shadow-lg translate-y-[-4px]"
+                                                        ? (isPreorder ? "ring-2 ring-amber-500 border-transparent shadow-[0_0_15px_rgba(245,158,11,0.5)] scale-110" : "ring-4 ring-slate-900/20 border-white scale-110 shadow-lg translate-y-[-4px]")
                                                         : "border-transparent opacity-60 hover:opacity-100 hover:scale-105 hover:bg-white/40"
                                                 )}
                                             >
@@ -527,26 +525,38 @@ export default function ProductDetail() {
                             {/* Header */}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-black tracking-[0.2em] text-blue-600 uppercase">
+                                    <h3 className={cn(
+                                        "text-sm font-black tracking-[0.2em] uppercase",
+                                        isPreorder ? "text-amber-500 font-mono" : "text-blue-600"
+                                    )}>
                                         {product.brands?.name || 'FigiCore'}
                                     </h3>
                                     {/* Share/Like Actions could go here */}
                                 </div>
-                                <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight tracking-tight">
+                                <h1 className={cn(
+                                    "text-4xl md:text-5xl font-extrabold leading-tight tracking-tight",
+                                    isPreorder ? "text-white uppercase font-sans" : "text-slate-900"
+                                )}>
                                     {product.name}
                                 </h1>
                                 {/* Price Tag */}
                                 <div className="flex items-baseline gap-4 pt-2">
-                                    <span className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
+                                    <span className={cn(
+                                        "text-4xl md:text-5xl font-black tracking-tight",
+                                        isPreorder ? "text-amber-500 font-mono" : "text-slate-900"
+                                    )}>
                                         {displayPrice}
                                     </span>
                                     {product.type_code === 'PREORDER' && (
-                                        <span className="text-slate-500 font-medium text-lg">
+                                        <span className={cn("font-medium text-lg", isPreorder ? "text-slate-400 font-mono" : "text-slate-500")}>
                                             {paymentMode === 'DEPOSIT' ? '(Deposit)' : '(Full Price)'}
                                         </span>
                                     )}
                                 </div>
-                                <div className="prose prose-slate prose-sm max-w-none text-slate-600 leading-relaxed font-normal transition-all duration-300">
+                                <div className={cn(
+                                    "prose prose-sm max-w-none leading-relaxed font-normal transition-all duration-300",
+                                    isPreorder ? "prose-invert text-slate-400" : "prose-slate text-slate-600"
+                                )}>
                                     {(selectedVariant?.description || product.description || "Experience the finest quality collectibles with FigiCore.")
                                         .split('\n')
                                         .map((line, i) => (
@@ -555,15 +565,23 @@ export default function ProductDetail() {
                                 </div>
                             </div>
 
-                            <Separator className="bg-slate-200" />
+                            <Separator className={isPreorder ? "bg-white/10" : "bg-slate-200"} />
 
                             {/* Selectors - Glass Effect Restored */}
-                            <div className="space-y-8 backdrop-blur-2xl bg-white/50 border border-white/60 p-6 md:p-8 rounded-[2rem] shadow-[0_8px_40px_rgba(0,0,0,0.04)]">
+                            <div className={cn(
+                                "space-y-8 backdrop-blur-2xl p-6 md:p-8 rounded-[2rem] transition-colors duration-500",
+                                isPreorder
+                                    ? "bg-zinc-900/40 border border-white/5"
+                                    : "bg-white/50 border border-white/60 shadow-[0_8px_40px_rgba(0,0,0,0.04)]"
+                            )}>
 
                                 {/* PRE-ORDER PAYMENT SELECTOR */}
                                 {product.type_code === 'PREORDER' && selectedVariant && (
                                     <div className="space-y-4">
-                                        <span className="text-xs font-bold text-slate-900 uppercase tracking-widest">
+                                        <span className={cn(
+                                            "text-xs font-bold uppercase tracking-widest",
+                                            isPreorder ? "text-amber-500 font-mono" : "text-slate-900"
+                                        )}>
                                             Payment Option
                                         </span>
                                         <div className="grid grid-cols-2 gap-3">
@@ -572,24 +590,32 @@ export default function ProductDetail() {
                                                 className={cn(
                                                     "px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border flex flex-col items-center gap-1",
                                                     paymentMode === 'DEPOSIT'
-                                                        ? "bg-slate-900 text-white border-slate-900 shadow-lg ring-1 ring-slate-900 ring-offset-2"
-                                                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-900"
+                                                        ? (isPreorder
+                                                            ? "bg-amber-500 text-black border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                                                            : "bg-slate-900 text-white border-slate-900 shadow-lg ring-1 ring-slate-900 ring-offset-2")
+                                                        : (isPreorder
+                                                            ? "bg-zinc-900 text-slate-400 border-white/10 hover:border-amber-500/50 hover:text-white"
+                                                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-900")
                                                 )}
                                             >
-                                                <span className="font-bold">Deposit</span>
-                                                <span className="opacity-90">{formatPrice(Number(selectedVariant.deposit_amount || 0))}</span>
+                                                <span className={cn("font-bold", isPreorder && "font-mono uppercase")}>Deposit</span>
+                                                <span className={cn("opacity-90", isPreorder && "font-mono")}>{formatPrice(Number(selectedVariant.product_preorder_configs?.deposit_amount || 0))}</span>
                                             </button>
                                             <button
-                                                onClick={() => setPaymentMode('FULL')}
+                                                onClick={() => setPaymentMode('FULL_PAYMENT')}
                                                 className={cn(
                                                     "px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border flex flex-col items-center gap-1",
-                                                    paymentMode === 'FULL'
-                                                        ? "bg-slate-900 text-white border-slate-900 shadow-lg ring-1 ring-slate-900 ring-offset-2"
-                                                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-900"
+                                                    paymentMode === 'FULL_PAYMENT'
+                                                        ? (isPreorder
+                                                            ? "bg-amber-500 text-black border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                                                            : "bg-slate-900 text-white border-slate-900 shadow-lg ring-1 ring-slate-900 ring-offset-2")
+                                                        : (isPreorder
+                                                            ? "bg-zinc-900 text-slate-400 border-white/10 hover:border-amber-500/50 hover:text-white"
+                                                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-900")
                                                 )}
                                             >
-                                                <span className="font-bold">Full Payment</span>
-                                                <span className="opacity-90">{formatPrice(Number(selectedVariant.price || 0))}</span>
+                                                <span className={cn("font-bold", isPreorder && "font-mono uppercase")}>Full Payment</span>
+                                                <span className={cn("opacity-90", isPreorder && "font-mono")}>{formatPrice(Number(selectedVariant.product_preorder_configs?.full_price || 0))}</span>
                                             </button>
                                         </div>
                                     </div>
@@ -598,7 +624,10 @@ export default function ProductDetail() {
                                 {/* Variants: Retail & Preorder */}
                                 {(product.type_code === 'RETAIL' || product.type_code === 'PREORDER') && product.product_variants && product.product_variants.length > 0 && (
                                     <div className="space-y-4">
-                                        <span className="text-xs font-bold text-slate-900 uppercase tracking-widest">
+                                        <span className={cn(
+                                            "text-xs font-bold uppercase tracking-widest",
+                                            isPreorder ? "text-amber-500 font-mono" : "text-slate-900"
+                                        )}>
                                             {product.type_code === 'PREORDER' ? 'Version / Scale' : 'Model'}
                                         </span>
                                         <div className="flex flex-wrap gap-3">
@@ -612,13 +641,17 @@ export default function ProductDetail() {
                                                     className={cn(
                                                         "px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border",
                                                         selectedVariant?.variant_id === variant.variant_id
-                                                            ? "bg-slate-900 text-white border-slate-900 shadow-lg ring-1 ring-slate-900 ring-offset-2"
-                                                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-900"
+                                                            ? (isPreorder
+                                                                ? "bg-amber-500 text-black border-amber-500"
+                                                                : "bg-slate-900 text-white border-slate-900 shadow-lg ring-1 ring-slate-900 ring-offset-2")
+                                                            : (isPreorder
+                                                                ? "bg-zinc-900/50 text-slate-300 border-white/10 hover:border-amber-500/50 hover:text-white"
+                                                                : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-900")
                                                     )}
                                                 >
-                                                    {product.type_code === 'PREORDER' ? variant.option_name : variant.sku}
+                                                    {variant.option_name}
                                                     {variant.stock_available < 5 && variant.stock_available > 0 && (
-                                                        <span className="ml-2 text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">Low Stock</span>
+                                                        <span className={cn("ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold", isPreorder ? "bg-amber-900/50 text-amber-500" : "bg-orange-100 text-orange-700")}>Low Stock</span>
                                                     )}
                                                 </button>
                                             ))}
@@ -630,23 +663,28 @@ export default function ProductDetail() {
                                 <div className="space-y-6 pt-2">
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-6">
                                         {/* Quantity Stepper */}
-                                        <div className="inline-flex items-center border border-slate-200 rounded-lg p-1 bg-white shadow-sm w-fit">
+                                        <div className={cn(
+                                            "inline-flex items-center rounded-lg p-1 shadow-sm w-fit border",
+                                            isPreorder
+                                                ? "bg-zinc-900/80 border-white/10"
+                                                : "bg-white border-slate-200"
+                                        )}>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleQuantityChange(-1)}
                                                 disabled={quantity <= 1}
-                                                className="h-9 w-9 rounded-md hover:bg-slate-100 text-slate-600"
+                                                className={cn("h-9 w-9 rounded-md", isPreorder ? "text-slate-400 hover:bg-white/10 hover:text-white" : "hover:bg-slate-100 text-slate-600")}
                                             >
                                                 <Minus className="w-3.5 h-3.5" />
                                             </Button>
-                                            <span className="w-10 text-center font-semibold text-slate-900 text-base tabular-nums">{quantity}</span>
+                                            <span className={cn("w-10 text-center font-semibold text-base tabular-nums", isPreorder ? "text-white font-mono" : "text-slate-900")}>{quantity}</span>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleQuantityChange(1)}
                                                 disabled={quantity >= maxStock}
-                                                className="h-9 w-9 rounded-md hover:bg-slate-100 text-slate-600"
+                                                className={cn("h-9 w-9 rounded-md", isPreorder ? "text-slate-400 hover:bg-white/10 hover:text-white" : "hover:bg-slate-100 text-slate-600")}
                                             >
                                                 <Plus className="w-3.5 h-3.5" />
                                             </Button>
@@ -655,70 +693,108 @@ export default function ProductDetail() {
                                         {renderStockStatus()}
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <Button
-                                            size="lg"
-                                            disabled={
-                                                (product.type_code === 'RETAIL' && (!selectedVariant || selectedVariant.stock_available <= 0)) ||
-                                                (product.type_code === 'PREORDER' && (!selectedVariant || (selectedVariant.stock_available || 0) <= 0)) ||
-                                                (product.type_code !== 'RETAIL' && product.type_code !== 'PREORDER' && product.status_code !== 'ACTIVE')
-                                            }
-                                            className="h-14 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-base tracking-wide shadow-xl shadow-slate-900/10 hover:shadow-slate-900/20 hover:-translate-y-0.5 transition-all duration-300 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none disabled:translate-y-0"
-                                            onClick={handleAddToCart}
-                                        >
-                                            {((product.type_code === 'RETAIL' || product.type_code === 'PREORDER') && selectedVariant && (selectedVariant.stock_available || 0) <= 0) ? (
-                                                'Out of Stock'
-                                            ) : (
-                                                <>
+                                    <div className={cn("grid gap-4", isPreorder ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
+                                        {isPreorder ? (
+                                            <>
+                                                {/* PRE-ORDER: Add to Cart (Amber Outline) */}
+                                                <Button
+                                                    size="lg"
+                                                    variant="outline"
+                                                    disabled={!selectedVariant} // Pre-order: Enable button even if stock=0 (slots managed by BE)
+                                                    onClick={handleAddToCart}
+                                                    className="h-14 rounded-xl font-bold font-mono uppercase tracking-wide border-amber-500 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 bg-transparent transition-all"
+                                                >
                                                     Add to Cart
-                                                </>
-                                            )}
-                                        </Button>
-                                        <Button
-                                            size="lg"
-                                            variant="outline"
-                                            disabled={
-                                                (product.type_code === 'RETAIL' && (!selectedVariant || selectedVariant.stock_available <= 0)) ||
-                                                (product.type_code === 'PREORDER' && (!selectedVariant || (selectedVariant.stock_available || 0) <= 0)) ||
-                                                (product.type_code !== 'RETAIL' && product.type_code !== 'PREORDER' && product.status_code !== 'ACTIVE')
-                                            }
-                                            className="h-14 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-900 font-bold text-base tracking-wide transition-all hover:border-slate-300 disabled:opacity-50"
-                                            onClick={handleBuyNow}
-                                        >
-                                            Buy Now
-                                        </Button>
+                                                </Button>
+
+                                                {/* PRE-ORDER: Buy Now (Amber Solid) */}
+                                                <Button
+                                                    size="lg"
+                                                    onClick={handleBuyNow}
+                                                    disabled={!selectedVariant} // Pre-order: Enable button even if stock=0
+                                                    className="w-full h-14 rounded-xl font-bold font-mono text-lg uppercase tracking-[0.1em] bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black shadow-[0_0_30px_-5px_rgba(245,158,11,0.4)] hover:shadow-[0_0_50px_-5px_rgba(245,158,11,0.6)] border-0 transition-all duration-300 hover:scale-[1.02]"
+                                                >
+                                                    Pre-Order Now
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {/* RETAIL: Add to Cart (Solid Dark) */}
+                                                <Button
+                                                    size="lg"
+                                                    disabled={
+                                                        (product.type_code === 'RETAIL' && (!selectedVariant || selectedVariant.stock_available <= 0)) ||
+                                                        (product.type_code !== 'RETAIL' && product.status_code !== 'ACTIVE')
+                                                    }
+                                                    className="h-14 rounded-xl font-bold text-base tracking-wide shadow-xl bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/10 hover:shadow-slate-900/20 hover:-translate-y-0.5 transition-all"
+                                                    onClick={handleAddToCart}
+                                                >
+                                                    {((product.type_code === 'RETAIL') && selectedVariant && (selectedVariant.stock_available || 0) <= 0) ? (
+                                                        'Out of Stock'
+                                                    ) : (
+                                                        'Add to Cart'
+                                                    )}
+                                                </Button>
+                                                {/* RETAIL: Buy Now (Outline Light) */}
+                                                <Button
+                                                    size="lg"
+                                                    variant="outline"
+                                                    disabled={
+                                                        (product.type_code === 'RETAIL' && (!selectedVariant || selectedVariant.stock_available <= 0)) ||
+                                                        (product.type_code !== 'RETAIL' && product.status_code !== 'ACTIVE')
+                                                    }
+                                                    className="h-14 rounded-xl font-bold text-base tracking-wide border-slate-200 bg-white hover:bg-slate-50 text-slate-900 hover:border-slate-300 transition-all"
+                                                    onClick={handleBuyNow}
+                                                >
+                                                    Buy Now
+                                                </Button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Trust Signals - Minimalist */}
-                            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-100">
+                            {/* Trust Signals - Adaptive */}
+                            <div className={cn("grid grid-cols-3 gap-4 pt-6 border-t", isPreorder ? "border-white/10" : "border-slate-100")}>
                                 {[
                                     { icon: ShieldCheck, label: "100% Authentic" },
                                     { icon: Truck, label: "Fast Shipping" },
                                     { icon: RefreshCcw, label: "Easy Returns" }
                                 ].map((item, i) => (
                                     <div key={i} className="flex flex-col items-center justify-center gap-2 text-center group cursor-default">
-                                        <div className="p-2.5 rounded-full bg-slate-50 text-slate-400 group-hover:text-slate-900 group-hover:bg-slate-100 transition-colors duration-300">
+                                        <div className={cn(
+                                            "p-2.5 rounded-full transition-colors duration-300",
+                                            isPreorder
+                                                ? "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-amber-500"
+                                                : "bg-slate-50 text-slate-400 group-hover:text-slate-900 group-hover:bg-slate-100"
+                                        )}>
                                             <item.icon className="w-5 h-5" />
                                         </div>
-                                        <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-slate-600 transition-colors">{item.label}</span>
+                                        <span className={cn(
+                                            "text-[10px] uppercase font-bold tracking-wider transition-colors",
+                                            isPreorder ? "text-slate-500 group-hover:text-slate-300" : "text-slate-400 group-hover:text-slate-600"
+                                        )}>{item.label}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Related Products Section */}
+                    {/* Related Products Section (Adaptive) */}
                     {relatedProducts.length > 0 && (
                         <div className="mt-32 relative z-10">
                             <div className="flex items-center justify-between mb-10">
-                                <h2 className="text-3xl font-bold text-slate-900 tracking-tight">You Might Also Like</h2>
+                                <h2 className={cn("text-3xl font-bold tracking-tight", isPreorder ? "text-white font-sans" : "text-slate-900")}>
+                                    {isPreorder ? 'Classified Recommendations' : 'You Might Also Like'}
+                                </h2>
                                 <Link to={
                                     product.type_code === 'BLINDBOX' ? '/customer/blindbox' :
                                         product.type_code === 'PREORDER' ? '/customer/preorder' :
                                             '/customer/retail'
-                                } className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-1">
+                                } className={cn(
+                                    "text-sm font-medium transition-colors flex items-center gap-1",
+                                    isPreorder ? "text-amber-500 hover:text-amber-400 font-mono uppercase" : "text-slate-500 hover:text-blue-600"
+                                )}>
                                     View Collection <ChevronRight className="w-4 h-4" />
                                 </Link>
                             </div>
@@ -730,13 +806,21 @@ export default function ProductDetail() {
                                         className="group relative flex flex-col gap-4 cursor-pointer"
                                         onClick={() => navigate(`/customer/product/${item.product_id}`)}
                                     >
-                                        {/* Glass Card Image */}
-                                        <div className="aspect-[4/5] relative overflow-hidden rounded-[2rem] bg-white/40 backdrop-blur-md shadow-sm border border-white/30 transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] group-hover:-translate-y-2 group-hover:bg-white/60">
+                                        {/* Glass Card Image - Adaptive */}
+                                        <div className={cn(
+                                            "aspect-[4/5] relative overflow-hidden rounded-[2rem] backdrop-blur-md shadow-sm border transition-all duration-500 group-hover:-translate-y-2",
+                                            isPreorder
+                                                ? "bg-zinc-900/40 border-white/5 group-hover:shadow-[0_20px_50px_rgba(245,158,11,0.1)] group-hover:border-amber-500/30"
+                                                : "bg-white/40 border-white/30 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] group-hover:bg-white/60"
+                                        )}>
                                             {item.media_urls?.[0] ? (
                                                 <img
                                                     src={item.media_urls[0]}
                                                     alt={item.name}
-                                                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                                                    className={cn(
+                                                        "w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105",
+                                                        isPreorder && "brightness-75 grayscale-[30%] group-hover:brightness-100 group-hover:grayscale-0"
+                                                    )}
                                                     loading="lazy"
                                                 />
                                             ) : (
@@ -744,10 +828,21 @@ export default function ProductDetail() {
                                                     <Package className="w-10 h-10" />
                                                 </div>
                                             )}
+
+                                            {/* Badge for related if needed */}
+                                            {isPreorder && (
+                                                <div className="absolute top-2 left-2">
+                                                    <Badge className="bg-amber-500 text-black border-0 rounded-none text-[8px] font-mono px-1">REF-{item.product_id}</Badge>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="px-2">
-                                            <h3 className="font-medium text-slate-900 group-hover:text-blue-600 transition-colors">{item.name}</h3>
-                                            <p className="text-slate-500 text-sm mt-1">{item.brands?.name}</p>
+                                            <h3 className={cn("font-medium transition-colors", isPreorder ? "text-white group-hover:text-amber-500 font-sans tracking-wide" : "text-slate-900 group-hover:text-blue-600")}>
+                                                {item.name}
+                                            </h3>
+                                            <p className={cn("text-sm mt-1", isPreorder ? "text-slate-500 font-mono text-xs uppercase" : "text-slate-500")}>
+                                                {item.brands?.name}
+                                            </p>
                                         </div>
                                     </div>
                                 ))}

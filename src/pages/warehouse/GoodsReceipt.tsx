@@ -3,7 +3,7 @@ import { Package, Search, Plus, ChevronRight, AlertTriangle, Box, Check, X } fro
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import {
     Table,
     TableBody,
@@ -88,20 +88,8 @@ export default function GoodsReceipt() {
         if (product.product_variants) {
             let variantsToDisplay = product.product_variants;
 
-            // PREORDER Logic: Shared Stock (Show only one row)
-            if (product.type_code === 'PREORDER') {
-                // Find primary variant (highest price usually indicates full payment/primary)
-                const primaryVariant = product.product_variants.reduce((prev: any, current: any) =>
-                    (Number(prev.price) > Number(current.price)) ? prev : current
-                    , product.product_variants[0]);
-
-                if (primaryVariant) {
-                    variantsToDisplay = [{
-                        ...primaryVariant,
-                        option_name: `[Shared Stock] Physical Allocation`
-                    }];
-                }
-            }
+            // PREORDER Logic: Removed Shared Stock restriction to allow individual variant allocation
+            // if (product.type_code === 'PREORDER') { ... }
 
             setReceiptItems(variantsToDisplay.map((v: any) => ({
                 variant_id: v.variant_id,

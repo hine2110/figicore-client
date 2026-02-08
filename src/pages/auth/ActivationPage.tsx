@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ export default function ActivationPage() {
     const [tempPassword, setTempPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-    
+
     const [loading, setLoading] = useState(false);
     const [showTemp, setShowTemp] = useState(false);
     const [showNew, setShowNew] = useState(false);
@@ -35,10 +35,10 @@ export default function ActivationPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (newPassword.length < 6) {
-             toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" });
-             return;
+            toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" });
+            return;
         }
 
         if (newPassword !== confirmPassword) {
@@ -54,11 +54,11 @@ export default function ActivationPage() {
                 newPassword
             });
 
-            toast({ 
-                title: "Activation Successful", 
-                description: "Your account is now active. Please login." 
+            toast({
+                title: "Activation Successful",
+                description: "Your account is now active. Please login."
             });
-            
+
             navigate("/guest/login");
 
         } catch (error: any) {
@@ -86,7 +86,7 @@ export default function ActivationPage() {
                         <div className="space-y-2">
                             <Label htmlFor="temp-pass">Temporary Password</Label>
                             <div className="relative">
-                                <Input 
+                                <Input
                                     id="temp-pass"
                                     type={showTemp ? "text" : "password"}
                                     value={tempPassword}
@@ -109,7 +109,7 @@ export default function ActivationPage() {
                         <div className="space-y-2">
                             <Label htmlFor="new-pass">New Password</Label>
                             <div className="relative">
-                                <Input 
+                                <Input
                                     id="new-pass"
                                     type={showNew ? "text" : "password"}
                                     value={newPassword}
@@ -131,7 +131,7 @@ export default function ActivationPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="confirm-pass">Confirm New Password</Label>
-                            <Input 
+                            <Input
                                 id="confirm-pass"
                                 type="password"
                                 value={confirmPassword}
