@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { axiosInstance } from '@/lib/axiosInstance';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
@@ -13,7 +13,6 @@ export default function StationConfirmPage() {
 
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [message, setMessage] = useState('');
-    const [resultData, setResultData] = useState<any>(null);
 
     useEffect(() => {
         if (!token || !action) {
@@ -39,7 +38,6 @@ export default function StationConfirmPage() {
             });
 
             setStatus('success');
-            setResultData(response.data);
             if (action === 'approve') {
                 setMessage(`Success! Station "${response.data.station_name}" has been approved.`);
             } else {
@@ -72,6 +70,7 @@ export default function StationConfirmPage() {
                         {status === 'success' && 'Operation Successful'}
                         {status === 'error' && 'Verification Failed'}
                     </CardTitle>
+                    {message && <p className="text-center text-sm text-neutral-600 mt-2">{message}</p>}
                 </CardHeader>
                 <CardFooter className="flex flex-col gap-3 justify-center pt-2">
                     {status === 'idle' && token && action && (
@@ -90,6 +89,6 @@ export default function StationConfirmPage() {
                     )}
                 </CardFooter>
             </Card>
-        </div>
+        </div >
     );
 }

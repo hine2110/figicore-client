@@ -162,14 +162,8 @@ export default function RetailShop() {
         const minPrice = Math.min(...prices);
 
         // Optional: Add "From" prefix if multiple prices exist
-        const hasMultiplePrices = new Set(prices).size > 1;
 
-        return (
-            <span className="flex items-baseline gap-1">
-                {hasMultiplePrices && <span className="text-xs font-normal text-slate-500">From</span>}
-                {formatPrice(minPrice)}
-            </span>
-        );
+        return formatPrice(minPrice);
     };
 
     const hasActiveFilters = useMemo(() => {

@@ -72,7 +72,10 @@ export default function CustomerHome() {
     };
 
     const getPreorderDeposit = (product: any) => {
-        const dep = Number(product.product_preorders?.deposit_amount || 0);
+        // Fix: Use new schema (product_preorder_configs on variant)
+        const variant = product.product_variants?.[0];
+        const config = variant?.product_preorder_configs;
+        const dep = Number(config?.deposit_amount || 0);
         return isNaN(dep) ? 'Contact' : formatPrice(dep);
     };
 
@@ -235,7 +238,7 @@ export default function CustomerHome() {
                                     <h3 className="text-slate-900 font-bold mb-6 px-2">Quick Access</h3>
                                     <div className="space-y-2">
                                         {[
-                                            { label: "My Collection", path: "/customer/orders", icon: Package },
+                                            { label: "My Collection", path: "/customer/profile?tab=orders", icon: Package },
                                             { label: "Wallet & Points", path: "/customer/wallet", icon: Wallet },
                                             { label: "Vouchers", path: "/customer/wallet", icon: Ticket },
                                             { label: "Live Auctions", path: "/customer/auctions", icon: Gavel },

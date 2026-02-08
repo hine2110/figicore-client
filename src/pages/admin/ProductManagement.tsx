@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ProductList } from '@/components/product/ProductList';
 import { CreateProductModal } from '@/components/product/CreateProductModal';
 import { productsService } from '@/services/products.service';
-import { useToast } from '@/components/ui/use-toast';
+
 
 export default function ProductManagement() {
     const [products, setProducts] = useState<any[]>([]);
@@ -16,7 +16,7 @@ export default function ProductManagement() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeProduct, setActiveProduct] = useState<any>(null);
 
-    const { toast } = useToast();
+    // const { toast } = useToast();
 
     const fetchProducts = async () => {
         setLoading(true);
@@ -108,6 +108,7 @@ export default function ProductManagement() {
                         products={products}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onView={(product) => handleEdit(product)}
                     />
                 )}
             </div>

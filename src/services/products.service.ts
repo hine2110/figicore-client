@@ -70,11 +70,17 @@ export const productsService = {
         return response.data;
     },
 
+    getAttributeSuggestions: async (key: 'scale' | 'material'): Promise<string[]> => {
+        const response = await axiosInstance.get(`/products/attributes/suggestions?key=${key}`);
+        return response.data;
+    },
+
     generateAiDescription: async (payload: {
         productName: string,
         variantName?: string,
         userContext?: string,
-        imageUrl?: string
+        imageUrl?: string,
+        richContext?: any
     }): Promise<string> => {
         const response = await axiosInstance.post('/products/gen-description', payload, { timeout: 60000 });
         return response.data.text;

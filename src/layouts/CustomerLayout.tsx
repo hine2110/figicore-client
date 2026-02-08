@@ -4,7 +4,6 @@ import {
     Menu,
     X,
     Wallet,
-    Package,
     Gavel,
     Home
 } from 'lucide-react';
@@ -111,10 +110,7 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                                         <User className="w-4 h-4 mr-2" />
                                         Profile
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => navigate('/customer/orders')}>
-                                        <Package className="w-4 h-4 mr-2" />
-                                        Orders
-                                    </DropdownMenuItem>
+
                                     <DropdownMenuItem onClick={() => navigate('/customer/wallet')}>
                                         <Wallet className="w-4 h-4 mr-2" />
                                         Wallet

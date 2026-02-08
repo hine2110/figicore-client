@@ -61,8 +61,7 @@ export default function ShiftManagement() {
     const { toast } = useToast();
     const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
     const [users, setUsers] = useState<User[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [loading, setLoading] = useState(false);
+
 
     // Date Navigation State (Start of the week - Monday)
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -151,7 +150,7 @@ export default function ShiftManagement() {
     };
 
     const fetchSchedules = async () => {
-        setLoading(true);
+
         try {
             const from = format(currentWeekStart, 'yyyy-MM-dd');
             const to = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd');
@@ -165,7 +164,7 @@ export default function ShiftManagement() {
             console.error("Failed to fetch schedules", error);
             toast({ title: "Error", description: "Failed to load schedules", variant: "destructive" });
         } finally {
-            setLoading(false);
+
         }
     };
 
