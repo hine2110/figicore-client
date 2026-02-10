@@ -11,17 +11,25 @@ export interface PosSession {
     order_count?: number;
 }
 
-export interface PosProduct {
+// Variant within a product
+export interface PosProductVariant {
     variant_id: number;
     sku: string;
-    product_name: string;
     option_name: string;
     price: number;
     current_stock: number;
     thumbnail: string | null;
+}
+
+// Product with multiple variants
+export interface PosProduct {
+    product_id: number;
+    product_name: string;
+    thumbnail: string | null;
     category: string;
     brand: string | null;
     product_type: string;
+    variants: PosProductVariant[];
 }
 
 export interface PosCartItem {
@@ -45,6 +53,7 @@ export interface CreatePosOrderRequest {
     user_id?: number;
     note?: string;
     discount_amount?: number;
+    status_code?: string; // COMPLETED, PARKED
 }
 
 export interface PosOrder {
@@ -76,6 +85,7 @@ export interface PosOrder {
         total_price: number;
         product_variants?: {
             sku: string;
+            option_name?: string;
             products?: {
                 name: string;
             };

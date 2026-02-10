@@ -7,11 +7,11 @@ import {
     AlertTriangle,
     Package,
     Award,
-    ArrowUpRight
+    ArrowUpRight,
+    Loader2
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+// Card imports removed as they are not used
 import { Badge } from '@/components/ui/badge';
-
 import { Button } from '@/components/ui/button';
 import {
     AreaChart,
@@ -27,6 +27,7 @@ import {
     Legend
 } from 'recharts';
 import { getSessionAnalytics } from '@/services/posService';
+import { cn } from '@/lib/utils'; // Ensure cn is imported
 
 export default function PosDashboard() {
     const [analytics, setAnalytics] = useState<any>(null);
@@ -53,8 +54,8 @@ export default function PosDashboard() {
         return (
             <div className="flex items-center justify-center h-96">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-neutral-200 border-t-cyan-600 rounded-full animate-spin"></div>
-                    <p className="text-neutral-500 font-medium">Loading data...</p>
+                    <Loader2 className="w-10 h-10 text-neutral-400 animate-spin" />
+                    <p className="text-neutral-500 font-medium">Loading analytics...</p>
                 </div>
             </div>
         );
@@ -62,20 +63,19 @@ export default function PosDashboard() {
 
     if (!analytics) {
         return (
-            <div className="space-y-6">
-                <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Session Analytics</h1>
-                <Card className="p-16 text-center bg-gradient-to-br from-cyan-50 to-blue-50 border-cyan-200">
-                    <div className="max-w-md mx-auto space-y-4">
-                        <div className="w-20 h-20 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                            <Clock className="w-10 h-10 text-white" />
-                        </div>
-                        <h3 className="text-2xl font-bold text-neutral-900">No Active Session</h3>
-                        <p className="text-neutral-600">Please open a session to view real-time analytics</p>
-                        <Button className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 mt-4">
-                            Open Session
-                        </Button>
+            <div className="flex items-center justify-center h-[calc(100vh-10rem)]">
+                <div className="max-w-md w-full text-center space-y-6 p-8 bg-white/80 backdrop-blur-xl rounded-[2rem] border border-neutral-200 shadow-xl">
+                    <div className="w-24 h-24 mx-auto bg-gradient-to-br from-cyan-500/10 to-blue-600/10 rounded-full flex items-center justify-center border border-indigo-100">
+                        <Clock className="w-10 h-10 text-indigo-600" />
                     </div>
-                </Card>
+                    <div>
+                        <h3 className="text-2xl font-bold text-neutral-900 mb-2">No Active Session</h3>
+                        <p className="text-neutral-500">Please open a new session in the Overview tab to start tracking sales.</p>
+                    </div>
+                    <Button className="w-full h-12 rounded-xl text-lg font-bold bg-neutral-900 hover:bg-neutral-800 shadow-lg shadow-neutral-900/20">
+                        Start Session
+                    </Button>
+                </div>
             </div>
         );
     }
@@ -84,291 +84,322 @@ export default function PosDashboard() {
     const hourlyData = analytics.sales_by_hour || [];
     const paymentData = [
         { name: 'Cash', value: Number(analytics.payment_breakdown?.CASH?.amount || 0), color: '#10b981' },
-        { name: 'Bank Transfer', value: Number(analytics.payment_breakdown?.BANK_TRANSFER?.amount || 0), color: '#3b82f6' },
+        { name: 'Transfer', value: Number(analytics.payment_breakdown?.BANK_TRANSFER?.amount || 0), color: '#3b82f6' },
         { name: 'Card', value: Number(analytics.payment_breakdown?.CARD?.amount || 0), color: '#8b5cf6' },
         { name: 'Wallet', value: Number(analytics.payment_breakdown?.WALLET?.amount || 0), color: '#f59e0b' },
-    ].filter(item => item.value > 0); // Only show methods with sales
+    ].filter(item => item.value > 0);
 
-    // Map top products to match chart expected keys
     const topProducts = (analytics.top_products || []).slice(0, 5).map((item: any) => ({
         product_name: item.name,
         quantity: item.quantity,
         total_spent: item.revenue
     }));
 
-    // Map low stock to match UI expected keys
     const lowStockAlerts = (analytics.low_stock_alerts || []).map((item: any) => ({
         product_name: item.product,
-        sku: 'Low Stock', // Backend doesn't send SKU yet, placeholder
+        sku: 'LOW STOCK',
         current_stock: item.stock
     }));
 
-    // Calculate average order value
     const avgOrderValue = stats.order_count > 0 ? stats.total_sales / stats.order_count : 0;
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex justify-between items-end">
-                <div>
-                    <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Session Analytics</h1>
-                    <p className="text-neutral-500 mt-1">Real-time sales monitoring</p>
+        <div className="p-8 h-screen overflow-y-auto">
+            <div className="space-y-4 pb-4 animate-in fade-in duration-500">
+                {/* Header */}
+                <div className="flex justify-between items-end mb-1">
+                    <div>
+                        <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Dashboard</h1>
+                        <p className="text-neutral-500 font-medium mt-1">Real-time session overview</p>
+                    </div>
+                    <Badge variant="outline" className="px-3 py-1.5 bg-white/50 backdrop-blur-sm border-neutral-200 text-neutral-500 gap-2 font-normal rounded-full">
+                        <Clock className="w-3.5 h-3.5" />
+                        Updated: {new Date().toLocaleTimeString()}
+                    </Badge>
                 </div>
-                <div className="flex items-center gap-3">
-                    <div className="bg-white px-3 py-1 rounded-md border border-neutral-200 text-sm text-neutral-500 flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        <span>Last updated: {new Date().toLocaleTimeString()}</span>
+
+                {/* KPI Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <KpiCard
+                        title="Total Revenue"
+                        value={`${Number(stats.total_sales).toLocaleString('vi-VN')}₫`}
+                        icon={DollarSign}
+                        trend="Active"
+                        color="text-cyan-600"
+                        bg="bg-cyan-50"
+                        border="border-cyan-100"
+                    />
+                    <KpiCard
+                        title="Total Orders"
+                        value={stats.order_count}
+                        icon={ShoppingCart}
+                        trend={`${stats.sales_per_hour.toFixed(1)} / hr`}
+                        color="text-blue-600"
+                        bg="bg-blue-50"
+                        border="border-blue-100"
+                    />
+                    <KpiCard
+                        title="Avg Order Value"
+                        value={`${avgOrderValue.toLocaleString('vi-VN')}₫`}
+                        icon={TrendingUp}
+                        trend="Per transaction"
+                        color="text-purple-600"
+                        bg="bg-purple-50"
+                        border="border-purple-100"
+                    />
+                    <KpiCard
+                        title="Session Time"
+                        value={`${analytics.duration.hours}h ${analytics.duration.minutes}m`}
+                        icon={Clock}
+                        trend="Running"
+                        color="text-amber-600"
+                        bg="bg-amber-50"
+                        border="border-amber-100"
+                    />
+                </div>
+
+                {/* Charts Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Revenue Chart (2/3 width) */}
+                    <div className="lg:col-span-2 bg-white rounded-[2rem] border border-neutral-200 shadow-sm p-6 relative overflow-hidden group hover:shadow-md transition-all duration-300">
+                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                            <TrendingUp className="w-32 h-32 text-neutral-900" />
+                        </div>
+                        <div className="relative z-10">
+                            <h3 className="font-bold text-lg text-neutral-900 mb-1">Revenue Trend</h3>
+                            <p className="text-sm text-neutral-500 mb-3">Hourly sales performance</p>
+
+                            <div className="h-[220px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={hourlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#0891b2" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="#0891b2" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f5f5f5" />
+                                        <XAxis
+                                            dataKey="hour"
+                                            stroke="#a3a3a3"
+                                            fontSize={12}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(value) => `${value}h`}
+                                        />
+                                        <YAxis
+                                            stroke="#a3a3a3"
+                                            fontSize={12}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{
+                                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                                backdropFilter: 'blur(8px)',
+                                                border: '1px solid #f5f5f5',
+                                                borderRadius: '12px',
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                                            }}
+                                            cursor={{ stroke: '#cbd5e1', strokeDasharray: '4 4' }}
+                                            formatter={(value: any) => [`${Number(value).toLocaleString('vi-VN')}₫`, 'Revenue']}
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="amount"
+                                            stroke="#0891b2"
+                                            strokeWidth={3}
+                                            fillOpacity={1}
+                                            fill="url(#colorRevenue)"
+                                            activeDot={{ r: 6, strokeWidth: 0, fill: '#0891b2' }}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Payment Methods (1/3 width) */}
+                    <div className="bg-white rounded-[2rem] border border-neutral-200 shadow-sm p-6 flex flex-col hover:shadow-md transition-all duration-300">
+                        <h3 className="font-bold text-lg text-neutral-900 mb-1">Payment Methods</h3>
+                        <p className="text-sm text-neutral-500 mb-2">Distribution by type</p>
+
+                        <div className="flex-1 min-h-[180px] relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={paymentData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {paymentData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        formatter={(value: any) => `${Number(value).toLocaleString('vi-VN')}₫`}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                    />
+                                    <Legend
+                                        verticalAlign="bottom"
+                                        height={36}
+                                        iconType="circle"
+                                        formatter={(value) => <span className="text-sm font-medium text-neutral-600 ml-1">{value}</span>}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                            {/* Center Total */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none mb-8">
+                                <div className="text-center">
+                                    <p className="text-xs text-neutral-400 font-medium uppercase">Total</p>
+                                    <p className="text-lg font-bold text-neutral-900">{stats.order_count}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Revenue Card */}
-                <Card className="shadow-sm border-l-4 border-l-cyan-500 hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-neutral-500 uppercase tracking-wider">
-                            Total Revenue
-                        </CardTitle>
-                        <DollarSign className="w-5 h-5 text-neutral-400" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-neutral-900">
-                            {Number(stats.total_sales).toLocaleString('vi-VN')}₫
+                {/* Bottom Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Top Products */}
+                    <div className="bg-white rounded-[2rem] border border-neutral-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 className="font-bold text-lg text-neutral-900">Top Performers</h3>
+                                <p className="text-sm text-neutral-500">Highest revenue products</p>
+                            </div>
+                            <Badge variant="secondary" className="bg-neutral-100 text-neutral-600 hover:bg-neutral-200 rounded-full">Top 5</Badge>
                         </div>
-                        <p className="text-xs text-green-600 flex items-center mt-1 font-bold">
-                            <ArrowUpRight className="w-3 h-3 mr-1" />
-                            Session active
-                        </p>
-                    </CardContent>
-                </Card>
 
-                {/* Orders Card */}
-                <Card className="shadow-sm border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-neutral-500 uppercase tracking-wider">
-                            Total Orders
-                        </CardTitle>
-                        <ShoppingCart className="w-5 h-5 text-neutral-400" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-neutral-900">{stats.order_count}</div>
-                        <p className="text-xs text-blue-600 flex items-center mt-1 font-bold">
-                            {stats.sales_per_hour.toFixed(1)} orders/hour
-                        </p>
-                    </CardContent>
-                </Card>
-
-                {/* Avg Order Value Card */}
-                <Card className="shadow-sm border-l-4 border-l-purple-500 hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-neutral-500 uppercase tracking-wider">
-                            Avg Order Value
-                        </CardTitle>
-                        <TrendingUp className="w-5 h-5 text-neutral-400" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-neutral-900">
-                            {avgOrderValue.toLocaleString('vi-VN')}₫
-                        </div>
-                        <p className="text-xs text-purple-600 flex items-center mt-1 font-bold">
-                            Per transaction average
-                        </p>
-                    </CardContent>
-                </Card>
-
-                {/* Session Duration Card */}
-                <Card className="shadow-sm border-l-4 border-l-amber-500 hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-neutral-500 uppercase tracking-wider">
-                            Session Time
-                        </CardTitle>
-                        <Clock className="w-5 h-5 text-neutral-400" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-neutral-900">
-                            {analytics.duration.hours}h {analytics.duration.minutes}m
-                        </div>
-                        <p className="text-xs text-amber-600 flex items-center mt-1 font-bold">
-                            Currently active
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Revenue by Hour */}
-                <Card className="shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-bold">Revenue by Hour</CardTitle>
-                        <CardDescription>Sales trend throughout the day</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={250}>
-                            <AreaChart data={hourlyData}>
-                                <defs>
-                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.1} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                                <XAxis
-                                    dataKey="hour"
-                                    stroke="#6b7280"
-                                    fontSize={12}
-                                    tickFormatter={(value) => `${value}h`}
-                                />
-                                <YAxis
-                                    stroke="#6b7280"
-                                    fontSize={12}
-                                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#fff',
-                                        border: '1px solid #e5e7eb',
-                                        borderRadius: '8px',
-                                    }}
-                                    formatter={(value: any) => [`${Number(value).toLocaleString('vi-VN')}₫`, 'Revenue']}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="amount"
-                                    stroke="#06b6d4"
-                                    strokeWidth={2}
-                                    fillOpacity={1}
-                                    fill="url(#colorRevenue)"
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-
-                {/* Payment Methods Breakdown */}
-                <Card className="shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-bold">Payment Methods</CardTitle>
-                        <CardDescription>Breakdown by payment type</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={250}>
-                            <PieChart>
-                                <Pie
-                                    data={paymentData}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
-                                    outerRadius={80}
-                                    fill="#8884d8"
-                                    dataKey="value"
-                                >
-                                    {paymentData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    formatter={(value: any) => `${Number(value).toLocaleString('vi-VN')}₫`}
-                                />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-
-                {/* Top Products */}
-                <Card className="shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-bold">Top Revenue Products</CardTitle>
-                        <CardDescription>Top 5 products this session</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {topProducts.length > 0 ? (
-                            <div className="space-y-4">
-                                {topProducts.map((item: any, i: number) => (
-                                    <div key={i} className="flex items-center justify-between p-2 hover:bg-neutral-50 rounded-lg transition-colors border border-transparent hover:border-neutral-100">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${i === 0 ? 'bg-yellow-200 text-yellow-900 border border-yellow-400' :
-                                                i === 1 ? 'bg-neutral-200 text-neutral-700' :
-                                                    i === 2 ? 'bg-orange-200 text-orange-900 border border-orange-400' :
-                                                        'bg-indigo-50 text-indigo-600'
-                                                }`}>
-                                                #{i + 1}
+                        <div className="space-y-4">
+                            {topProducts.length > 0 ? (
+                                topProducts.map((item: any, i: number) => (
+                                    <div key={i} className="group flex items-center justify-between p-3 hover:bg-neutral-50 rounded-2xl transition-all duration-300 border border-transparent hover:border-neutral-100">
+                                        <div className="flex items-center gap-4">
+                                            <div className={cn(
+                                                "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm transition-transform group-hover:scale-110",
+                                                i === 0 ? "bg-amber-100 text-amber-700" :
+                                                    i === 1 ? "bg-neutral-200 text-neutral-600" :
+                                                        i === 2 ? "bg-orange-100 text-orange-700" :
+                                                            "bg-indigo-50 text-indigo-600"
+                                            )}>
+                                                {i + 1}
                                             </div>
                                             <div>
-                                                <p className="font-medium text-sm text-neutral-900 truncate max-w-[180px]" title={item.product_name}>
+                                                <p className="font-bold text-sm text-neutral-900 line-clamp-1 max-w-[200px]" title={item.product_name}>
                                                     {item.product_name}
                                                 </p>
-                                                <div className="flex items-center gap-2">
-                                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-50 text-indigo-700 border-indigo-100">
-                                                        {item.quantity} sold
-                                                    </Badge>
-                                                </div>
+                                                <p className="text-xs text-neutral-500 font-medium mt-0.5">
+                                                    {item.quantity} units sold
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <span className="font-bold text-sm text-neutral-900 block">
+                                            <Badge variant="outline" className="font-bold text-neutral-900 border-neutral-200 bg-white shadow-sm">
                                                 {Number(item.total_spent).toLocaleString('vi-VN')}₫
-                                            </span>
+                                            </Badge>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="h-[250px] flex items-center justify-center text-neutral-400">
-                                <div className="text-center">
-                                    <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                    <p>No data available</p>
+                                ))
+                            ) : (
+                                <div className="py-12 text-center text-neutral-400 flex flex-col items-center">
+                                    <Package className="w-12 h-12 mb-3 opacity-20" />
+                                    <p>No sales data yet</p>
                                 </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                            )}
+                        </div>
+                    </div>
 
-                {/* Low Stock Alerts */}
-                <Card className="shadow-sm hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-bold flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5 text-amber-500" />
-                            Low Stock Alerts
-                        </CardTitle>
-                        <CardDescription>Products running low</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {lowStockAlerts.length > 0 ? (
-                            <div className="space-y-3 max-h-[250px] overflow-y-auto">
-                                {lowStockAlerts.map((item: any, index: number) => (
-                                    <div
-                                        key={index}
-                                        className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
-                                    >
-                                        <div className="flex-1">
-                                            <p className="font-medium text-sm text-neutral-900 truncate">
-                                                {item.product_name}
-                                            </p>
-                                            <p className="text-xs text-neutral-500">{item.sku}</p>
-                                        </div>
-                                        <Badge
-                                            variant="outline"
-                                            className="ml-2 border-amber-500 text-amber-700 font-bold"
-                                        >
-                                            {item.current_stock} left
-                                        </Badge>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="h-[250px] flex items-center justify-center text-neutral-400">
-                                <div className="text-center">
-                                    <Award className="w-12 h-12 mx-auto mb-2 opacity-50 text-green-500" />
-                                    <p>All products in stock</p>
+                    {/* Alerts */}
+                    <div className="bg-white rounded-[2rem] border border-neutral-200 shadow-sm p-6 hover:shadow-md transition-shadow relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                            <AlertTriangle className="w-32 h-32 text-amber-500" />
+                        </div>
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 className="font-bold text-lg text-neutral-900 flex items-center gap-2">
+                                        Stock Alerts
+                                    </h3>
+                                    <p className="text-sm text-neutral-500">Inventory attention needed</p>
                                 </div>
+                                {lowStockAlerts.length > 0 && (
+                                    <Badge variant="destructive" className="rounded-full px-3 animate-pulse">
+                                        {lowStockAlerts.length} Issues
+                                    </Badge>
+                                )}
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+
+                            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                                {lowStockAlerts.length > 0 ? (
+                                    lowStockAlerts.map((item: any, index: number) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-center justify-between p-4 bg-amber-50/50 border border-amber-100 rounded-2xl hover:bg-amber-50 transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                                                <div className="min-w-0">
+                                                    <p className="font-bold text-sm text-neutral-900 truncate max-w-[180px]">
+                                                        {item.product_name}
+                                                    </p>
+                                                    <p className="text-[10px] font-bold text-amber-600/70 uppercase tracking-wide">
+                                                        {item.sku}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Badge className="bg-white text-amber-700 border border-amber-200 shadow-sm font-bold">
+                                                {item.current_stock} Left
+                                            </Badge>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="py-12 text-center text-neutral-400 flex flex-col items-center">
+                                        <Award className="w-12 h-12 mb-3 opacity-20 text-emerald-500" />
+                                        <p className="text-emerald-600 font-medium">Inventory Healthy</p>
+                                        <p className="text-xs">No low stock items detected</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// KPI Card Component
+function KpiCard({ title, value, icon: Icon, trend, color, bg, border }: any) {
+    return (
+        <div className={cn(
+            "relative overflow-hidden rounded-[2rem] p-6 border transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]",
+            "bg-white hover:bg-opacity-100", // Glass effect fallback
+            border
+        )}>
+            <div className={cn("absolute top-0 right-0 w-32 h-32 rounded-full -mr-10 -mt-10 opacity-10 blur-2xl", bg)}></div>
+
+            <div className="relative z-10 flex flex-col h-full justify-between">
+                <div className="flex justify-between items-start mb-4">
+                    <div className={cn("p-3 rounded-2xl", bg)}>
+                        <Icon className={cn("w-6 h-6", color)} />
+                    </div>
+                    {trend && (
+                        <Badge variant="outline" className={cn("bg-white/80 backdrop-blur-sm border-transparent shadow-sm font-medium", color)}>
+                            <ArrowUpRight className="w-3 h-3 mr-1" />
+                            {trend}
+                        </Badge>
+                    )}
+                </div>
+                <div>
+                    <p className="text-sm font-medium text-neutral-500 mb-1">{title}</p>
+                    <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{value}</h3>
+                </div>
             </div>
         </div>
     );

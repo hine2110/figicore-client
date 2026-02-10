@@ -34,8 +34,21 @@ export const searchProducts = async (query: {
     q?: string;
     category_id?: string;
     brand_id?: string;
+    min_price?: number;
+    max_price?: number;
+    sort?: string;
 }): Promise<{ success: boolean; count: number; data: PosProduct[] }> => {
     const response = await axiosInstance.get('/products/pos-search', { params: query });
+    return response.data;
+};
+
+// Get All Categories
+export const getCategories = async (): Promise<{
+    id: number;
+    name: string;
+    slug: string;
+}[]> => {
+    const response = await axiosInstance.get('/categories');
     return response.data;
 };
 
@@ -49,35 +62,57 @@ export const createPosOrder = async (orderData: CreatePosOrderRequest): Promise<
     return response.data;
 };
 
+// Real-time Order Sync
+export const getActiveOrder = async (): Promise<PosOrder | null> => {
+    const response = await axiosInstance.get(`${API_BASE}/orders/active`);
+    return response.data;
+};
+
+export const syncActiveOrder = async (syncData: {
+    user_id?: number;
+    items: { variant_id: number; quantity: number }[];
+    note?: string;
+    discount_amount?: number;
+}): Promise<PosOrder | null> => {
+    const response = await axiosInstance.post(`${API_BASE}/orders/sync`, syncData);
+    return response.data;
+};
+
 // Order Management
-export const getOrders = async (): Promise<{
+export const getOrders = async (page: number = 1, limit: number = 12): Promise<{
     success: boolean;
     count: number;
     data: PosOrder[];
+    total: number;
+    page: number;
+    limit: number;
 }> => {
-    const response = await axiosInstance.get(`${API_BASE}/orders`);
+    const response = await axiosInstance.get(`${API_BASE}/orders`, {
+        params: { page, limit }
+    });
+    return response.data;
+};
+
+export const cancelOrder = async (orderId: number): Promise<{
+    success: boolean;
+    message: string;
+    data: PosOrder;
+}> => {
+    const response = await axiosInstance.post(`${API_BASE}/orders/${orderId}/cancel`);
     return response.data;
 };
 
 // Customer Search
-export const searchCustomer = async (query: string): Promise<{
+export const searchCustomer = async (query: string, page: number = 1, limit: number = 15): Promise<{
     success: boolean;
     count: number;
-    data: Array<{
-        user_id: number;
-        full_name: string;
-        phone: string | null;
-        email: string | null;
-        total_orders?: number;
-        customers?: {
-            current_rank_code: string;
-            total_spent: number;
-            loyalty_points: number;
-        };
-    }>;
+    data: any[];
+    total: number;
+    page: number;
+    limit: number;
 }> => {
     const response = await axiosInstance.get(`${API_BASE}/orders/search-customer`, {
-        params: { q: query },
+        params: { q: query, page, limit },
     });
     return response.data;
 };
