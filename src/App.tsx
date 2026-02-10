@@ -64,6 +64,9 @@ import OrderProcessing from "@/pages/pos/OrderProcessing";
 import PosSystem from "@/pages/pos/PosSystem";
 import PosDashboard from "@/pages/pos/PosDashboard";
 import PosSchedule from "@/pages/pos/PosSchedule";
+import SessionManager from "@/pages/pos/SessionManager";
+import CustomerDetailPage from "@/pages/pos/CustomerDetailPage";
+import CustomerLookup from "@/pages/pos/CustomerLookup";
 
 // Guest Pages
 import { GuestHome } from "@/pages/guest/GuestHome";
@@ -163,6 +166,9 @@ export default function App() {
                             <Route path="counter" element={<PosSystem />} />
                             <Route path="orders" element={<OrderProcessing />} />
                             <Route path="schedule" element={<PosSchedule />} />
+                            <Route path="sessions" element={<SessionManager />} />
+                            <Route path="customers" element={<CustomerLookup />} />
+                            <Route path="customer/:id" element={<CustomerDetailPage />} />
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
