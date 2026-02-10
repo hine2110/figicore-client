@@ -3,12 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-    ArrowLeft, Loader2, Wallet, Phone, Mail, MapPin, Calendar, User,
-    Crown, Sparkles, Trophy
+    Loader2, Phone, Mail, MapPin, Calendar, User,
+    Crown, Sparkles, Trophy, Gift, ChevronLeft, CreditCard, Wallet
 } from 'lucide-react';
 import { axiosInstance } from '@/lib/axiosInstance';
 import { format } from 'date-fns';
 import CustomerProfileContent from './CustomerProfileContent';
+import { cn } from '@/lib/utils';
 
 export default function CustomerDetailPage() {
     const { id } = useParams();
@@ -36,20 +37,28 @@ export default function CustomerDetailPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-neutral-50">
-                <Loader2 className="w-8 h-8 animate-spin text-neutral-900" />
+            <div className="flex items-center justify-center h-screen bg-neutral-50/50">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-10 h-10 animate-spin text-neutral-300" />
+                    <p className="text-neutral-400 font-medium">Loading profile...</p>
+                </div>
             </div>
         );
     }
 
     if (!profileData) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen bg-neutral-50 gap-4">
-                <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <User className="w-8 h-8 text-neutral-400" />
+            <div className="flex flex-col items-center justify-center h-screen bg-neutral-50/50 gap-6">
+                <div className="w-24 h-24 bg-neutral-100 rounded-full flex items-center justify-center shadow-inner">
+                    <User className="w-10 h-10 text-neutral-300" />
                 </div>
-                <p className="text-neutral-500 font-medium">Customer not found</p>
-                <Button onClick={() => navigate(-1)} variant="outline">Back to Lookup</Button>
+                <div className="text-center">
+                    <h3 className="text-xl font-bold text-neutral-900 mb-2">Customer Not Found</h3>
+                    <p className="text-neutral-500 max-w-xs mx-auto">The customer profile you requested could not be located.</p>
+                </div>
+                <Button onClick={() => navigate(-1)} variant="outline" className="rounded-xl border-neutral-300 hover:bg-neutral-100">
+                    Go Back
+                </Button>
             </div>
         );
     }
@@ -57,46 +66,49 @@ export default function CustomerDetailPage() {
     const customer = profileData.customer;
 
     return (
-        <div className="flex h-full bg-neutral-100 overflow-hidden">
-            {/* LEFT SIDEBAR - Fixed 320px */}
-            <div className="w-80 border-r border-neutral-200 bg-white flex flex-col overflow-y-auto shrink-0 z-10 shadow-sm">
+        <div className="flex h-screen bg-neutral-100/50 overflow-hidden animate-in fade-in duration-500">
+            {/* LEFT SIDEBAR - Fixed 340px */}
+            <div className="w-[340px] border-r border-neutral-200 bg-white flex flex-col overflow-hidden shrink-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
                 {/* 1. Header / Back Button */}
-                <div className="p-4">
+                <div className="p-4 pt-6">
                     <Button
                         variant="ghost"
-                        className="text-neutral-500 hover:text-neutral-900 -ml-2 gap-2"
+                        className="text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 -ml-2 gap-2 rounded-xl transition-all"
                         onClick={() => navigate(-1)}
                     >
-                        <ArrowLeft className="w-4 h-4" />
-                        Back
+                        <ChevronLeft className="w-5 h-5" />
+                        <span className="font-medium">Back to List</span>
                     </Button>
                 </div>
 
                 {/* 2. Identity Section */}
-                <div className="px-6 flex flex-col items-center text-center">
-                    <div className="relative mb-4">
-                        <div className="w-24 h-24 bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-full flex items-center justify-center text-3xl font-bold text-neutral-700 shadow-inner border-4 border-white">
+                <div className="px-6 flex flex-col items-center text-center relative z-10">
+                    <div className="relative mb-3 group">
+                        {/* Enhanced Avatar Glow */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-400 to-blue-500 rounded-full blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-500"></div>
+                        <div className="w-20 h-20 bg-gradient-to-br from-white to-neutral-100 rounded-full flex items-center justify-center text-3xl font-bold text-neutral-700 shadow-lg border-4 border-white relative z-10">
                             {customer.full_name?.charAt(0).toUpperCase()}
                         </div>
-                        <div className="absolute -bottom-1 -right-1 bg-green-500 w-6 h-6 rounded-full border-4 border-white" title="Active"></div>
+                        <div className="absolute 1bottom-1 right-1 bg-emerald-500 w-5 h-5 rounded-full border-4 border-white shadow-sm z-20" title="Active Customer"></div>
                     </div>
-                    <h1 className="text-xl font-bold text-neutral-900 mb-1">{customer.full_name}</h1>
-                    <div className="flex items-center gap-2 mb-6">
-                        <Badge variant="secondary" className={`border px-3 py-0.5 ${customer.rank_code === 'GOLD' ? 'bg-yellow-200 text-yellow-900 border-yellow-500' :
-                            customer.rank_code === 'DIAMOND' ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
-                                customer.rank_code === 'SILVER' ? 'bg-gray-100 text-gray-700 border-gray-200' :
-                                    'bg-orange-200 text-orange-900 border-orange-400'
-                            }`}>
+
+                    <h1 className="text-xl font-bold text-neutral-900 mb-1 tracking-tight">{customer.full_name}</h1>
+
+                    <div className="mb-4">
+                        <Badge variant="secondary" className={cn(
+                            "border px-3 py-1 text-xs font-bold tracking-wide shadow-sm uppercase",
+                            customer.rank_code === 'GOLD' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                customer.rank_code === 'DIAMOND' ? 'bg-cyan-100 text-cyan-800 border-cyan-200' :
+                                    customer.rank_code === 'SILVER' ? 'bg-slate-100 text-slate-800 border-slate-200' :
+                                        'bg-orange-100 text-orange-800 border-orange-200'
+                        )}>
                             {customer.rank_code || 'MEMBER'}
                         </Badge>
                     </div>
 
-                    {/* Quick Actions */}
-                    {/* Rank Progress */}
-                    {/* Rank Progress */}
-                    <div className="w-full px-6 mb-8">
+                    {/* Rank Progress Card */}
+                    <div className="w-full text-left mb-6 perspective-1000">
                         {(() => {
-                            // Use statistics.total_spent if available, fallback to customer.total_spent
                             const totalSpent = Number(profileData?.statistics?.total_spent || customer.total_spent || 0);
                             let nextRankLabel = '';
                             let nextRankThreshold = 0;
@@ -104,29 +116,25 @@ export default function CustomerDetailPage() {
                             let progress = 100;
                             let targetColorClass = 'from-gray-300 to-gray-500';
                             let targetIcon = Trophy;
-                            let motivationalText = "Keep collecting to level up!";
 
                             if (totalSpent < 2000000) {
                                 nextRankLabel = 'SILVER';
                                 nextRankThreshold = 2000000;
                                 currentRankThreshold = 0;
-                                targetColorClass = 'from-slate-300 to-slate-500'; // Silver
+                                targetColorClass = 'from-slate-300 to-slate-500';
                                 targetIcon = Sparkles;
-                                motivationalText = "Unlock 2% discount & gifts!";
                             } else if (totalSpent < 10000000) {
                                 nextRankLabel = 'GOLD';
                                 nextRankThreshold = 10000000;
                                 currentRankThreshold = 2000000;
-                                targetColorClass = 'from-yellow-400 to-yellow-600'; // Gold
+                                targetColorClass = 'from-yellow-400 to-yellow-600';
                                 targetIcon = Crown;
-                                motivationalText = "Unlock 5% off & free shipping!";
                             } else if (totalSpent < 50000000) {
                                 nextRankLabel = 'DIAMOND';
                                 nextRankThreshold = 50000000;
                                 currentRankThreshold = 10000000;
-                                targetColorClass = 'from-cyan-400 to-cyan-600'; // Diamond
+                                targetColorClass = 'from-cyan-400 to-cyan-600';
                                 targetIcon = Trophy;
-                                motivationalText = "Unlock VIP perks & 10% off!";
                             } else {
                                 nextRankLabel = 'MAX LEVEL';
                             }
@@ -140,53 +148,45 @@ export default function CustomerDetailPage() {
                             const TargetIcon = targetIcon;
 
                             return (
-                                <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-100 shadow-sm relative overflow-hidden group hover:border-neutral-200 transition-colors">
-                                    {/* Decorative Icon Background */}
-                                    <div className="absolute -top-2 -right-2 text-neutral-100 opacity-50 transform rotate-12 group-hover:scale-110 transition-transform duration-500">
-                                        <TargetIcon className="w-16 h-16" />
-                                    </div>
+                                <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-2xl p-4 shadow-xl text-white relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
+                                    {/* Decorative Elements */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-500/20 rounded-full -ml-10 -mb-10 blur-xl"></div>
 
                                     <div className="relative z-10">
-                                        <div className="flex justify-between items-center mb-2">
+                                        <div className="flex justify-between items-start mb-4">
                                             <div>
-                                                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Membership Progress</p>
+                                                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Lifetime Value</p>
                                                 <div className="flex items-baseline gap-1">
-                                                    <span className="font-bold text-neutral-900 text-lg font-mono">
+                                                    <span className="font-bold text-2xl font-mono tracking-tight">
                                                         {totalSpent.toLocaleString('vi-VN')}
                                                     </span>
-                                                    <span className="text-xs text-neutral-500">VND</span>
+                                                    <span className="text-xs text-neutral-400 font-medium">₫</span>
                                                 </div>
                                             </div>
-                                            {nextRankLabel !== 'MAX LEVEL' && (
-                                                <div className="text-right">
-                                                    <p className="text-[10px] text-neutral-400">Target: {nextRankLabel}</p>
-                                                    <div className={`p-1.5 rounded-full bg-white shadow-sm border border-neutral-100 inline-flex`}>
-                                                        <TargetIcon className={`w-3.5 h-3.5 ${nextRankLabel === 'GOLD' ? 'text-yellow-600' :
-                                                            nextRankLabel === 'DIAMOND' ? 'text-cyan-600' :
-                                                                'text-slate-600'
-                                                            }`} />
-                                                    </div>
-                                                </div>
-                                            )}
+                                            <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm border border-white/10">
+                                                <TargetIcon className="w-5 h-5 text-yellow-400" />
+                                            </div>
                                         </div>
 
-                                        {/* Custom Gradient Progress Bar */}
-                                        <div className="h-2.5 w-full bg-neutral-200 rounded-full overflow-hidden shadow-inner">
+                                        {/* Progress Bar */}
+                                        <div className="relative h-2 w-full bg-white/10 rounded-full overflow-hidden mb-3">
                                             <div
-                                                className={`h-full rounded-full bg-gradient-to-r ${targetColorClass} shadow-sm transition-all duration-1000 ease-out`}
+                                                className={`absolute top-0 left-0 h-full rounded-full bg-gradient-to-r ${targetColorClass} shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-all duration-1000 ease-out`}
                                                 style={{ width: `${progress}%` }}
                                             />
                                         </div>
 
-                                        <div className="flex justify-end items-center mt-2">
+                                        <div className="flex justify-between items-center text-[10px] font-medium text-neutral-400">
                                             {nextRankLabel !== 'MAX LEVEL' ? (
-                                                <p className="text-[10px] font-semibold text-neutral-700 bg-white px-1.5 py-0.5 rounded border border-neutral-200 shadow-sm">
-                                                    +{(nextRankThreshold - totalSpent).toLocaleString('vi-VN')}
-                                                </p>
+                                                <>
+                                                    <span>Current Tier</span>
+                                                    <span className="text-white bg-white/10 px-1.5 py-0.5 rounded border border-white/10 font-semibold">
+                                                        {nextRankLabel} in {(nextRankThreshold - totalSpent).toLocaleString('vi-VN')}
+                                                    </span>
+                                                </>
                                             ) : (
-                                                <p className="text-xs text-cyan-600 font-bold w-full text-center">
-                                                    You are a Legend! 🏆
-                                                </p>
+                                                <span className="text-cyan-400 font-bold w-full text-center">Legendary Status Achieved</span>
                                             )}
                                         </div>
                                     </div>
@@ -197,39 +197,87 @@ export default function CustomerDetailPage() {
                 </div>
 
                 {/* 3. Contact Info */}
-                <div className="px-6 pb-6 space-y-4">
-                    <div className="flex items-center gap-3 text-sm text-neutral-600">
-                        <Phone className="w-4 h-4 text-neutral-400" />
-                        <span>{customer.phone || 'No phone'}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-neutral-600">
-                        <Mail className="w-4 h-4 text-neutral-400" />
-                        <span className="truncate">{customer.email || 'No email'}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-neutral-600">
-                        <MapPin className="w-4 h-4 text-neutral-400" />
-                        <span className="truncate">{customer.address || 'No address provided'}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-neutral-600">
-                        <Calendar className="w-4 h-4 text-neutral-400" />
-                        <span>Joined {customer.created_at ? format(new Date(customer.created_at), 'MMM yyyy') : 'N/A'}</span>
+                <div className="px-6 pb-4 space-y-3">
+                    <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1">Contact Details</h3>
+                    <div className="space-y-3">
+                        <ContactItem icon={Phone} label="Phone" value={customer.phone} />
+                        <ContactItem icon={Mail} label="Email" value={customer.email} />
+                        <ContactItem icon={MapPin} label="Address" value={customer.address} />
+                        <ContactItem icon={Calendar} label="Member Since" value={customer.created_at ? format(new Date(customer.created_at), 'MMM yyyy') : 'N/A'} />
                     </div>
                 </div>
 
-                <div className="mt-auto p-4 border-t border-neutral-100 bg-neutral-50">
-                    <div className="bg-white p-3 rounded-lg border border-neutral-200 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Wallet className="w-4 h-4 text-neutral-500" />
-                            <span className="text-xs font-semibold text-neutral-500 uppercase">Wallet Balance</span>
+                <div className="mt-auto p-3 border-t border-neutral-100 bg-neutral-100/30 space-y-2">
+                    {/* Loyalty Points Card - Soft Premium Amber */}
+                    <div className="bg-gradient-to-br from-amber-400 to-orange-400 rounded-2xl p-4 shadow-lg text-white relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <p className="text-[9px] font-bold text-amber-100 uppercase tracking-widest mb-0.5">Loyalty Points</p>
+                                    <h3 className="text-xl font-bold font-mono tracking-tight">
+                                        {Number(customer?.loyalty_points || 0).toLocaleString('vi-VN')}
+                                    </h3>
+                                </div>
+                                <div className="p-1.5 bg-white/10 rounded-lg backdrop-blur-sm border border-white/10">
+                                    <Gift className="w-4 h-4 text-amber-100" />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[9px] text-amber-100 font-medium">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                <span>Redeemable rewards</span>
+                            </div>
                         </div>
-                        <div className="text-xl font-bold text-neutral-900">0₫</div>
-                        <p className="text-[10px] text-neutral-400 mt-1">Last updated just now</p>
+                    </div>
+
+                    {/* Wallet Balance Card - Soft Premium Indigo */}
+                    <div className="bg-gradient-to-br from-indigo-400 to-indigo-500 rounded-2xl p-4 shadow-lg text-white relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
+                        <div className="absolute bottom-0 left-0 w-16 h-16 bg-cyan-400/20 rounded-full -ml-8 -mb-8 blur-xl"></div>
+
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <p className="text-[9px] font-bold text-indigo-100 uppercase tracking-widest mb-0.5">Wallet Balance</p>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="font-bold text-xl font-mono tracking-tight">
+                                            {Number(customer?.wallet_balance || 0).toLocaleString('vi-VN')}
+                                        </span>
+                                        <span className="text-[10px] text-indigo-200 font-medium">₫</span>
+                                    </div>
+                                </div>
+                                <div className="p-1.5 bg-white/10 rounded-lg backdrop-blur-sm border border-white/10">
+                                    <Wallet className="w-4 h-4 text-indigo-100" />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 text-[9px] text-indigo-200 font-medium">
+                                <CreditCard className="w-2.5 h-2.5" />
+                                <span>Available for checkout</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* RIGHT MAIN CONTENT */}
             <CustomerProfileContent customer={customer} profileData={profileData} />
+        </div>
+    );
+}
+
+function ContactItem({ icon: Icon, label, value }: any) {
+    return (
+        <div className="flex items-start gap-4 group px-1">
+            <div className="p-2 bg-neutral-100 rounded-lg text-neutral-500 group-hover:bg-white group-hover:shadow-sm group-hover:text-indigo-600 transition-all duration-300">
+                <Icon className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-neutral-400 uppercase mb-0.5">{label}</p>
+                <p className="text-sm font-medium text-neutral-900 truncate group-hover:text-indigo-900 transition-colors">
+                    {value || <span className="text-neutral-400 italic">Not provided</span>}
+                </p>
+            </div>
         </div>
     );
 }

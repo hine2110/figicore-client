@@ -6,7 +6,9 @@ import {
     Menu,
     ScanBarcode,
     Users,
-    Clock
+    Banknote,
+    CalendarClock,
+    User
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -20,11 +22,48 @@ export default function PosLayout() {
     const [isMobileOpen, setIsMobileOpen] = useState(false);
 
     const navItems = [
-        { name: 'Analytics', path: '/pos/dashboard', icon: LayoutDashboard },
-        { name: 'Sales', path: '/pos/counter', icon: ScanBarcode },
-        { name: 'Orders', path: '/pos/orders', icon: ClipboardList },
-        { name: 'Customers', path: '/pos/customers', icon: Users },
-        { name: 'Sessions', path: '/pos/schedule', icon: Clock },
+        {
+            name: 'Dashboard',
+            path: '/pos/dashboard',
+            icon: LayoutDashboard,
+            description: 'Overview & Analytics'
+        },
+        {
+            name: 'Sales Counter',
+            path: '/pos/counter',
+            icon: ScanBarcode,
+            description: 'Process New Sales'
+        },
+        {
+            name: 'Order History',
+            path: '/pos/orders',
+            icon: ClipboardList,
+            description: 'View Transactions'
+        },
+        {
+            name: 'Customers',
+            path: '/pos/customers',
+            icon: Users,
+            description: 'Manage Members'
+        },
+        {
+            name: 'Cash Session',
+            path: '/pos/sessions',
+            icon: Banknote,
+            description: 'Open/Close Shift'
+        },
+        {
+            name: 'Work Schedule',
+            path: '/pos/schedule',
+            icon: CalendarClock,
+            description: 'View Shifts'
+        },
+        {
+            name: 'My Profile',
+            path: '/pos/profile',
+            icon: User,
+            description: 'Account Settings'
+        },
     ];
 
     const isActive = (path: string) => location.pathname === path;
@@ -49,13 +88,18 @@ export default function PosLayout() {
                             key={item.path}
                             to={item.path}
                             onClick={() => setIsMobileOpen(false)}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${active
+                            className={`flex items-start gap-3 px-3 py-3 rounded-xl transition-all duration-200 group ${active
                                 ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-900/20'
                                 : 'hover:bg-neutral-800 hover:text-white text-neutral-400'
                                 }`}
                         >
-                            <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-neutral-500 group-hover:text-white'}`} />
-                            {item.name}
+                            <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${active ? 'text-white' : 'text-neutral-500 group-hover:text-white'}`} />
+                            <div className="flex flex-col">
+                                <span className="text-sm font-semibold">{item.name}</span>
+                                <span className={`text-[10px] uppercase tracking-wider font-medium ${active ? 'text-cyan-100' : 'text-neutral-600 group-hover:text-neutral-400'}`}>
+                                    {item.description}
+                                </span>
+                            </div>
                         </Link>
                     );
                 })}
@@ -78,43 +122,42 @@ export default function PosLayout() {
                 <Button
                     variant="ghost"
                     className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-400/10 h-9"
-                    onClick={() => logout()}
+                    onClick={logout}
                 >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
                 </Button>
             </div>
         </div>
     );
 
     return (
-        <div className="flex min-h-screen bg-neutral-50 font-sans">
+        <div className="flex h-screen overflow-hidden bg-neutral-50">
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:block fixed inset-y-0 left-0 z-40 w-64 border-r border-neutral-200">
+            <aside className="hidden md:flex md:w-64 md:flex-col border-r border-neutral-200 bg-neutral-950">
                 <NavContent />
             </aside>
 
             {/* Mobile Sidebar */}
             <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
                 <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="lg:hidden fixed top-3 left-4 z-50">
-                        <Menu className="w-6 h-6" />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="md:hidden fixed top-4 left-4 z-50 bg-white shadow-md hover:bg-neutral-100"
+                    >
+                        <Menu className="h-5 w-5" />
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="p-0 w-64 bg-neutral-950 border-neutral-800">
+                <SheetContent side="left" className="p-0 w-64">
                     <NavContent />
                 </SheetContent>
             </Sheet>
 
             {/* Main Content */}
-            <main className="flex-1 lg:ml-64 flex flex-col min-w-0 min-h-screen transition-all duration-300">
-                {/* Header */}
-
-
-                <div className="p-8 flex-1 overflow-y-auto overflow-x-hidden">
-                    <Outlet />
-                </div>
-            </main>
+            <div className="flex-1 overflow-hidden">
+                <Outlet />
+            </div>
         </div>
     );
 }
