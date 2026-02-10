@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { axiosInstance } from '@/lib/axiosInstance';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
+import SessionManager from './SessionManager';
 
 interface Timesheet {
     timesheet_id: number;
@@ -219,6 +220,9 @@ export default function PosSchedule() {
 
     return (
         <div className="space-y-6">
+            {/* Session Management */}
+            <SessionManager />
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-neutral-900">POS Schedule</h1>
@@ -392,7 +396,7 @@ export default function PosSchedule() {
 
                     {schedules.length === 0 && (
                         <div className="text-center py-10 text-neutral-500 border rounded-lg bg-neutral-50">
-                            Bạn không có ca làm nào trong {viewMode === 'week' ? 'tuần' : 'tháng'} này.
+                            You have no shifts scheduled for this {viewMode === 'week' ? 'week' : 'month'}.
                         </div>
                     )}
                 </div>

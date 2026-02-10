@@ -218,7 +218,7 @@ export default function CustomerHome() {
                                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">{stat.label}</p>
                                         <h3 className="text-3xl font-bold text-slate-800 tracking-tight flex items-baseline gap-1">
                                             {stat.value}
-                                            {stat.unit && <span className="text-lg text-slate-400 font-medium">{stat.unit}</span>}
+                                            {(stat as any).unit && <span className="text-lg text-slate-400 font-medium">{(stat as any).unit}</span>}
                                         </h3>
                                     </div>
                                     <div className={`w-14 h-14 rounded-[1.2rem] ${stat.bg} ${stat.color} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500`}>
