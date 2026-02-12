@@ -1,7 +1,6 @@
 import { Star, MessageSquare, ThumbsUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress'; // Assuming we have this, or using div
 
 const REVIEWS = [
     { id: 1, user: 'John D.', rating: 5, date: '2 days ago', title: 'Amazing Quality!', comment: 'The blind box packaging was perfect and the figure is exquisite. Will buy again!', verified: true },

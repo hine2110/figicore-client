@@ -2,7 +2,7 @@
 export function generateSKU(productName: string, variantOption: string, brandName?: string): string {
     const brandPrefix = (brandName || "GEN").substring(0, 3).toUpperCase();
     const namePrefix = productName.replace(/[^a-zA-Z0-9]/g, "").substring(0, 3).toUpperCase() || "PRO";
-    const variantSuffix = variantOption.replace(/[^a-zA-Z0-9]/g, "").substring(0, 3).toUpperCase();
+
     const randomSuffix = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit random
 
     // Format: BRAND-NAME-VAR-RANDOM

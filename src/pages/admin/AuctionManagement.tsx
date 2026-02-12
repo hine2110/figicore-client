@@ -1,4 +1,4 @@
-import { Gavel, Clock, PlayCircle, StopCircle } from 'lucide-react';
+import { Clock, PlayCircle, StopCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

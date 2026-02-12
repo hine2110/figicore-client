@@ -98,7 +98,10 @@ export default function CustomerHome() {
     };
 
     const getPreorderDeposit = (product: any) => {
-        const dep = Number(product.product_preorders?.deposit_amount || 0);
+        // Fix: Use new schema (product_preorder_configs on variant)
+        const variant = product.product_variants?.[0];
+        const config = variant?.product_preorder_configs;
+        const dep = Number(config?.deposit_amount || 0);
         return isNaN(dep) ? 'Contact' : formatPrice(dep);
     };
 
@@ -258,7 +261,7 @@ export default function CustomerHome() {
                                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">{stat.label}</p>
                                         <h3 className="text-3xl font-bold text-slate-800 tracking-tight flex items-baseline gap-1">
                                             {stat.value}
-                                            {stat.unit && <span className="text-lg text-slate-400 font-medium">{stat.unit}</span>}
+                                            {(stat as any).unit && <span className="text-lg text-slate-400 font-medium">{(stat as any).unit}</span>}
                                         </h3>
                                     </div>
                                     <div className={`w-14 h-14 rounded-[1.2rem] ${stat.bg} ${stat.color} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500`}>
@@ -278,7 +281,7 @@ export default function CustomerHome() {
                                     <h3 className="text-slate-900 font-bold mb-6 px-2">Quick Access</h3>
                                     <div className="space-y-2">
                                         {[
-                                            { label: "My Collection", path: "/customer/orders", icon: Package },
+                                            { label: "My Collection", path: "/customer/profile?tab=orders", icon: Package },
                                             { label: "Wallet & Points", path: "/customer/wallet", icon: Wallet },
                                             { label: "Vouchers", path: "/customer/wallet", icon: Ticket },
                                             { label: "Live Auctions", path: "/customer/auctions", icon: Gavel },

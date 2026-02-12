@@ -32,7 +32,9 @@ export function ProductList({ products, onEdit, onDelete, onView }: ProductListP
                 } else if (product.type_code === 'BLINDBOX') {
                     displayPrice = product.product_blindboxes?.[0]?.price || product.product_variants?.[0]?.price || 0;
                 } else if (product.type_code === 'PREORDER') {
-                    displayPrice = product.product_preorders?.[0]?.deposit_amount || product.product_variants?.[0]?.price || 0;
+                    // Access nested definition from the first variant
+                    const variant = product.product_variants?.[0];
+                    displayPrice = variant?.product_preorder_configs?.full_price || variant?.price || 0;
                 }
 
                 // Determine Image

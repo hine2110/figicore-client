@@ -261,26 +261,51 @@ export default function OrderDetail() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {order.order_items.map((item: any) => (
-                                                <tr key={item.item_id}>
-                                                    <td className="px-4 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-12 h-12 rounded bg-slate-100 shrink-0 overflow-hidden border border-slate-200">
-                                                                {item.product_variants?.products?.media_urls?.[0] && (
-                                                                    <img src={item.product_variants.products.media_urls[0]} alt="" className="w-full h-full object-cover" />
-                                                                )}
+                                            {order.order_items.map((item: any) => {
+                                                const config = item.product_variants?.product_preorder_configs;
+                                                const isPreOrder = !!config;
+                                                // Check if finalized: Pre-order item AND Order is past Deposit stage
+                                                // (i.e., PROCESSING, COMPLETED, PACKED, SHIPPING)
+                                                // NOT WAITING_DEPOSIT, CANCELLED, EXPIRED, PENDING_PAYMENT (Retail)
+                                                const isFinalized = isPreOrder && ['PROCESSING', 'PACKED', 'SHIPPING', 'AWAITING_PICKUP', 'COMPLETED'].includes(order.status_code);
+
+                                                // Price Logic
+                                                const displayUnitPrice = isFinalized ? Number(config.full_price) : Number(item.unit_price);
+                                                const displayTotal = displayUnitPrice * item.quantity;
+                                                const depositAmount = Number(config?.deposit_amount || 0);
+
+                                                return (
+                                                    <tr key={item.item_id}>
+                                                        <td className="px-4 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-12 h-12 rounded bg-slate-100 shrink-0 overflow-hidden border border-slate-200">
+                                                                    {item.product_variants?.products?.media_urls?.[0] && (
+                                                                        <img src={item.product_variants.products.media_urls[0]} alt="" className="w-full h-full object-cover" />
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-medium text-slate-900">{item.product_variants?.products?.name}</p>
+                                                                    <p className="text-xs text-slate-500">{item.product_variants?.option_name}</p>
+
+                                                                    {/* Pre-order Breakdown Note */}
+                                                                    {isFinalized && (
+                                                                        <div className="mt-1 text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-fit">
+                                                                            Deposit: {formatPrice(depositAmount)} • Remaining: {formatPrice(displayUnitPrice - depositAmount)}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                            <div>
-                                                                <p className="font-medium text-slate-900">{item.product_variants?.products?.name}</p>
-                                                                <p className="text-xs text-slate-500">{item.product_variants?.option_name}</p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-4 text-right text-slate-600">{formatPrice(Number(item.unit_price))}</td>
-                                                    <td className="px-4 py-4 text-center text-slate-600">x{item.quantity}</td>
-                                                    <td className="px-4 py-4 text-right font-medium text-slate-900">{formatPrice(Number(item.total_price))}</td>
-                                                </tr>
-                                            ))}
+                                                        </td>
+                                                        <td className="px-4 py-4 text-right text-slate-600">
+                                                            {formatPrice(displayUnitPrice)}
+                                                        </td>
+                                                        <td className="px-4 py-4 text-center text-slate-600">x{item.quantity}</td>
+                                                        <td className="px-4 py-4 text-right font-medium text-slate-900">
+                                                            {formatPrice(displayTotal)}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                         <tfoot className="bg-slate-50/50">
                                             <tr>
