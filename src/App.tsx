@@ -31,6 +31,8 @@ import ReturnApprovals from "@/pages/manager/ReturnApprovals";
 import ShiftManagement from "@/pages/manager/ShiftManagement";
 import CustomerFeedback from "@/pages/manager/CustomerFeedback";
 import StationConfirmPage from "@/pages/manager/StationConfirmPage";
+import PromotionListPage from "@/pages/manager/promotions/PromotionListPage";
+import PromotionCreatePage from "@/pages/manager/promotions/PromotionCreatePage";
 // import StaffDashboard from "@/pages/staff/StaffDashboard"; // Deprecated
 
 // Customer Pages
@@ -138,7 +140,9 @@ export default function App() {
                             <Route path="shifts" element={<ShiftManagement />} />
                             <Route path="feedback" element={<CustomerFeedback />} />
                             <Route path="profile" element={<ProfilePage />} />
-                            <Route path="station-confirm" element={<StationConfirmPage />} />
+                            <Route path="Station-confirm" element={<StationConfirmPage />} />
+                            <Route path="promotions" element={<PromotionListPage />} />
+                            <Route path="promotions/new" element={<PromotionCreatePage />} />
                         </Route>
                     </Route>
 

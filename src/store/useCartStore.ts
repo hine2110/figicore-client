@@ -11,6 +11,7 @@ export interface CartItem {
     image: string;
     variantId?: number;
     sku?: string;
+    promotion?: import('@/types/product').ProductPromotion;
     // Add other fields as needed
 }
 

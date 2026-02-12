@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 
 import api from "@/services/api";
+import { calculateFinalPrice } from "@/lib/utils";
 
 export default function Cart() {
     const navigate = useNavigate();
@@ -71,7 +72,7 @@ export default function Cart() {
                     // VITAL FIX: Send the actual Product Variant ID, not the Cart Item ID
                     variant_id: i.variantId ? Number(i.variantId) : Number(i.id),
                     quantity: Number(i.quantity),
-                    price: Number(i.price)
+                    price: calculateFinalPrice(i.price, i.promotion) // Send discounted price
                 }))
             };
 
@@ -120,7 +121,10 @@ export default function Cart() {
     const totalAmount = useMemo(() => {
         return items
             .filter(item => selectedItemIds.includes(item.id))
-            .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            .reduce((sum, item) => {
+                const finalPrice = calculateFinalPrice(item.price, item.promotion);
+                return sum + (finalPrice * item.quantity);
+            }, 0);
     }, [items, selectedItemIds]);
 
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
@@ -232,9 +236,22 @@ export default function Cart() {
                                             </div>
 
                                             {/* Price */}
-                                            <span className="font-bold text-slate-900 text-lg">
-                                                {formatPrice(item.price * item.quantity)}
-                                            </span>
+                                            <div className="flex flex-col items-end">
+                                                {calculateFinalPrice(item.price, item.promotion) < item.price ? (
+                                                    <>
+                                                        <span className="text-sm text-slate-400 line-through">
+                                                            {formatPrice(item.price * item.quantity)}
+                                                        </span>
+                                                        <span className="font-bold text-slate-900 text-lg">
+                                                            {formatPrice(calculateFinalPrice(item.price, item.promotion) * item.quantity)}
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <span className="font-bold text-slate-900 text-lg">
+                                                        {formatPrice(item.price * item.quantity)}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 

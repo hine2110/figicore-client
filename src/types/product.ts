@@ -74,4 +74,27 @@ export interface Product {
     product_variants: ProductVariant[];
     product_blindboxes?: ProductBlindbox; // One-to-one
     product_preorders?: ProductPreorder; // One-to-one
+    
+    product_promotions?: {
+        promotion_id: number;
+        name: string;
+        type_code: 'PERCENTAGE' | 'FIXED_AMOUNT';
+        value: number | string;
+        start_date: string;
+        end_date: string;
+        is_active: boolean;
+        min_apply_price?: number | string | null;
+        max_apply_price?: number | string | null;
+    };
+}
+
+export interface ProductPromotion {
+    promotion_id?: number;
+    value: string | number;
+    type_code: 'PERCENTAGE' | 'FIXED_AMOUNT';
+    is_active?: boolean;
+    start_date?: string;
+    end_date?: string;
+    min_apply_price?: number | string | null;
+    max_apply_price?: number | string | null;
 }
