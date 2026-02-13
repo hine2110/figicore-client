@@ -155,15 +155,70 @@ export default function RetailShop() {
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
-        if (!product.product_variants || product.product_variants.length === 0) return 'Contact';
+        // 1. Determine Base Price (Min Price from Variants)
+        let basePrice = 0;
+        if (product.product_variants && product.product_variants.length > 0) {
+            const prices = product.product_variants.map((v: any) => Number(v.price));
+            basePrice = Math.min(...prices);
+        } else if (product.price) {
+            // Fallback if price is on root
+            basePrice = Number(product.price);
+        } else {
+            return 'Contact';
+        }
 
-        // Find Lowest Price
-        const prices = product.product_variants.map((v: any) => Number(v.price));
-        const minPrice = Math.min(...prices);
+        // 2. Check for Promotions
+        const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
+        
+        // Strict Check Range
+        const minPrice = promo?.min_apply_price ? Number(promo.min_apply_price) : 0;
+        const maxPrice = promo?.max_apply_price ? Number(promo.max_apply_price) : Infinity;
 
-        // Optional: Add "From" prefix if multiple prices exist
+        // Validation: Must be active AND within price range
+        const isValidPromo = promo && promo.is_active && basePrice >= minPrice && basePrice <= maxPrice;
 
-        return formatPrice(minPrice);
+        let finalPrice = basePrice;
+
+        if (isValidPromo) {
+            const discountValue = Number(promo.value);
+            if (promo.type_code === 'PERCENTAGE') {
+                finalPrice = basePrice * (1 - discountValue / 100);
+            } else if (promo.type_code === 'FIXED_AMOUNT') {
+                finalPrice = basePrice - discountValue;
+            }
+        }
+
+        const hasDiscount = finalPrice < basePrice;
+        
+        // Optional: Check if multiple variants
+        const hasMultiplePrices = product.product_variants && new Set(product.product_variants.map((v: any) => Number(v.price))).size > 1;
+
+        if (hasDiscount) {
+            return (
+                <div className="flex flex-col items-start leading-none gap-1">
+                     <div className="flex items-center gap-2">
+                        <span className="text-red-600 font-bold text-lg">
+                            {formatPrice(finalPrice)}
+                         </span>
+                         {promo?.type_code === 'PERCENTAGE' && (
+                            <span className="bg-red-100/80 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
+                                -{Number(promo.value)}%
+                            </span>
+                         )}
+                     </div>
+                     <span className="text-slate-400 text-xs line-through font-medium">
+                        {hasMultiplePrices && "From "}{formatPrice(basePrice)}
+                     </span>
+                </div>
+            );
+        }
+
+        return (
+            <span className="flex items-baseline gap-1 font-bold text-slate-900">
+                {hasMultiplePrices && <span className="text-xs font-normal text-slate-500">From</span>}
+                {formatPrice(basePrice)}
+            </span>
+        );
     };
 
     const hasActiveFilters = useMemo(() => {
@@ -407,12 +462,41 @@ export default function RetailShop() {
                                                             SOLD OUT
                                                         </span>
                                                     </div>
-                                                ) : product.status_code === 'IN_STOCK' && (
-                                                    <div className="absolute top-3 left-3">
-                                                        <div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
-                                                            IN STOCK
-                                                        </div>
-                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {product.status_code === 'IN_STOCK' && (
+                                                            <div className="absolute top-3 left-3">
+                                                                <div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
+                                                                    IN STOCK
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* SALE BADGE */}
+                                                        {(() => {
+                                                            const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
+                                                            // Determine Base Price (Min Price from Variants or Root)
+                                                            let basePrice = 0;
+                                                            if (product.product_variants && product.product_variants.length > 0) {
+                                                                const prices = product.product_variants.map((v: any) => Number(v.price));
+                                                                basePrice = Math.min(...prices);
+                                                            } else if (product.price) {
+                                                                basePrice = Number(product.price);
+                                                            }
+                                                            
+                                                            const minPrice = promo?.min_apply_price ? Number(promo.min_apply_price) : 0;
+                                                            const maxPrice = promo?.max_apply_price ? Number(promo.max_apply_price) : Infinity;
+                                                            const isValidPromo = promo && promo.is_active && basePrice >= minPrice && basePrice <= maxPrice;
+
+                                                            return isValidPromo ? (
+                                                                <div className="absolute top-3 right-3 z-20">
+                                                                    <div className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-md uppercase tracking-wider">
+                                                                        SALE {promo?.type_code === 'PERCENTAGE' ? `-${Number(promo.value)}%` : ''}
+                                                                    </div>
+                                                                </div>
+                                                            ) : null;
+                                                        })()}
+                                                    </>
                                                 )}
 
                                                 {/* Hover Actions with Glass Effect */}

@@ -3,6 +3,8 @@ import { Star, ShoppingCart, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/store/useCartStore';
 import { useState } from 'react';
+import { calculateFinalPrice } from '@/lib/utils';
+import { ProductPromotion } from '@/types/product';
 
 interface ProductCardProps {
     product: {
@@ -16,6 +18,7 @@ interface ProductCardProps {
         reviews: number;
         isNew?: boolean;
         stock_available: number;
+        product_promotions?: ProductPromotion[] | ProductPromotion;
     };
 }
 
@@ -32,9 +35,15 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
             setTimeout(() => setIsAdded(false), 2000);
         } catch (error) {
             console.error("Quick add failed", error);
-            // Optionally add toast here if you want to notify user of quick add failure
         }
     };
+
+    // Logic calculation to be robust
+    const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
+    
+    // Calculate final price using the helper that respects range
+    const finalPrice = calculateFinalPrice(product.price, promo);
+    const hasDiscount = finalPrice < product.price;
 
     return (
         <Link to={`/customer/product/${product.id}`} className="group relative block overflow-hidden rounded-xl bg-white border border-gray-100 hover:border-blue-100 hover:shadow-lg transition-all duration-300">
@@ -49,10 +58,12 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
                         New
                     </span>
                 )}
-                {product.originalPrice && (
-                    <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
-                        Sale
-                    </span>
+                
+                {/* SALE BADGE - RESPECTS PRICE RANGE RULES */}
+                {hasDiscount && (
+                    <div className="absolute top-0 right-0 z-50 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg shadow-md uppercase tracking-wider">
+                        SALE {promo?.type_code === 'PERCENTAGE' ? `-${Number(promo.value)}%` : 'OFF'}
+                    </div>
                 )}
 
                 {/* Out of Stock Overlay */}
@@ -92,10 +103,18 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
                 </div>
 
                 <div className="mt-3 flex items-center gap-2">
-                    <span className="text-lg font-bold text-neutral-900">${product.price.toFixed(2)}</span>
-                    {product.originalPrice && (
-                        <span className="text-sm text-neutral-400 line-through">${product.originalPrice.toFixed(2)}</span>
+                    {hasDiscount ? (
+                        <>
+                            <span className="text-lg font-bold text-red-600">${finalPrice.toFixed(2)}</span>
+                            <span className="text-sm text-neutral-400 line-through">${product.price.toFixed(2)}</span>
+                        </>
+                    ) : (
+                        <span className="text-lg font-bold text-neutral-900">${product.price.toFixed(2)}</span>
                     )}
+                    
+                    {/* Hide originalPrice from prop if we are handling discount internally to avoid confusion, 
+                        OR only show it if it differs from product.price logic. 
+                        For now, removing the double-display risk. */}
                 </div>
             </div>
         </Link>

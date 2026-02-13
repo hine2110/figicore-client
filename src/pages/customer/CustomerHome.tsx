@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useState, useEffect } from 'react';
 import { productsService } from '@/services/products.service';
 import { customersService } from '@/services/customers.service';
+import { calculateFinalPrice } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
 export default function CustomerHome() {
@@ -67,8 +68,33 @@ export default function CustomerHome() {
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
-        const p = Number(product.product_variants?.[0]?.price || 0);
-        return isNaN(p) ? 'Contact' : formatPrice(p);
+        const basePrice = Number(product.product_variants?.[0]?.price || 0);
+        if (isNaN(basePrice)) return 'Contact';
+
+        const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
+        const finalPrice = calculateFinalPrice(basePrice, promo);
+
+        if (finalPrice < basePrice) {
+            return (
+                <div className="flex flex-col items-start leading-none gap-1">
+                    <div className="flex items-center gap-2">
+                        <span className="text-red-600 font-bold text-lg">
+                            {formatPrice(finalPrice)}
+                        </span>
+                        {promo?.type_code === 'PERCENTAGE' && (
+                            <span className="bg-red-100/80 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
+                                -{Number(promo.value)}%
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-slate-400 text-xs line-through font-medium">
+                        {formatPrice(basePrice)}
+                    </span>
+                </div>
+            );
+        }
+
+        return formatPrice(basePrice);
     };
 
     const getPreorderDeposit = (product: any) => {
@@ -86,7 +112,13 @@ export default function CustomerHome() {
         return 'Good Evening';
     };
 
-    const ProductCard = ({ product, isPreorder = false }: { product: any, isPreorder?: boolean }) => (
+    const ProductCard = ({ product, isPreorder = false }: { product: any, isPreorder?: boolean }) => {
+        const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
+        const basePrice = Number(product.product_variants?.[0]?.price || 0);
+        const finalPrice = calculateFinalPrice(basePrice, promo);
+        const hasDiscount = finalPrice < basePrice;
+
+        return (
         <div
             className="group relative flex flex-col gap-3 cursor-pointer gpu-layer"
             onClick={() => navigate(`/customer/product/${product.product_id}`)}
@@ -119,12 +151,23 @@ export default function CustomerHome() {
                             SOLD OUT
                         </span>
                     </div>
-                ) : product.status_code === 'IN_STOCK' && (
-                    <div className="absolute top-3 left-3">
-                        <div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
-                            IN STOCK
-                        </div>
-                    </div>
+                ) : (
+                    <>
+                        {product.status_code === 'IN_STOCK' && (
+                            <div className="absolute top-3 left-3">
+                                <div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
+                                    IN STOCK
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* SAFE SALE BADGE */}
+                        {hasDiscount && (
+                            <div className="absolute top-0 right-0 z-50 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg shadow-md uppercase tracking-wider">
+                                SALE {promo?.type_code === 'PERCENTAGE' ? `-${Number(promo.value)}%` : ''}
+                            </div>
+                        )}
+                    </>
                 )}
 
                 {/* Hover Actions */}
@@ -159,7 +202,7 @@ export default function CustomerHome() {
                 </div>
             </div>
         </div>
-    );
+    )};
 
     return (
         <CustomerLayout activePage="home">
