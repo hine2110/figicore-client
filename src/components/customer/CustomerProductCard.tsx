@@ -21,6 +21,7 @@ interface ProductCardProps {
         // Data might come as pre-calculated stock OR list of variants
         stock_available?: number;
         product_variants?: any[]; // <--- ADD THIS to support calculating total stock
+        product_promotions?: ProductPromotion[] | any;
     };
 }
 
@@ -51,7 +52,7 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
 
     // Logic calculation to be robust
     const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
-    
+
     // Calculate final price using the helper that respects range
     const finalPrice = calculateFinalPrice(product.price, promo);
     const hasDiscount = finalPrice < product.price;
@@ -117,7 +118,7 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
                     ) : (
                         <span className="text-lg font-bold text-neutral-900">${product.price.toFixed(2)}</span>
                     )}
-                    
+
                     {/* Hide originalPrice from prop if we are handling discount internally to avoid confusion, 
                         OR only show it if it differs from product.price logic. 
                         For now, removing the double-display risk. */}
