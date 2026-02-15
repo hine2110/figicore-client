@@ -8,7 +8,7 @@ import { ProductPromotion } from '@/types/product';
 
 interface ProductCardProps {
     product: {
-        id: string;
+        id: string; // Mapped from product_id
         name: string;
         price: number;
         originalPrice?: number;
@@ -17,14 +17,25 @@ interface ProductCardProps {
         rating: number;
         reviews: number;
         isNew?: boolean;
-        stock_available: number;
-        product_promotions?: ProductPromotion[] | ProductPromotion;
+
+        // Data might come as pre-calculated stock OR list of variants
+        stock_available?: number;
+        product_variants?: any[]; // <--- ADD THIS to support calculating total stock
     };
 }
 
 export default function CustomerProductCard({ product }: ProductCardProps) {
     const addToCart = useCartStore((state) => state.addToCart);
     const [isAdded, setIsAdded] = useState(false);
+
+    // --- LOGIC FIX: CALCULATE TOTAL STOCK ---
+    // If variants exist, sum their stock. Otherwise fallback to stock_available.
+    const totalStock = product.product_variants?.length
+        ? product.product_variants.reduce((sum, v) => sum + (v.stock_available || 0), 0)
+        : (product.stock_available || 0);
+
+    const isSoldOut = totalStock <= 0;
+    // ----------------------------------------
 
     const handleAddToCart = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -53,21 +64,17 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
                     alt={product.name}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
+
+                {/* Status Badges */}
                 {product.isNew && (
-                    <span className="absolute top-3 left-3 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
-                        New
-                    </span>
+                    <span className="absolute top-3 left-3 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">New</span>
                 )}
-                
-                {/* SALE BADGE - RESPECTS PRICE RANGE RULES */}
-                {hasDiscount && (
-                    <div className="absolute top-0 right-0 z-50 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg shadow-md uppercase tracking-wider">
-                        SALE {promo?.type_code === 'PERCENTAGE' ? `-${Number(promo.value)}%` : 'OFF'}
-                    </div>
+                {product.originalPrice && (
+                    <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">Sale</span>
                 )}
 
-                {/* Out of Stock Overlay */}
-                {product.stock_available <= 0 && (
+                {/* --- FIX: USE CALCULATED TOTAL STOCK --- */}
+                {isSoldOut && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/10">
                         <span className="bg-black/80 text-yellow-400 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg backdrop-blur-sm">
                             SOLD OUT
@@ -75,9 +82,8 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
                     </div>
                 )}
 
-                {/* Quick Action Overlay (Hidden if out of stock) */}
-                {product.stock_available > 0 && (
-                    <div className="absolute inset-x-0 bottom-0 p-4 tranneutral-y-full transition-transform duration-300 group-hover:tranneutral-y-0">
+                {!isSoldOut && (
+                    <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full transition-transform duration-300 group-hover:translate-y-0">
                         <Button
                             onClick={handleAddToCart}
                             className={`w-full backdrop-blur-sm shadow-sm font-medium transition-all ${isAdded ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-white/90 text-neutral-900 hover:bg-blue-600 hover:text-white'}`}

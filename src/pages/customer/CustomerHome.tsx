@@ -113,96 +113,84 @@ export default function CustomerHome() {
     };
 
     const ProductCard = ({ product, isPreorder = false }: { product: any, isPreorder?: boolean }) => {
-        const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
-        const basePrice = Number(product.product_variants?.[0]?.price || 0);
-        const finalPrice = calculateFinalPrice(basePrice, promo);
-        const hasDiscount = finalPrice < basePrice;
+        const totalStock = product.product_variants?.reduce((sum: number, v: any) => sum + (v.stock_available || 0), 0) || (product.stock_available || 0);
+        const isSoldOut = totalStock <= 0;
 
         return (
-        <div
-            className="group relative flex flex-col gap-3 cursor-pointer gpu-layer"
-            onClick={() => navigate(`/customer/product/${product.product_id}`)}
-        >
-            {/* Glass Card Image */}
-            <div className="aspect-[4/5] relative overflow-hidden rounded-3xl bg-white/40 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-white/30 transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] group-hover:-translate-y-2 group-hover:bg-white/60">
-                {product.media_urls?.[0] ? (
-                    <img
-                        src={product.media_urls[0]}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                        loading="lazy"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-300">
-                        <Package className="w-10 h-10" />
-                    </div>
-                )}
-
-                {/* Badge */}
-                {isPreorder ? (
-                    <div className="absolute top-3 left-3">
-                        <div className="bg-orange-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
-                            PRE-ORDER
-                        </div>
-                    </div>
-                ) : Number(product.product_variants?.[0]?.stock_available || 0) <= 0 ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                        <span className="bg-black/80 text-yellow-400 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg backdrop-blur-sm">
-                            SOLD OUT
-                        </span>
-                    </div>
-                ) : (
-                    <>
-                        {product.status_code === 'IN_STOCK' && (
-                            <div className="absolute top-3 left-3">
-                                <div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
-                                    IN STOCK
-                                </div>
-                            </div>
-                        )}
-                        
-                        {/* SAFE SALE BADGE */}
-                        {hasDiscount && (
-                            <div className="absolute top-0 right-0 z-50 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg shadow-md uppercase tracking-wider">
-                                SALE {promo?.type_code === 'PERCENTAGE' ? `-${Number(promo.value)}%` : ''}
-                            </div>
-                        )}
-                    </>
-                )}
-
-                {/* Hover Actions */}
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0">
-                    <button className="h-10 w-10 rounded-full bg-white/80 backdrop-blur-xl flex items-center justify-center text-slate-800 shadow-lg hover:bg-white hover:scale-110 transition-all border border-white/50">
-                        <Eye className="w-5 h-5" />
-                    </button>
-                    {!isPreorder &&
-                        <button className="h-10 w-10 rounded-full bg-slate-900/80 backdrop-blur-xl flex items-center justify-center text-white shadow-lg hover:bg-slate-900 hover:scale-110 transition-all border border-white/10">
-                            <ShoppingCart className="w-5 h-5" />
-                        </button>
-                    }
-                </div>
-            </div>
-
-            {/* Content */}
-            <div className="px-2 space-y-1">
-                <div className="text-[11px] font-bold tracking-wider uppercase text-slate-400">
-                    {product.brands?.name || 'FigiCore'}
-                </div>
-                <h3 className={`text-base font-medium leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-amber-500 transition-colors ${isPreorder ? 'text-white' : 'text-slate-800'}`}>
-                    {product.name}
-                </h3>
-                <div className="text-lg font-semibold pt-1">
-                    {isPreorder ? (
-                        <span className="text-orange-500">
-                            {getPreorderDeposit(product)} <span className="text-xs text-slate-500 font-normal">Deposit</span>
-                        </span>
+            <div
+                className="group relative flex flex-col gap-3 cursor-pointer gpu-layer"
+                onClick={() => navigate(`/customer/product/${product.product_id}`)}
+            >
+                {/* Glass Card Image */}
+                <div className="aspect-[4/5] relative overflow-hidden rounded-3xl bg-white/40 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-white/30 transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] group-hover:-translate-y-2 group-hover:bg-white/60">
+                    {product.media_urls?.[0] ? (
+                        <img
+                            src={product.media_urls[0]}
+                            alt={product.name}
+                            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                            loading="lazy"
+                        />
                     ) : (
-                        <span className="text-slate-900/90">{getDisplayPrice(product)}</span>
+                        <div className="w-full h-full flex items-center justify-center text-slate-300">
+                            <Package className="w-10 h-10" />
+                        </div>
                     )}
+
+                    {/* Badge */}
+                    {isPreorder ? (
+                        <div className="absolute top-3 left-3">
+                            <div className="bg-orange-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
+                                PRE-ORDER
+                            </div>
+                        </div>
+                    ) : isSoldOut ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                            <span className="bg-black/80 text-yellow-400 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg backdrop-blur-sm">
+                                SOLD OUT
+                            </span>
+                        </div>
+                    ) : product.status_code === 'IN_STOCK' && (
+                        <div className="absolute top-3 left-3">
+                            <div className="bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-white/20">
+                                IN STOCK
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Hover Actions */}
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0">
+                        <button className="h-10 w-10 rounded-full bg-white/80 backdrop-blur-xl flex items-center justify-center text-slate-800 shadow-lg hover:bg-white hover:scale-110 transition-all border border-white/50">
+                            <Eye className="w-5 h-5" />
+                        </button>
+                        {!isPreorder &&
+                            <button className="h-10 w-10 rounded-full bg-slate-900/80 backdrop-blur-xl flex items-center justify-center text-white shadow-lg hover:bg-slate-900 hover:scale-110 transition-all border border-white/10">
+                                <ShoppingCart className="w-5 h-5" />
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="px-2 space-y-1">
+                    <div className="text-[11px] font-bold tracking-wider uppercase text-slate-400">
+                        {product.brands?.name || 'FigiCore'}
+                    </div>
+                    <h3 className={`text-base font-medium leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-amber-500 transition-colors ${isPreorder ? 'text-white' : 'text-slate-800'}`}>
+                        {product.name}
+                    </h3>
+                    <div className="text-lg font-semibold pt-1">
+                        {isPreorder ? (
+                            <span className="text-orange-500">
+                                {getPreorderDeposit(product)} <span className="text-xs text-slate-500 font-normal">Deposit</span>
+                            </span>
+                        ) : (
+                            <span className="text-slate-900/90">{getDisplayPrice(product)}</span>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
-    )};
+        );
+    };
 
     return (
         <CustomerLayout activePage="home">

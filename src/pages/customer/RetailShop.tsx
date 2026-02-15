@@ -29,6 +29,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { BlindBoxPromoSection } from '@/components/customer/BlindBoxPromoSection';
 
 export default function RetailShop() {
     const navigate = useNavigate();
@@ -385,6 +386,9 @@ export default function RetailShop() {
                     </div>
                 </div>
 
+                {/* MYSTERY HOOK SECTION */}
+                <BlindBoxPromoSection />
+
                 {/* --- PRODUCT GRID (Glass Cards) --- */}
                 <div className="container mx-auto px-4 relative z-10 max-w-7xl pt-4">
                     {loading ? (
@@ -421,6 +425,9 @@ export default function RetailShop() {
                                     // Try to find a secondary image for hover effect
                                     const hoverImage = product.media_urls?.[1] || product.product_variants?.[0]?.media_assets?.[0]?.url;
 
+                                    const totalStock = product.product_variants?.reduce((sum: number, v: any) => sum + (v.stock_available || 0), 0) || (product.stock_available || 0);
+                                    const isSoldOut = totalStock <= 0;
+
                                     return (
                                         <div
                                             key={product.product_id}
@@ -456,7 +463,7 @@ export default function RetailShop() {
                                                 )}
 
                                                 {/* Floating Badge */}
-                                                {Number(product.product_variants?.[0]?.stock_available || 0) <= 0 ? (
+                                                {isSoldOut ? (
                                                     <div className="absolute inset-0 flex items-center justify-center bg-black/10">
                                                         <span className="bg-black/80 text-yellow-400 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg backdrop-blur-sm">
                                                             SOLD OUT

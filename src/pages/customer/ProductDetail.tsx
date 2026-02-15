@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import CustomerLayout from '@/layouts/CustomerLayout';
+import BlindBoxDetail from './BlindBoxDetail'; // NEW IMPORT
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -112,10 +113,55 @@ export default function ProductDetail() {
         if (product?.type_code === 'RETAIL' && product.product_variants?.length > 0 && !selectedVariant) {
             setSelectedVariant(product.product_variants[0]);
         }
+        // For Blindbox, select the first variant if available (usually the Box itself)
+        if (product?.type_code === 'BLINDBOX' && product.product_variants?.length > 0 && !selectedVariant) {
+            setSelectedVariant(product.product_variants[0]);
+        }
     }, [product, selectedVariant]); // Added selectedVariant to dep array to avoid infinite loop if it changes
 
     // Format Price Helper
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
+
+    const handleAddToCart = async (qtyOverride?: number) => {
+        if (!product) return;
+
+        const finalQuantity = qtyOverride || quantity;
+
+        try {
+            // Use store's addToCart directly
+            await useCartStore.getState().addToCart({
+                id: Number(product.product_id), // <--- EXPLICIT CASTING
+                name: product.name,
+                price: Number((product as any).price || 0), // Base price if needed, but store logic handles effective price
+                // Map image correctly (handle string or array)
+                image: Array.isArray(product.media_urls) ? product.media_urls[0] : (typeof product.media_urls === 'string' ? product.media_urls : ''),
+                variantId: selectedVariant?.variant_id ? Number(selectedVariant.variant_id) : undefined,
+                quantity: finalQuantity,
+                type_code: product.type_code,
+                // Pre-order fields - PRIORITIZE VARIANT CONFIG
+                deposit_amount: Number(selectedVariant?.product_preorder_configs?.deposit_amount || 0),
+                full_price: Number(selectedVariant?.product_preorder_configs?.full_price || 0),
+                // Payment Mode
+                paymentOption: paymentMode,
+                // Limits
+                max_qty_per_user: Number(selectedVariant?.product_preorder_configs?.max_qty_per_user || 0) || undefined
+            });
+
+            toast({
+                title: "Added to cart",
+                description: `${finalQuantity} x ${product.name} has been added to your cart.`,
+                className: product.type_code === 'PREORDER'
+                    ? "bg-zinc-900 border border-white/10 text-white backdrop-blur-md"
+                    : "bg-white/80 backdrop-blur-md border border-white/40 shadow-lg rounded-2xl",
+            });
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Cannot add item",
+                description: error.message || "An error occurred while adding to cart.",
+            });
+        }
+    };
 
     if (loading) {
         return (
@@ -128,6 +174,17 @@ export default function ProductDetail() {
     }
 
     if (!product) return null;
+
+    // --- BLINDBOX REDIRECT ---
+    if (product.type_code === 'BLINDBOX') {
+        return (
+            <BlindBoxDetail
+                product={product}
+                onAddToCart={handleAddToCart}
+                formatPrice={formatPrice}
+            />
+        );
+    }
 
     // --- ADAPTIVE THEME LOGIC ---
     const isPreorder = product.type_code === 'PREORDER';
@@ -183,6 +240,7 @@ export default function ProductDetail() {
         displayPrice = formatPrice(p);
     }
 
+    // --- RENDER HELPERS ---
     const renderStockStatus = () => {
         if (product.type_code === 'RETAIL') {
             const stock = selectedVariant?.stock_available || product.product_variants?.[0]?.stock_available || 0;
@@ -241,44 +299,7 @@ export default function ProductDetail() {
         });
     };
 
-    const handleAddToCart = async () => {
-        if (!product) return;
 
-        try {
-            // Use store's addToCart directly
-            await useCartStore.getState().addToCart({
-                id: Number(product.product_id), // <--- EXPLICIT CASTING
-                name: product.name,
-                price: Number((product as any).price || 0), // Base price if needed, but store logic handles effective price
-                // Map image correctly (handle string or array)
-                image: Array.isArray(product.media_urls) ? product.media_urls[0] : (typeof product.media_urls === 'string' ? product.media_urls : ''),
-                variantId: selectedVariant?.variant_id ? Number(selectedVariant.variant_id) : undefined,
-                quantity: quantity,
-                type_code: product.type_code,
-                // Pre-order fields - PRIORITIZE VARIANT CONFIG
-                deposit_amount: Number(selectedVariant?.product_preorder_configs?.deposit_amount || 0),
-                full_price: Number(selectedVariant?.product_preorder_configs?.full_price || 0),
-                // Payment Mode
-                paymentOption: paymentMode,
-                // Limits
-                max_qty_per_user: Number(selectedVariant?.product_preorder_configs?.max_qty_per_user || 0) || undefined
-            });
-
-            toast({
-                title: "Added to cart",
-                description: `${quantity} x ${product.name} has been added to your cart.`,
-                className: isPreorder
-                    ? "bg-zinc-900 border border-white/10 text-white backdrop-blur-md"
-                    : "bg-white/80 backdrop-blur-md border border-white/40 shadow-lg rounded-2xl",
-            });
-        } catch (error: any) {
-            toast({
-                variant: "destructive",
-                title: "Cannot add item",
-                description: error.message || "An error occurred while adding to cart.",
-            });
-        }
-    };
 
     const handleBuyNow = () => {
         handleAddToCart();
@@ -312,13 +333,9 @@ export default function ProductDetail() {
                         <Link to="/customer/home" className={cn("transition-colors whitespace-nowrap", isPreorder ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900")}>Home</Link>
                         <ChevronRight className={cn("w-4 h-4 flex-shrink-0", isPreorder ? "text-white/20" : "text-slate-300")} />
                         <Link to={
-                            product.type_code === 'BLINDBOX' ? '/customer/blindbox' :
-                                product.type_code === 'PREORDER' ? '/customer/preorder' :
-                                    '/customer/retail'
+                            product.type_code === 'PREORDER' ? '/customer/preorder' : '/customer/retail'
                         } className={cn("transition-colors whitespace-nowrap", isPreorder ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900")}>
-                            {product.type_code === 'BLINDBOX' ? 'Blind Box' :
-                                product.type_code === 'PREORDER' ? 'Pre-Order' :
-                                    'Retail Shop'}
+                            {product.type_code === 'PREORDER' ? 'Pre-Order' : 'Retail Shop'}
                         </Link>
                         <ChevronRight className={cn("w-4 h-4 flex-shrink-0", isPreorder ? "text-white/20" : "text-slate-300")} />
                         <span className={cn(
@@ -656,30 +673,45 @@ export default function ProductDetail() {
                                             {product.type_code === 'PREORDER' ? 'Version / Scale' : 'Model'}
                                         </span>
                                         <div className="flex flex-wrap gap-3">
-                                            {product.product_variants.map((variant: any) => (
-                                                <button
-                                                    key={variant.variant_id}
-                                                    onClick={() => {
-                                                        setSelectedVariant(variant);
-                                                        setQuantity(1);
-                                                    }}
-                                                    className={cn(
-                                                        "px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border",
-                                                        selectedVariant?.variant_id === variant.variant_id
-                                                            ? (isPreorder
-                                                                ? "bg-amber-500 text-black border-amber-500"
-                                                                : "bg-slate-900 text-white border-slate-900 shadow-lg ring-1 ring-slate-900 ring-offset-2")
-                                                            : (isPreorder
-                                                                ? "bg-zinc-900/50 text-slate-300 border-white/10 hover:border-amber-500/50 hover:text-white"
-                                                                : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-900")
-                                                    )}
-                                                >
-                                                    {variant.option_name}
-                                                    {variant.stock_available < 5 && variant.stock_available > 0 && (
-                                                        <span className={cn("ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold", isPreorder ? "bg-amber-900/50 text-amber-500" : "bg-orange-100 text-orange-700")}>Low Stock</span>
-                                                    )}
-                                                </button>
-                                            ))}
+                                            {product.product_variants.map((variant: any) => {
+                                                const isSelected = selectedVariant?.variant_id === variant.variant_id;
+                                                const isSoldOut = variant.stock_available <= 0;
+
+                                                return (
+                                                    <button
+                                                        key={variant.variant_id}
+                                                        onClick={() => {
+                                                            if (!isSoldOut) {
+                                                                setSelectedVariant(variant);
+                                                                setQuantity(1);
+                                                            }
+                                                        }}
+                                                        disabled={isSoldOut}
+                                                        className={cn(
+                                                            "relative px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border group",
+                                                            // Selected State
+                                                            isSelected
+                                                                ? (isPreorder
+                                                                    ? "bg-amber-500 text-black border-amber-500"
+                                                                    : "bg-slate-900 text-white border-slate-900 shadow-lg ring-1 ring-slate-900 ring-offset-2")
+                                                                : (isPreorder
+                                                                    ? "bg-zinc-900/50 text-slate-300 border-white/10 hover:border-amber-500/50 hover:text-white"
+                                                                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-900"),
+                                                            // Sold Out State
+                                                            isSoldOut && "opacity-50 cursor-not-allowed hover:border-slate-200 hover:text-slate-400"
+                                                        )}
+                                                    >
+                                                        <span className={cn(isSoldOut && "line-through decorating-slate-400/50")}>
+                                                            {variant.option_name}
+                                                        </span>
+
+                                                        {/* Sold Out Label */}
+                                                        {isSoldOut && (
+                                                            <span className="ml-2 text-[10px] font-bold text-red-500 uppercase tracking-wider">Sold Out</span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -726,7 +758,7 @@ export default function ProductDetail() {
                                                     size="lg"
                                                     variant="outline"
                                                     disabled={!selectedVariant} // Pre-order: Enable button even if stock=0 (slots managed by BE)
-                                                    onClick={handleAddToCart}
+                                                    onClick={() => handleAddToCart()}
                                                     className="h-14 rounded-xl font-bold font-mono uppercase tracking-wide border-amber-500 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 bg-transparent transition-all"
                                                 >
                                                     Add to Cart
@@ -752,7 +784,7 @@ export default function ProductDetail() {
                                                         (product.type_code !== 'RETAIL' && product.status_code !== 'ACTIVE')
                                                     }
                                                     className="h-14 rounded-xl font-bold text-base tracking-wide shadow-xl bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/10 hover:shadow-slate-900/20 hover:-translate-y-0.5 transition-all"
-                                                    onClick={handleAddToCart}
+                                                    onClick={() => handleAddToCart()}
                                                 >
                                                     {((product.type_code === 'RETAIL') && selectedVariant && (selectedVariant.stock_available || 0) <= 0) ? (
                                                         'Out of Stock'
@@ -813,9 +845,7 @@ export default function ProductDetail() {
                                     {isPreorder ? 'Classified Recommendations' : 'You Might Also Like'}
                                 </h2>
                                 <Link to={
-                                    product.type_code === 'BLINDBOX' ? '/customer/blindbox' :
-                                        product.type_code === 'PREORDER' ? '/customer/preorder' :
-                                            '/customer/retail'
+                                    product.type_code === 'PREORDER' ? '/customer/preorder' : '/customer/retail'
                                 } className={cn(
                                     "text-sm font-medium transition-colors flex items-center gap-1",
                                     isPreorder ? "text-amber-500 hover:text-amber-400 font-mono uppercase" : "text-slate-500 hover:text-blue-600"
@@ -876,6 +906,6 @@ export default function ProductDetail() {
                     )}
                 </div>
             </div>
-        </CustomerLayout>
+        </CustomerLayout >
     );
 }
