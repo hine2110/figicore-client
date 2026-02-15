@@ -16,7 +16,7 @@ import {
 import { productsService } from '@/services/products.service';
 import { Separator } from '@/components/ui/separator';
 import { Product, ProductVariant } from '@/types/product';
-import { cn } from '@/lib/utils';
+import { cn, calculateFinalPrice } from '@/lib/utils';
 import { useCartStore } from '@/store/useCartStore';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -190,14 +190,34 @@ export default function ProductDetail() {
     const isPreorder = product.type_code === 'PREORDER';
 
     // Determine displayed price
-    let displayPrice = 'Contact';
-    // Removed originalPrice logic
+    let displayPrice: React.ReactNode = 'Contact';
+    let originalPriceForDisplay: React.ReactNode = null;
+    
 
     if (product.type_code === 'RETAIL') {
+        let price = 0;
         if (selectedVariant) {
-            displayPrice = formatPrice(Number(selectedVariant.price));
+            price = Number(selectedVariant.price);
         } else if (product.product_variants?.[0]) {
-            displayPrice = formatPrice(Number(product.product_variants[0].price));
+            price = Number(product.product_variants[0].price);
+        }
+
+        const promoDetails = product.product_promotions;
+        const finalPrice = calculateFinalPrice(price, promoDetails);
+        const hasDiscount = finalPrice < price;
+        
+        if (hasDiscount) {
+            displayPrice = (
+                <div className="flex items-baseline gap-2">
+                    <span className="text-red-600">{formatPrice(finalPrice)}</span>
+                    <Badge variant="destructive" className="ml-2 text-sm">
+                         {promoDetails?.type_code === 'PERCENTAGE' ? `-${Number(promoDetails.value)}%` : 'SALE'}
+                    </Badge>
+                </div>
+            );
+            originalPriceForDisplay = formatPrice(price);
+        } else {
+            displayPrice = formatPrice(price);
         }
     } else if (product.type_code === 'PREORDER') {
         // Use selected variant if available, otherwise fallback to first variant
@@ -564,6 +584,11 @@ export default function ProductDetail() {
                                     )}>
                                         {displayPrice}
                                     </span>
+                                    {originalPriceForDisplay && (
+                                        <span className="text-lg text-slate-400 line-through font-medium">
+                                            {originalPriceForDisplay}
+                                        </span>
+                                    )}
                                     {product.type_code === 'PREORDER' && (
                                         <span className={cn("font-medium text-lg", isPreorder ? "text-slate-400 font-mono" : "text-slate-500")}>
                                             {paymentMode === 'DEPOSIT' ? '(Deposit)' : '(Full Price)'}

@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useState, useEffect } from 'react';
 import { productsService } from '@/services/products.service';
 import { customersService } from '@/services/customers.service';
+import { calculateFinalPrice } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
 export default function CustomerHome() {
@@ -67,8 +68,33 @@ export default function CustomerHome() {
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
-        const p = Number(product.product_variants?.[0]?.price || 0);
-        return isNaN(p) ? 'Contact' : formatPrice(p);
+        const basePrice = Number(product.product_variants?.[0]?.price || 0);
+        if (isNaN(basePrice)) return 'Contact';
+
+        const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
+        const finalPrice = calculateFinalPrice(basePrice, promo);
+
+        if (finalPrice < basePrice) {
+            return (
+                <div className="flex flex-col items-start leading-none gap-1">
+                    <div className="flex items-center gap-2">
+                        <span className="text-red-600 font-bold text-lg">
+                            {formatPrice(finalPrice)}
+                        </span>
+                        {promo?.type_code === 'PERCENTAGE' && (
+                            <span className="bg-red-100/80 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
+                                -{Number(promo.value)}%
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-slate-400 text-xs line-through font-medium">
+                        {formatPrice(basePrice)}
+                    </span>
+                </div>
+            );
+        }
+
+        return formatPrice(basePrice);
     };
 
     const getPreorderDeposit = (product: any) => {
@@ -223,7 +249,7 @@ export default function CustomerHome() {
                                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">{stat.label}</p>
                                         <h3 className="text-3xl font-bold text-slate-800 tracking-tight flex items-baseline gap-1">
                                             {stat.value}
-                                            {stat.unit && <span className="text-lg text-slate-400 font-medium">{stat.unit}</span>}
+                                            {(stat as any).unit && <span className="text-lg text-slate-400 font-medium">{(stat as any).unit}</span>}
                                         </h3>
                                     </div>
                                     <div className={`w-14 h-14 rounded-[1.2rem] ${stat.bg} ${stat.color} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500`}>

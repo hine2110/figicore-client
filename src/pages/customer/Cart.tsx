@@ -7,6 +7,7 @@ import CustomerLayout from "@/layouts/CustomerLayout";
 import { useCartStore } from "@/store/useCartStore";
 import { useToast } from "@/components/ui/use-toast";
 import api from "@/services/api";
+import { calculateFinalPrice } from "@/lib/utils";
 
 export default function Cart() {
     const navigate = useNavigate();
@@ -68,14 +69,14 @@ export default function Cart() {
             // Validating DTO: shipping_address_id (Int), shipping_fee (Number), items (Array)
             const payload = {
                 shipping_address_id: Number(defaultAddr.address_id),
-                payment_method_code: 'QR_BANK', // Valid default
-                shipping_fee: 0, // Placeholder, calculated by backend/checkout later if needed, but required by DTO
-                order_type: hasPreorder ? 'PREORDER' : 'RETAIL',
-                items: selectedItems.map(item => ({
-                    variant_id: Number(item.variantId || item.id), // Ensure it maps to variant_id
-                    quantity: Number(item.quantity),
-                    price: Number(item.price),
-                    paymentOption: item.payment_option
+                payment_method_code: 'QR_BANK', // Default
+                shipping_fee: 30000,
+                // original_shipping_fee removed, calculated in backend
+                items: selectedItems.map(i => ({
+                    // VITAL FIX: Send the actual Product Variant ID, not the Cart Item ID
+                    variant_id: i.variantId ? Number(i.variantId) : Number(i.id),
+                    quantity: Number(i.quantity),
+                    price: calculateFinalPrice(i.price, i.promotion) // Send discounted price
                 }))
             };
 
@@ -148,7 +149,10 @@ export default function Cart() {
     const totalAmount = useMemo(() => {
         return items
             .filter(item => selectedItemIds.includes(item.id))
-            .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            .reduce((sum, item) => {
+                const finalPrice = calculateFinalPrice(item.price, item.promotion);
+                return sum + (finalPrice * item.quantity);
+            }, 0);
     }, [items, selectedItemIds]);
 
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
@@ -334,21 +338,52 @@ export default function Cart() {
                                             <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">In Stock</span>
                                         </h3>
                                     </div>
-                                    <div className="space-y-4 p-4 rounded-[2rem] border border-white/60 bg-white/30 shadow-sm">
-                                        {groupA.map(renderCartItem)}
-                                    </div>
-                                </div>
-                            )}
 
-                            {/* GROUP 2: PRE-ORDER (Preorder) */}
-                            {groupB.length > 0 && (
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 px-4 mt-8">
-                                        <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                                        <h3 className="font-bold text-lg text-slate-900 uppercase tracking-wide">
-                                            ⏳ Pre-order Items
-                                        </h3>
-                                        <span className="text-xs text-slate-500 italic ml-2">- Ships upon release</span>
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0 flex flex-col justify-between h-24 py-1">
+                                        <div>
+                                            <h3 className="font-bold text-slate-900 text-lg truncate pr-4 leading-tight">{item.name}</h3>
+                                            {/* Assuming variant info might be part of name or separate field in future, for now using placeholder logic if needed, or derived from name */}
+                                            <p className="text-sm text-slate-500">{item.name.includes('(') ? 'Model Selected' : 'Standard Edition'}</p>
+                                        </div>
+
+                                        <div className="flex justify-between items-end">
+                                            {/* Minimalist Quantity Stepper */}
+                                            <div className="flex items-center border border-slate-300/60 rounded-full px-3 py-1 bg-white/40 h-8">
+                                                <button
+                                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                    disabled={item.quantity <= 1}
+                                                    className="text-slate-500 hover:text-slate-900 disabled:opacity-30 px-1"
+                                                >
+                                                    <Minus className="w-3 h-3" />
+                                                </button>
+                                                <span className="mx-3 text-sm font-bold w-4 text-center">{item.quantity}</span>
+                                                <button
+                                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                    className="text-slate-500 hover:text-slate-900 px-1"
+                                                >
+                                                    <Plus className="w-3 h-3" />
+                                                </button>
+                                            </div>
+
+                                            {/* Price */}
+                                            <div className="flex flex-col items-end">
+                                                {calculateFinalPrice(item.price, item.promotion) < item.price ? (
+                                                    <>
+                                                        <span className="text-sm text-slate-400 line-through">
+                                                            {formatPrice(item.price * item.quantity)}
+                                                        </span>
+                                                        <span className="font-bold text-slate-900 text-lg">
+                                                            {formatPrice(calculateFinalPrice(item.price, item.promotion) * item.quantity)}
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <span className="font-bold text-slate-900 text-lg">
+                                                        {formatPrice(item.price * item.quantity)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="space-y-4 p-4 rounded-[2rem] border border-amber-500/20 bg-amber-500/5 shadow-sm relative overflow-hidden">
                                         {/* Subtle Ambient for Preorder Group */}
