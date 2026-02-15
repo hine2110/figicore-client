@@ -49,6 +49,8 @@ export interface ProductVariant {
     description?: string;
     deposit_amount?: string | number;
     product_preorder_configs?: ProductPreorderConfig;
+    scale?: string;
+    material?: string;
 }
 
 export interface ProductBlindbox {
@@ -57,6 +59,8 @@ export interface ProductBlindbox {
     min_value: string | number;
     max_value: string | number;
     tier_config?: any;
+    start_time?: string;
+    end_time?: string;
 }
 
 export interface Product {

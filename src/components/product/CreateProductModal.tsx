@@ -972,6 +972,53 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
                                             {/* DYNAMIC FIELDS based on Type */}
                                             <div className="space-y-6">
+
+                                                {/* COMMON DESCRIPTION FIELD FOR BLINDBOX ONLY (Others use per-variant description) */}
+                                                {watchedType === "BLINDBOX" && (
+                                                    <FormField control={form.control} name="description" render={({ field }) => (
+                                                        <FormItem>
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <FormLabel>Product Description</FormLabel>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-6 text-purple-600 gap-1 hover:bg-purple-50"
+                                                                    onClick={() => {
+                                                                        const values = form.getValues();
+                                                                        // Construct Context for Blindbox
+                                                                        const context = {
+                                                                            type: "Blindbox / Mystery Box",
+                                                                            brand: brands.find(b => b.value === values.brand_id)?.label,
+                                                                            category: categories.find(c => c.value === values.category_id)?.label,
+                                                                            series: series.find(s => s.value === values.series_id)?.label,
+                                                                            price: formatPrice(Number(values.price || 0)),
+                                                                            value_range: `${formatPrice(Number(values.min_value_allow || 0))} - ${formatPrice(Number(values.max_value_allow || 0))}`,
+                                                                            target_margin: `${values.target_margin || 0}%`,
+                                                                            start_date: values.start_date ? new Date(values.start_date).toLocaleDateString() : "TBA",
+                                                                        };
+
+                                                                        setMagicWriteState({
+                                                                            isOpen: true,
+                                                                            target: 'MAIN',
+                                                                            targetName: values.name,
+                                                                            imageUrl: values.media_items?.[0]?.url,
+                                                                            richContext: context
+                                                                        });
+                                                                    }}
+                                                                >
+                                                                    <Sparkles className="w-3 h-3" />
+                                                                    <span className="text-xs">Magic Write</span>
+                                                                </Button>
+                                                            </div>
+                                                            <FormControl>
+                                                                <Textarea placeholder="Describe the product series, rules, or details..." {...field} className="min-h-[120px]" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                )}
+
                                                 {/* RETAIL VARIANTS */}
                                                 {watchedType === "RETAIL" && (
                                                     <div className="space-y-5">
