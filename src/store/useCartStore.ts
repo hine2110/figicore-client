@@ -12,14 +12,8 @@ export interface CartItem {
     image: string;
     variantId?: number;
     sku?: string;
-    type_code?: string;
-
-    // FIELDS MỚI CHO PRE-ORDER
-    payment_option?: 'DEPOSIT' | 'FULL_PAYMENT';
-    deposit_amount?: number;
-    full_price?: number;
-    max_qty_per_user?: number;
-    maxStock?: number;
+    promotion?: import('@/types/product').ProductPromotion;
+    // Add other fields as needed
 }
 
 interface CartState {

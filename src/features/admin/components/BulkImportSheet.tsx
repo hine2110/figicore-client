@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, FileSpreadsheet, AlertCircle, CheckCircle, FileArchive } from 'lucide-react';
+import { X, FileSpreadsheet, AlertCircle, CheckCircle, FileArchive } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
