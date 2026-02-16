@@ -196,3 +196,11 @@
   transform: translate3d(0, 0, 0);
   /* Hardware acceleration */
 }
+
+.ambient-glow-blue {
+  @apply bg-blue-500/30 blur-[120px];
+}
+
+.ambient-glow-purple {
+  @apply bg-indigo-500/30 blur-[120px];
+}
