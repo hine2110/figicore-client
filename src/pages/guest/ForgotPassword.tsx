@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mail } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Mail, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 import { authService } from "@/services/auth.service";
+import { GuestLayout } from '@/layouts/GuestLayout';
+import { motion } from 'framer-motion';
 
 export default function ForgotPassword() {
 
@@ -31,89 +34,108 @@ export default function ForgotPassword() {
     };
 
     return (
-        <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
-            {/* Left Decoration */}
-            <div className="hidden md:block bg-neutral-900 relative">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80')] bg-cover bg-center opacity-40"></div>
-                <div className="absolute inset-0 flex flex-col justify-between p-12 text-white z-10">
-                    <div className="text-2xl font-bold">FigiCore</div>
-                    <div>
-                        <h2 className="text-4xl font-bold mb-4">Reset Your Password</h2>
-                        <p className="text-neutral-300 max-w-md">Enter your email and we'll send you a link to get back into your account.</p>
-                    </div>
-                    <p className="text-sm text-neutral-400">© 2026 FigiCore Inc.</p>
+        <GuestLayout activePage="login">
+            <div className="min-h-screen bg-[#F2F2F7] relative overflow-hidden flex items-center justify-center p-4">
+                {/* Ambient Background */}
+                <div className="fixed inset-0 pointer-events-none z-0 opacity-50">
+                    <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] ambient-glow-blue rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '8s' }} />
+                    <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] ambient-glow-purple rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '10s' }} />
                 </div>
-            </div>
 
-            {/* Right Form */}
-            <div className="flex items-center justify-center p-8 bg-white">
-                <div className="w-full max-w-md space-y-8">
-                    <div className="text-center">
-                        <h1 className="text-2xl font-bold text-neutral-900">Forgot Password?</h1>
-                        <p className="text-neutral-500 mt-2">
+                {/* Glass Card */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="relative z-10 w-full max-w-md bg-white/60 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-[2rem] p-8 md:p-12 overflow-hidden"
+                >
+                    <div className="text-center mb-8">
+                        <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Reset Password</h1>
+                        <p className="text-slate-500 text-sm">
                             {emailSent
-                                ? "Check your email for reset instructions"
-                                : "No worries, we'll send you reset instructions"
+                                ? "Check your email for instructions"
+                                : "Enter your email to receive a reset link"
                             }
                         </p>
                     </div>
 
                     {!emailSent ? (
                         <form onSubmit={handleSendResetLink} className="space-y-6">
-                            {error && <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">{error}</div>}
+                            {error && (
+                                <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+                                    {error}
+                                </div>
+                            )}
 
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-neutral-900">Email</label>
-                                <div className="relative">
-                                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                    <input
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email Address</label>
+                                <div className="relative group">
+                                    <Mail className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                    <Input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
-                                        className="w-full pl-10 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                        placeholder="m@example.com"
+                                        className="h-12 pl-12 bg-white/50 border-slate-200 text-slate-900 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all font-medium"
+                                        placeholder="Enter your email"
                                     />
                                 </div>
                             </div>
 
                             <Button
                                 type="submit"
-                                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                                className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
                                 disabled={isLoading}
                             >
-                                {isLoading ? "Sending..." : "Send Reset Link"}
+                                {isLoading ? (
+                                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                ) : (
+                                    "Send Reset Link"
+                                )}
                             </Button>
+
+                            <div className="text-center mt-6">
+                                <Link to="/guest/login" className="text-sm text-slate-500 hover:text-slate-800 font-bold inline-flex items-center gap-2 transition-colors">
+                                    <ArrowLeft className="w-4 h-4" /> Back to Sign In
+                                </Link>
+                            </div>
                         </form>
                     ) : (
-                        <div className="space-y-6">
-                            <div className="bg-green-50 text-green-600 p-4 rounded-md text-sm text-center">
-                                <p className="font-medium mb-1">Email Sent!</p>
-                                <p className="text-green-700">{message}</p>
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="flex flex-col items-center justify-center p-6 bg-green-50/50 border border-green-100 rounded-2xl">
+                                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600 shadow-sm">
+                                    <CheckCircle2 className="w-8 h-8" />
+                                </div>
+                                <h3 className="text-slate-900 font-bold text-lg mb-1">Email Sent!</h3>
+                                <p className="text-slate-600 text-center text-sm">{message}</p>
                             </div>
 
-                            <div className="text-center text-sm text-neutral-600">
-                                <p>Didn't receive the email?</p>
-                                <button
-                                    onClick={() => {
-                                        setEmailSent(false);
-                                        setMessage(null);
-                                    }}
-                                    className="text-blue-600 hover:underline font-semibold mt-1"
+                            <div className="space-y-4">
+                                <p className="text-center text-sm text-slate-500">
+                                    Didn't receive the email? <br />
+                                    <button
+                                        onClick={() => {
+                                            setEmailSent(false);
+                                            setMessage(null);
+                                        }}
+                                        className="text-blue-600 hover:text-blue-700 font-bold hover:underline transition-all mt-1"
+                                    >
+                                        Try again
+                                    </button>
+                                </p>
+
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-12 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold"
+                                    onClick={() => setEmailSent(false)}
                                 >
-                                    Try again
-                                </button>
+                                    <ArrowLeft className="w-4 h-4 mr-2" /> Back to Reset
+                                </Button>
                             </div>
                         </div>
                     )}
-
-                    <div className="text-center">
-                        <Link to="/guest/login" className="text-sm text-neutral-600 hover:text-neutral-900 inline-flex items-center gap-1">
-                            ← Back to Sign In
-                        </Link>
-                    </div>
-                </div>
+                </motion.div>
             </div>
-        </div>
+        </GuestLayout>
     );
 }

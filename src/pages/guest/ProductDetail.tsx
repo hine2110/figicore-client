@@ -58,7 +58,7 @@ export default function GuestProductDetail() {
     useEffect(() => setSelectedImage(0), [selectedVariant]);
 
     const handleLoginRedirect = () => {
-        navigate(`/guest/login?redirect=/product/${id}`);
+        navigate(`/guest/login?redirect=/customer/product/${id}`);
     };
 
     const formatPrice = (p: any) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(p));

@@ -1,46 +1,49 @@
 import { GuestLayout } from '@/layouts/GuestLayout';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
     Heart,
     Shield,
     Truck,
     Star,
     Sparkles,
-    CheckCircle2
+    CheckCircle2,
+    ArrowRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 export function About() {
     const navigate = useNavigate();
+
     const features = [
         {
             icon: Shield,
             title: 'Authenticity Guaranteed',
             description: 'Every item is verified genuine from official distributors.',
-            color: 'text-neutral-900',
-            bgColor: 'bg-neutral-100',
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50',
         },
         {
             icon: Truck,
             title: 'Global Shipping',
             description: 'Secure, tracked delivery to collectors worldwide.',
-            color: 'text-neutral-900',
-            bgColor: 'bg-neutral-100',
+            color: 'text-amber-600',
+            bgColor: 'bg-amber-50',
         },
         {
             icon: Heart,
             title: 'For Collectors',
             description: 'Built by enthusiasts, for the enthusiast community.',
-            color: 'text-neutral-900',
-            bgColor: 'bg-neutral-100',
+            color: 'text-rose-600',
+            bgColor: 'bg-rose-50',
         },
         {
             icon: Star,
             title: 'Premium Service',
             description: 'Dedicated support to ensure your satisfaction.',
-            color: 'text-neutral-900',
-            bgColor: 'bg-neutral-100',
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
         },
     ];
 
@@ -53,155 +56,193 @@ export function About() {
 
     return (
         <GuestLayout activePage="about">
-            <div className="bg-white">
-                {/* HERO SECTION */}
-                <section className="relative py-32 bg-neutral-900 text-white overflow-hidden">
-                    <div className="absolute inset-0 opacity-10 bg-[url('https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=1920&q=80&fit=crop')] bg-cover bg-center" />
-                    <div className="container mx-auto px-4 relative z-10 text-center">
-                        <motion.h1
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="text-5xl md:text-7xl font-serif font-medium mb-6 tracking-tight"
-                        >
-                            The Art of Collecting
-                        </motion.h1>
-                        <motion.p
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="text-xl text-neutral-400 max-w-2xl mx-auto font-light leading-relaxed"
-                        >
-                            FigiCore is your premier destination for curated art toys, blind boxes, and limited edition figures. We bridge the gap between art and play.
-                        </motion.p>
-                    </div>
-                </section>
+            <div className="min-h-screen bg-[#F2F2F7] relative overflow-hidden font-sans">
+                {/* Ambient Background */}
+                <div className="fixed inset-0 pointer-events-none z-0 opacity-50">
+                    <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] ambient-glow-blue rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '8s' }} />
+                    <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] ambient-glow-purple rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '10s' }} />
+                </div>
 
-                {/* MISSION STATEMENT */}
-                <section className="py-24 container mx-auto px-4">
-                    <div className="max-w-4xl mx-auto text-center">
-                        <Sparkles className="w-12 h-12 mx-auto mb-8 text-amber-500" />
-                        <h2 className="text-3xl md:text-4xl font-serif font-bold text-neutral-900 mb-8">Our Mission</h2>
-                        <p className="text-2xl md:text-3xl text-neutral-600 font-light leading-relaxed italic">
-                            "To create a trusted sanctuary where collectors can discover authentic masterpieces, connecting with the stories and artists behind every figure."
-                        </p>
-                    </div>
-                </section>
+                <div className="container mx-auto px-4 relative z-10 pt-16 pb-24 max-w-7xl space-y-24">
 
-                {/* WHY CHOOSE US */}
-                <section className="py-24 bg-neutral-50">
-                    <div className="container mx-auto px-4">
-                        <div className="text-center mb-16">
-                            <h2 className="text-3xl font-serif font-bold text-neutral-900 mb-4">Why Collectors Choose Us</h2>
-                            <p className="text-neutral-500">The FigiCore Standard of Excellence</p>
+                    {/* HERO SECTION */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="relative rounded-[3rem] overflow-hidden bg-white/60 backdrop-blur-3xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-8 md:p-20 text-center"
+                    >
+                        <div className="max-w-3xl mx-auto space-y-8">
+                            <Badge variant="outline" className="bg-white/50 backdrop-blur-sm border-slate-200 text-slate-600 px-4 py-1.5 text-xs tracking-[0.2em] uppercase font-bold shadow-sm">
+                                Est. 2024
+                            </Badge>
+
+                            <h1 className="text-5xl md:text-7xl font-bold text-slate-900 tracking-tight leading-tight">
+                                The Art of <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Collecting</span>
+                            </h1>
+
+                            <p className="text-xl text-slate-500 font-light leading-relaxed">
+                                FigiCore is your premier destination for curated art toys, blind boxes, and limited edition figures. We bridge the gap between art and play.
+                            </p>
+
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                                <Button
+                                    size="lg"
+                                    className="h-14 px-8 rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all text-lg font-medium"
+                                    onClick={() => navigate('/guest/browse')}
+                                >
+                                    Explore Collection
+                                </Button>
+                                <Button
+                                    size="lg"
+                                    variant="outline"
+                                    className="h-14 px-8 rounded-full border-slate-200 text-slate-700 hover:bg-white/80 hover:border-slate-300 text-lg font-medium"
+                                    onClick={() => document.getElementById('story')?.scrollIntoView({ behavior: 'smooth' })}
+                                >
+                                    Read Our Story
+                                </Button>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* STATS SECTION */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                        {stats.map((stat, index) => (
+                            <motion.div
+                                key={index}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: index * 0.1 }}
+                                className="bg-white/40 backdrop-blur-xl border border-white/40 rounded-[2rem] p-8 text-center hover:bg-white/60 transition-colors duration-300 shadow-sm"
+                            >
+                                <p className="text-4xl md:text-5xl font-bold text-slate-900 mb-2 tracking-tight">{stat.value}</p>
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">{stat.label}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    {/* STORY / MISSION */}
+                    <div id="story" className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                        <motion.div
+                            initial={{ opacity: 0, x: -30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="relative aspect-square lg:aspect-[4/5] rounded-[3rem] overflow-hidden shadow-2xl"
+                        >
+                            <img
+                                src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=800&q=80"
+                                alt="Collector"
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                            <div className="absolute bottom-10 left-10 text-white">
+                                <Badge className="bg-white/20 backdrop-blur-md text-white border-0 mb-4 hover:bg-white/30">PASSION PROJECT</Badge>
+                                <p className="text-2xl font-bold">Curated with Love</p>
+                            </div>
+                        </motion.div>
+
+                        <div className="space-y-10">
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                            >
+                                <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mb-8">
+                                    <Sparkles className="w-8 h-8 text-amber-600" />
+                                </div>
+                                <h2 className="text-4xl font-bold text-slate-900 mb-6 tracking-tight">Built on Passion & Integrity</h2>
+                                <p className="text-xl text-slate-600 leading-relaxed font-light mb-8">
+                                    "To create a trusted sanctuary where collectors can discover authentic masterpieces, connecting with the stories and artists behind every figure."
+                                </p>
+
+                                <div className="space-y-6">
+                                    {[
+                                        { title: 'Quality First', desc: 'Rigorous inspection of every item.' },
+                                        { title: 'Community Driven', desc: 'Supporting artists and collectors alike.' },
+                                        { title: 'Transparent Pricing', desc: 'Fair market value, no hidden fees.' }
+                                    ].map((item, i) => (
+                                        <div key={i} className="flex gap-5 items-start">
+                                            <div className="mt-1 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                                                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-slate-900 text-lg">{item.title}</h3>
+                                                <p className="text-slate-500 font-medium">{item.desc}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        </div>
+                    </div>
+
+                    {/* VALUES / FEATURES */}
+                    <div>
+                        <div className="text-center mb-16 px-4">
+                            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Why Collectors Choose Us</h2>
+                            <p className="text-slate-500 text-lg">The FigiCore Standard of Excellence</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {features.map((feature, index) => {
                                 const Icon = feature.icon;
                                 return (
-                                    <div key={index} className="text-center group p-8 bg-white rounded-xl border border-neutral-100 hover:border-amber-200 hover:shadow-lg transition-all duration-300">
-                                        <div className={`w-16 h-16 rounded-full ${feature.bgColor} flex items-center justify-center mx-auto mb-6 group-hover:bg-amber-50 transition-colors`}>
-                                            <Icon className={`w-8 h-8 ${feature.color} group-hover:text-amber-600 transition-colors`} />
+                                    <motion.div
+                                        key={index}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: index * 0.1 }}
+                                        className="group p-8 bg-white/60 backdrop-blur-xl rounded-[2rem] border border-white/40 hover:bg-white hover:shadow-[0_20px_40px_rgba(0,0,0,0.05)] hover:-translate-y-2 transition-all duration-300"
+                                    >
+                                        <div className={`w-16 h-16 rounded-2xl ${feature.bgColor} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                                            <Icon className={`w-8 h-8 ${feature.color}`} />
                                         </div>
-                                        <h3 className="font-bold text-lg mb-3 text-neutral-900">{feature.title}</h3>
-                                        <p className="text-neutral-500 text-sm leading-relaxed">{feature.description}</p>
-                                    </div>
+                                        <h3 className="font-bold text-xl mb-3 text-slate-900">{feature.title}</h3>
+                                        <p className="text-slate-500 text-sm leading-relaxed font-medium">{feature.description}</p>
+                                    </motion.div>
                                 );
                             })}
                         </div>
                     </div>
-                </section>
 
-                {/* IMPACT STATS */}
-                <section className="py-20 border-y border-neutral-100">
-                    <div className="container mx-auto px-4">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
-                            {stats.map((stat, index) => (
-                                <div key={index} className="text-center border-r last:border-0 border-neutral-100">
-                                    <p className="text-4xl md:text-5xl font-serif font-bold text-neutral-900 mb-2">{stat.value}</p>
-                                    <p className="text-neutral-500 text-sm uppercase tracking-widest">{stat.label}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
+                    {/* CTA SECTION */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        viewport={{ once: true }}
+                        className="relative rounded-[3rem] overflow-hidden bg-slate-900 text-white p-12 md:p-24 text-center shadow-2xl"
+                    >
+                        <div className="absolute top-0 right-0 p-32 bg-blue-500/20 blur-[100px] rounded-full" />
+                        <div className="absolute bottom-0 left-0 p-32 bg-purple-500/20 blur-[100px] rounded-full" />
 
-                {/* VALUES SECTION */}
-                <section className="py-24 container mx-auto px-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                        <div className="relative">
-                            <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-neutral-100">
-                                <img src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=800&q=80" alt="Collector" className="w-full h-full object-cover" />
+                        <div className="relative z-10 max-w-2xl mx-auto space-y-8">
+                            <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Start Your Collection Today</h2>
+                            <p className="text-xl text-slate-400 font-light">
+                                Join our community of passionate collectors and get early access to exclusive drops.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                <Button
+                                    size="lg"
+                                    className="h-14 px-10 rounded-full bg-white text-slate-900 hover:bg-slate-100 text-lg font-bold"
+                                    onClick={() => navigate('/guest/register')}
+                                >
+                                    Join Now
+                                </Button>
+                                <Button
+                                    size="lg"
+                                    variant="outline"
+                                    className="h-14 px-10 rounded-full border-slate-700 text-white hover:bg-white/10 text-lg font-bold"
+                                    onClick={() => navigate('/guest/browse')}
+                                >
+                                    Browse Shop
+                                </Button>
                             </div>
-                            <div className="absolute -bottom-10 -right-10 bg-white p-8 rounded-xl shadow-xl border border-neutral-100 hidden md:block">
-                                <p className="font-serif text-2xl font-bold text-neutral-900">100%</p>
-                                <p className="text-neutral-500 text-sm">Authentic Products</p>
-                            </div>
                         </div>
+                    </motion.div>
 
-                        <div className="space-y-10">
-                            <div>
-                                <h2 className="text-4xl font-serif font-bold text-neutral-900 mb-6">Built on Passion & Integrigy</h2>
-                                <p className="text-lg text-neutral-600 leading-relaxed font-light">
-                                    We believe that collecting is more than just acquiring objects; it's about preserving art and culture. That's why we uphold the strictest standards for provenance and quality.
-                                </p>
-                            </div>
-
-                            <div className="space-y-6">
-                                {[
-                                    { title: 'Quality First', desc: 'Rigorous inspection of every item.' },
-                                    { title: 'Community Driven', desc: 'Supporting artists and collectors alike.' },
-                                    { title: 'Transparent Pricing', desc: 'Fair market value, no hidden fees.' }
-                                ].map((item, i) => (
-                                    <div key={i} className="flex gap-4">
-                                        <div className="mt-1">
-                                            <CheckCircle2 className="w-6 h-6 text-amber-500" />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-neutral-900">{item.title}</h3>
-                                            <p className="text-neutral-500">{item.desc}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <Button
-                                size="lg"
-                                className="bg-neutral-900 text-white hover:bg-black px-8"
-                                onClick={() => navigate('/guest/about')}
-                            >
-                                Read Our Story
-                            </Button>
-                        </div>
-                    </div>
-                </section>
-
-                {/* CTA */}
-                <section className="py-24 bg-amber-500 text-white text-center">
-                    <div className="container mx-auto px-4">
-                        <h2 className="text-4xl font-serif font-bold mb-6">Start Your Collection Today</h2>
-                        <p className="text-xl text-amber-100 mb-10 max-w-2xl mx-auto">
-                            Join our community of passionate collectors and get early access to exclusive drops.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button
-                                size="lg"
-                                className="bg-white text-amber-600 hover:bg-neutral-100 h-14 px-10 text-lg border-0"
-                                onClick={() => navigate('/guest/register')}
-                            >
-                                Join Now
-                            </Button>
-                            <Button
-                                size="lg"
-                                variant="outline"
-                                className="border-2 border-white text-white hover:bg-white/10 h-14 px-10 text-lg bg-transparent"
-                                onClick={() => navigate('/guest/browse')}
-                            >
-                                Browse Shop
-                            </Button>
-                        </div>
-                    </div>
-                </section>
+                </div>
             </div>
         </GuestLayout>
     );

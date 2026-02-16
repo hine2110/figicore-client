@@ -92,6 +92,9 @@ export function PosProductCard({ product, onAddToCart }: PosProductCardProps) {
                 <h3 className="font-bold text-neutral-900 text-[0.9rem] line-clamp-2 leading-snug min-h-[2.4em]" title={product.product_name}>
                     {product.product_name}
                 </h3>
+                <p className="text-[10px] text-neutral-400 font-mono -mt-2 mb-1 truncate">
+                    {selectedVariant.sku}
+                </p>
 
                 {/* Variant Selector */}
                 <div className="mt-auto">

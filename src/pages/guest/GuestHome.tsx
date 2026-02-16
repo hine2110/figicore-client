@@ -292,7 +292,7 @@ export function GuestHome() {
                             <Button
                                 variant="outline"
                                 className="bg-transparent border-white/30 text-white hover:bg-white hover:text-black rounded-none px-8 h-12 uppercase tracking-wider text-xs font-bold transition-all"
-                                onClick={() => navigate('/guest/browse?category=PREORDER')}
+                                onClick={() => navigate('/customer/preorder')}
                             >
                                 View All Pre-Orders
                             </Button>

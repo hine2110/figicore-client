@@ -1,19 +1,22 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ROLE_LANDING_PATHS, getRoleBaseRoute } from "@/routes";
 import { GuestLayout } from '@/layouts/GuestLayout';
-import { Mail, Lock, Sparkles, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function SignIn() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams] = useSearchParams();
-    const redirectUrl = searchParams.get('redirect') || '/';
-    // const { login } = useAuthStore();
+
+    // Improved Redirect Logic: Check Query Param -> Check History State -> Default to Root
+    const fromState = location.state?.from?.pathname ? `${location.state.from.pathname}${location.state.from.search}` : null;
+    const redirectUrl = searchParams.get('redirect') || fromState || '/';
     const [isLoading, setIsLoading] = useState(false);
     const [rememberMe, setRememberMe] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -44,7 +47,7 @@ export default function SignIn() {
             storage.setItem('accessToken', accessToken);
             storage.setItem('user', JSON.stringify(user));
 
-            // Clean other storage to ensure no conflict (e.g. if switching from remember to not remember)
+            // Clean other storage
             const otherStorage = rememberMe ? sessionStorage : localStorage;
             otherStorage.removeItem('accessToken');
             otherStorage.removeItem('user');
@@ -54,41 +57,25 @@ export default function SignIn() {
 
             // Smart Redirect Logic
             const userRole = user?.role_code || 'GUEST';
-            console.log('Login Role:', userRole);
-
             let target = redirectUrl;
 
             // 1. Get Canonical Landing Path
             const landingPath = ROLE_LANDING_PATHS[userRole] || '/';
-            // 2. Get Safe Base (e.g. 'warehouse')
+            // 2. Get Safe Base
             const roleSafeBase = getRoleBaseRoute(userRole);
 
-            // RULE 1: Default Landing
-            // If target is just root, send them to their dashboard
             if (target === '/') {
                 target = landingPath;
             }
 
-            // RULE 2: Fix "Wrong Admin Redirect"
-            // If a non-Super Admin tries to go to /admin (often leftover from previous sessions or bad defaults),
-            // Redirect them to their CORRECT dashboard.
-            // Exception: MANAGER might share /admin? No, per map MANAGER -> /manager/dashboard.
             if (target.startsWith('/admin') && userRole !== 'SUPER_ADMIN') {
-                console.warn(`Redirecting ${userRole} from restricted /admin to ${landingPath}`);
                 target = landingPath;
             }
 
-            // RULE 3: Strict Base Enforcement (Optional but Recommended)
-            // If they are strictly a Warehouse staff, they shouldn't be in /pos or /manager
             if (roleSafeBase && !target.startsWith(`/${roleSafeBase}`) && !target.startsWith('/profile')) {
-                // Allow /profile or common routes if any, otherwise strict check.
-                // For now, let's keep it simple: If they are clearly in the wrong module (e.g. Warehouse -> POS), fix it.
-                // But valid public routes? (Products?)
-                // Let's safe guard only if target is explicitly another dashboard area.
+                // strict check removed slightly for flexibility, but kept logic structure
             }
 
-            // RULE 3: Execute Redirect
-            console.log('Redirecting to:', target);
             setMessage('Login successful! Redirecting...');
             setTimeout(() => {
                 navigate(target);
@@ -103,171 +90,168 @@ export default function SignIn() {
 
     return (
         <GuestLayout activePage="login">
-            <div className="min-h-screen flex bg-gray-200 text-gray-900 font-sans">
-                {/* LEFT PANEL: VISUAL */}
-                <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
-                    {/* Background Image - Matches Register Page */}
-                    <div className="absolute inset-0 opacity-60 bg-[url('/images/grok-video-40c4aa93-7e91-46c5-9b9b-99e9da1af522-ezgif.com-video-to-gif-converter.gif')] bg-cover bg-center" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
-
-                    <div className="relative z-10 flex flex-col justify-end p-16 h-full">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8 }}
-                        >
-                            <div className="flex items-center gap-3 mb-6 text-amber-500 font-bold tracking-widest uppercase text-sm">
-                                <Sparkles className="w-5 h-5" />
-                                Welcome Back
-                            </div>
-                            <h1 className="text-6xl font-serif mb-6 leading-tight text-white">
-                                Continue Your <br /> Collection <br /> <span className="text-amber-500 italic">FigiCore</span>
-                            </h1>
-                            <p className="text-xl text-neutral-400 max-w-md font-light leading-relaxed">
-                                Sign in to access your exclusive wishlist, track orders, and discover new limited edition drops.
-                            </p>
-                        </motion.div>
-                    </div>
+            <div className="min-h-screen bg-[#F2F2F7] relative overflow-hidden flex items-center justify-center p-4">
+                {/* Ambient Background */}
+                <div className="fixed inset-0 pointer-events-none z-0 opacity-50">
+                    <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] ambient-glow-blue rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '8s' }} />
+                    <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] ambient-glow-purple rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '10s' }} />
                 </div>
 
-                {/* RIGHT PANEL: FORM */}
-                <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-gray-200">
-                    <div className="max-w-md w-full space-y-8">
-                        <div className="text-center lg:text-left">
-                            <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">Sign In</h2>
-                            <p className="text-gray-500">Welcome back to FigiCore</p>
+                {/* Glass Card */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="relative z-10 w-full max-w-md bg-white/60 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-[2rem] p-8 md:p-12 overflow-hidden"
+                >
+                    <div className="text-center mb-8">
+                        <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Welcome Back</h1>
+                        <p className="text-slate-500 text-sm">Sign in to continue your collection</p>
+                    </div>
+
+                    {error && (
+                        <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+                            {error}
+                        </div>
+                    )}
+
+                    {message && (
+                        <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-100 text-green-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+                            {message}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleLogin} className="space-y-6">
+                        <div className="space-y-4">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email</label>
+                                <div className="relative group">
+                                    <Mail className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        className="h-12 pl-12 bg-white/50 border-slate-200 text-slate-900 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all font-medium"
+                                        placeholder="Enter your email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-center ml-1">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Password</label>
+                                    <Link to="/guest/forgot-password" className="text-xs text-blue-600 hover:text-blue-700 font-bold transition-colors">
+                                        Forgot?
+                                    </Link>
+                                </div>
+                                <div className="relative group">
+                                    <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        className="h-12 pl-12 bg-white/50 border-slate-200 text-slate-900 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all font-medium"
+                                        placeholder="Enter your password"
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center">
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className="relative flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-300 shadow-sm transition-all checked:border-blue-500 checked:bg-blue-500 hover:border-blue-400"
+                                            checked={rememberMe}
+                                            onChange={(e) => setRememberMe(e.target.checked)}
+                                        />
+                                        <div className="pointer-events-none absolute top-2/4 left-2/4 -translate-x-2/4 -translate-y-2/4 text-white opacity-0 transition-opacity peer-checked:opacity-100">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-3.5 w-3.5"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                                stroke="currentColor"
+                                                strokeWidth="1"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                    clipRule="evenodd"
+                                                ></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <span className="text-sm text-slate-600 font-medium group-hover:text-slate-900 transition-colors select-none">Remember me</span>
+                                </label>
+                            </div>
                         </div>
 
-                        {error && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                className="bg-red-900/30 border border-red-800 text-red-200 px-4 py-3 rounded text-sm"
-                            >
-                                {error}
-                            </motion.div>
-                        )}
+                        <Button
+                            type="submit"
+                            className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                            ) : (
+                                <span className="flex items-center justify-center gap-2">Sign In <ArrowRight className="w-4 h-4" /></span>
+                            )}
+                        </Button>
 
-                        {message && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                className="bg-green-900/30 border border-green-800 text-green-200 px-4 py-3 rounded text-sm"
-                            >
-                                {message}
-                            </motion.div>
-                        )}
-
-                        <form onSubmit={handleLogin} className="space-y-6">
-                            <div className="space-y-5">
-                                {/* Email Input */}
-                                <div className="space-y-1">
-                                    <div className="relative">
-                                        <Mail className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
-                                        <Input
-                                            id="email"
-                                            type="email"
-                                            className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
-                                            placeholder="Email Address"
-                                            value={formData.email}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Password Input */}
-                                <div className="space-y-1">
-                                    <div className="relative">
-                                        <Lock className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
-                                        <Input
-                                            id="password"
-                                            type="password"
-                                            className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
-                                            placeholder="Password"
-                                            value={formData.password}
-                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="flex items-center justify-between mt-4">
-                                        <label className="flex items-center gap-2 cursor-pointer group">
-                                            <input
-                                                type="checkbox"
-                                                className="w-4 h-4 rounded border-gray-300 bg-white text-amber-600 focus:ring-amber-500/20 focus:ring-offset-0 accent-amber-600"
-                                                checked={rememberMe}
-                                                onChange={(e) => setRememberMe(e.target.checked)}
-                                            />
-                                            <span className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors select-none">Remember me</span>
-                                        </label>
-
-                                        <Link to="/guest/forgot-password" className="text-xs text-amber-500 hover:text-amber-400 font-medium transition-colors">
-                                            Forgot password?
-                                        </Link>
-                                    </div>
-                                </div>
+                        <div className="relative my-6">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-slate-200"></div>
                             </div>
-
-                            {/* Submit Button */}
-                            <Button
-                                type="submit"
-                                className="w-full h-14 text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-900/20 uppercase tracking-widest transition-all hover:scale-[1.01]"
-                                disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    <span className="flex items-center gap-2">Signing In...</span>
-                                ) : (
-                                    <span className="flex items-center gap-2 justify-center">Sign In <ArrowRight className="w-4 h-4" /></span>
-                                )}
-                            </Button>
-
-                            <div className="relative my-6">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-gray-200"></div>
-                                </div>
-                                <div className="relative flex justify-center text-sm">
-                                    <span className="px-2 bg-white text-gray-500">Or continue with</span>
-                                </div>
+                            <div className="relative flex justify-center">
+                                <span className="bg-[#F2F2F7] px-4 text-xs font-bold text-slate-400 uppercase tracking-wider bg-opacity-0">Or continue with</span>
                             </div>
+                        </div>
 
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full h-12 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
-                                onClick={() => window.location.href = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/auth/google`}
-                            >
-                                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                                    <path
-                                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                                        fill="#4285F4"
-                                    />
-                                    <path
-                                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                                        fill="#34A853"
-                                    />
-                                    <path
-                                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                                        fill="#FBBC05"
-                                    />
-                                    <path
-                                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                                        fill="#EA4335"
-                                    />
-                                </svg>
-                                Sign in with Google
-                            </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full h-12 bg-white hover:bg-slate-50 border-slate-200 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:border-slate-300"
+                            onClick={() => {
+                                if (redirectUrl && redirectUrl !== '/') {
+                                    localStorage.setItem('auth_return_url', redirectUrl);
+                                }
+                                window.location.href = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/auth/google`;
+                            }}
+                        >
+                            <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                <path
+                                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                                    fill="#4285F4"
+                                />
+                                <path
+                                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                                    fill="#34A853"
+                                />
+                                <path
+                                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                                    fill="#FBBC05"
+                                />
+                                <path
+                                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                                    fill="#EA4335"
+                                />
+                            </svg>
+                            Google
+                        </Button>
 
-                            {/* Footer */}
-                            <p className="text-center text-gray-500 text-sm mt-8">
-                                Don't have an account?{' '}
-                                <Link to="/guest/register" className="text-amber-600 hover:text-amber-700 font-bold transition-colors">
-                                    Create Account
-                                </Link>
-                            </p>
-                        </form>
-                    </div>
-                </div>
+                        <p className="text-center text-slate-500 text-sm mt-8">
+                            Don't have an account?{' '}
+                            <Link to="/guest/register" className="text-blue-600 hover:text-blue-700 font-bold transition-colors">
+                                Create Account
+                            </Link>
+                        </p>
+                    </form>
+                </motion.div>
             </div>
         </GuestLayout>
     );

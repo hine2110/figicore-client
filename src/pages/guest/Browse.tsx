@@ -29,7 +29,7 @@ export function Browse() {
         { label: 'All Collections', value: 'all' },
         { label: 'Retail Products', value: 'RETAIL' },
         // { label: 'Blind Box', value: 'BLINDBOX' }, // Hidden as per request
-        { label: 'Pre-Orders', value: 'PREORDER' }
+        // { label: 'Pre-Orders', value: 'PREORDER' } // Hidden as per request
     ];
 
     // Scroll to top on page load
@@ -48,7 +48,12 @@ export function Browse() {
 
                 // Apply filters
                 if (filters.search) params.search = filters.search;
-                if (filters.category && filters.category !== 'all') params.type_code = filters.category;
+                if (filters.category && filters.category !== 'all') {
+                    params.type_code = filters.category;
+                } else {
+                    // Default to RETAIL for guests (Hide Pre-orders/Blindbox from All)
+                    params.type_code = 'RETAIL';
+                }
 
                 // Apply backend sorting (only for newest and name)
                 if (filters.sort === 'newest') params.sort = 'newest';
