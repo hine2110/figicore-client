@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     Table,
     TableBody,
@@ -116,6 +116,7 @@ export default function EmployeeTab() {
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-neutral-50 hover:bg-neutral-50">
+                            <TableHead className="w-[50px]">Avatar</TableHead>
                             <TableHead className="w-[300px]">Employee Info</TableHead>
                             <TableHead>Role</TableHead>
                             <TableHead>Phone</TableHead>
@@ -126,13 +127,13 @@ export default function EmployeeTab() {
                     <TableBody>
                         {isLoading ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8 text-neutral-500">
+                                <TableCell colSpan={6} className="text-center py-8 text-neutral-500">
                                     Loading...
                                 </TableCell>
                             </TableRow>
                         ) : employees.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8 text-neutral-500">
+                                <TableCell colSpan={6} className="text-center py-8 text-neutral-500">
                                     No employees found.
                                 </TableCell>
                             </TableRow>
@@ -144,16 +145,17 @@ export default function EmployeeTab() {
                                     onClick={() => setSelectedId(employee.user_id)}
                                 >
                                     <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-10 w-10 border border-neutral-200">
-                                                <AvatarFallback className="bg-neutral-100 text-neutral-600 font-medium">
-                                                    {employee.users.full_name?.charAt(0) || "U"}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="font-semibold text-neutral-900 leading-tight">{employee.users.full_name}</span>
-                                                <span className="text-xs text-neutral-500">{employee.users.email}</span>
-                                            </div>
+                                        <Avatar className="h-10 w-10 border border-neutral-200">
+                                            <AvatarImage src={employee.users.avatar_url || ""} />
+                                            <AvatarFallback className="bg-neutral-100 text-neutral-600 font-medium">
+                                                {employee.users.full_name?.charAt(0) || "U"}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold text-neutral-900 leading-tight">{employee.users.full_name}</span>
+                                            <span className="text-xs text-neutral-500">{employee.users.email}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
