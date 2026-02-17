@@ -155,6 +155,7 @@ export default function ProductDetail() {
                     : "bg-white/80 backdrop-blur-md border border-white/40 shadow-lg rounded-2xl",
             });
         } catch (error: any) {
+            console.error("Add to cart failed", error);
             toast({
                 variant: "destructive",
                 title: "Cannot add item",
@@ -192,7 +193,7 @@ export default function ProductDetail() {
     // Determine displayed price
     let displayPrice: React.ReactNode = 'Contact';
     let originalPriceForDisplay: React.ReactNode = null;
-    
+
 
     if (product.type_code === 'RETAIL') {
         let price = 0;
@@ -205,13 +206,13 @@ export default function ProductDetail() {
         const promoDetails = product.product_promotions;
         const finalPrice = calculateFinalPrice(price, promoDetails);
         const hasDiscount = finalPrice < price;
-        
+
         if (hasDiscount) {
             displayPrice = (
                 <div className="flex items-baseline gap-2">
                     <span className="text-red-600">{formatPrice(finalPrice)}</span>
                     <Badge variant="destructive" className="ml-2 text-sm">
-                         {promoDetails?.type_code === 'PERCENTAGE' ? `-${Number(promoDetails.value)}%` : 'SALE'}
+                        {promoDetails?.type_code === 'PERCENTAGE' ? `-${Number(promoDetails.value)}%` : 'SALE'}
                     </Badge>
                 </div>
             );
@@ -675,7 +676,15 @@ export default function ProductDetail() {
                                         <div className="flex flex-wrap gap-3">
                                             {product.product_variants.map((variant: any) => {
                                                 const isSelected = selectedVariant?.variant_id === variant.variant_id;
-                                                const isSoldOut = variant.stock_available <= 0;
+
+                                                let isSoldOut = false;
+                                                if (product.type_code === 'PREORDER') {
+                                                    const config = variant.product_preorder_configs;
+                                                    const remaining = (config?.total_slots || 0) - (config?.sold_slots || 0);
+                                                    isSoldOut = remaining <= 0;
+                                                } else {
+                                                    isSoldOut = variant.stock_available <= 0;
+                                                }
 
                                                 return (
                                                     <button

@@ -35,7 +35,11 @@ export default function Cart() {
 
         // 2. Business Validation (Mixed Cart Check)
         // We allow mixed carts now, but we need to know if there's a pre-order to set the flag
-        const types = new Set(selectedItems.map(i => i.type_code));
+        // 2. Business Validation (Mixed Cart Check)
+        // We allow mixed carts now, but we need to know if there's a pre-order to set the flag
+        // 2. Business Validation (Mixed Cart Check)
+        // We allow mixed carts now, but we need to know if there's a pre-order to set the flag
+        const types = new Set(selectedItems.map(i => i.product_variants?.products?.type_code || (i as any).type_code));
         const hasPreorder = types.has('PREORDER');
 
         // 3. Create Order Flow
@@ -72,12 +76,18 @@ export default function Cart() {
                 payment_method_code: 'QR_BANK', // Default
                 shipping_fee: 30000,
                 // original_shipping_fee removed, calculated in backend
-                items: selectedItems.map(i => ({
-                    // VITAL FIX: Send the actual Product Variant ID, not the Cart Item ID
-                    variant_id: i.variantId ? Number(i.variantId) : Number(i.id),
-                    quantity: Number(i.quantity),
-                    price: calculateFinalPrice(i.price, i.promotion) // Send discounted price
-                }))
+                items: selectedItems.map(i => {
+                    // RESOLVED: Handle both nested (local) and flat (server) structures
+                    // Server returns 'variantId' at root. Local has it in 'product_variants.variant_id'.
+                    const realVariantId = (i as any).variantId || i.product_variants?.variant_id || (i.product_variants ? undefined : i.id);
+
+                    return {
+                        variant_id: Number(realVariantId),
+                        quantity: Number(i.quantity),
+                        price: calculateFinalPrice(i.price, i.promotion), // Send discounted price
+                        payment_option: (i as any).payment_option || (i as any).paymentOption || 'DEPOSIT' // Fix: Send explicit option
+                    };
+                })
             };
 
             // 822 Call API to create draft order
@@ -111,12 +121,17 @@ export default function Cart() {
 
         } catch (error: any) {
             console.error("Proceed Error:", error);
+
+            // Handle specific Anti-scalping error more gracefully
+            // The message usually comes as "Anti-scalping limit reached..."
             const errorMsg = error.response?.data?.message || error.message || "Failed to initiate order.";
+            const isLimitError = errorMsg.includes('limit reached') || errorMsg.includes('max_qty');
 
             toast({
                 variant: "destructive",
-                title: "Order Creation Failed",
-                description: errorMsg
+                title: isLimitError ? "Limit Reached" : "Order Creation Failed",
+                description: errorMsg,
+                duration: isLimitError ? 5000 : 3000, // Longer for limit errors
             });
         } finally {
             setIsProcessing(false);
@@ -158,116 +173,132 @@ export default function Cart() {
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     // --- GROUPING LOGIC ---
-    const groupA = items.filter(i => i.type_code === 'RETAIL' || i.type_code === 'BLINDBOX'); // Ready to Ship
-    const groupB = items.filter(i => i.type_code === 'PREORDER'); // Pre-order
+    // --- GROUPING LOGIC ---
+    // Fix: Check both nested and flat type_code
+    const getTypeCode = (item: any) => item.product_variants?.products?.type_code || item.type_code;
 
-    const renderCartItem = (item: any) => (
-        <div
-            key={item.id}
-            onClick={() => toggleItem(item.id)}
-            className={`group bg-white/40 backdrop-blur-md p-4 rounded-[1.5rem] border border-white/40 shadow-sm transition-all duration-300 flex gap-4 items-center gpu-layer hover:shadow-md cursor-pointer`}
-        >
-            {/* Selection Checkbox */}
-            <div onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                    checked={selectedItemIds.includes(item.id)}
-                    onCheckedChange={() => toggleItem(item.id)}
-                    className="data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900 border-slate-400 w-5 h-5 rounded-md flex-shrink-0"
-                />
-            </div>
+    const groupA = items.filter(i => {
+        const type = getTypeCode(i);
+        return type === 'RETAIL' || type === 'BLINDBOX';
+    });
+    const groupB = items.filter(i => getTypeCode(i) === 'PREORDER');
 
-            {/* Image */}
-            <div className="w-24 h-24 bg-white/50 rounded-xl overflow-hidden flex-shrink-0 border border-white/30 shadow-inner relative">
-                {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-300">
-                        <ShoppingBag className="w-8 h-8 opacity-50" />
-                    </div>
-                )}
-                {/* Type & Payment Badge */}
-                {item.type_code === 'PREORDER' && (
-                    <div className="absolute top-0 left-0 flex flex-col items-start gap-0.5 pt-1 pl-1">
-                        <div className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg shadow-sm">
-                            PRE-ORDER
-                        </div>
-                        {/* Normalize Payment Option key (Legacy Support for 'FULL') */}
-                        {((item.payment_option === 'FULL_PAYMENT' || item.payment_option === 'FULL') ||
-                            ((item as any).paymentOption === 'FULL_PAYMENT' || (item as any).paymentOption === 'FULL')) ? (
-                            <div className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg shadow-sm">
-                                FULL PAYMENT
-                            </div>
-                        ) : (
-                            <div className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg shadow-sm">
-                                DEPOSIT
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+    const renderCartItem = (item: any) => {
+        const product = item.product_variants?.products || {};
+        // Fallback for flat structure if any (though types say nested)
+        const type_code = product.type_code || item.type_code;
+        const name = product.name || item.name;
+        const image = product.image || item.image;
+        const sku = product.sku || item.sku || 'Standard Edition';
 
-            {/* Info */}
-            <div className="flex-1 min-w-0 flex flex-col justify-between h-24 py-1">
-                <div>
-                    <h3 className="font-bold text-slate-900 text-lg truncate pr-4 leading-tight">{item.name}</h3>
-                    <p className="text-sm text-slate-500">{item.sku || 'Standard Edition'}</p>
-                </div>
-
-                <div className="flex justify-between items-end">
-                    {/* Quantity Stepper */}
-                    <div className="flex items-center border border-slate-300/60 rounded-full px-3 py-1 bg-white/40 h-8" onClick={(e) => e.stopPropagation()}>
-                        <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            disabled={item.quantity <= 1}
-                            className="text-slate-500 hover:text-slate-900 disabled:opacity-30 px-1"
-                        >
-                            <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="mx-3 text-sm font-bold w-4 text-center">{item.quantity}</span>
-                        <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            // Disable if hitting Max User Limit (Preorder) OR Max Stock (Retail)
-                            disabled={
-                                (item.type_code === 'PREORDER' && item.max_qty_per_user && item.quantity >= item.max_qty_per_user) ||
-                                (item.type_code === 'RETAIL' && item.quantity >= (item.maxStock || 999))
-                            }
-                            className="text-slate-500 hover:text-slate-900 disabled:opacity-30 px-1"
-                        >
-                            <Plus className="w-3 h-3" />
-                        </button>
-                    </div>
-
-                    {/* Price */}
-                    <div className="flex flex-col items-end gap-1">
-                        <span className="font-bold text-slate-900 text-lg">
-                            {formatPrice(
-                                (item.type_code === 'PREORDER' &&
-                                    ((item.payment_option === 'FULL_PAYMENT' || item.payment_option === 'FULL') ||
-                                        ((item as any).paymentOption === 'FULL_PAYMENT' || (item as any).paymentOption === 'FULL'))
-                                )
-                                    ? (item.full_price || item.price)
-                                    : (item.deposit_amount || item.price)
-                            )}
-                        </span>
-                        {item.originalPrice && item.originalPrice > item.price && (
-                            <span className="text-xs text-slate-400 line-through decoration-slate-400/50">
-                                {formatPrice(item.originalPrice)}
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Delete Action */}
-            <button
-                onClick={(e) => { e.stopPropagation(); removeFromCart(item.id); }}
-                className="text-slate-300 hover:text-red-500 transition-colors p-2 hover:bg-white/50 rounded-full self-start -mt-2 -mr-2"
-                title="Remove item"
+        return (
+            <div
+                key={item.id}
+                onClick={() => toggleItem(item.id)}
+                className={`group bg-white/40 backdrop-blur-md p-4 rounded-[1.5rem] border border-white/40 shadow-sm transition-all duration-300 flex gap-4 items-center gpu-layer hover:shadow-md cursor-pointer`}
             >
-                <Trash2 className="w-5 h-5" />
-            </button>
-        </div>
-    );
+                {/* Selection Checkbox */}
+                <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                        checked={selectedItemIds.includes(item.id)}
+                        onCheckedChange={() => toggleItem(item.id)}
+                        className="data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900 border-slate-400 w-5 h-5 rounded-md flex-shrink-0"
+                    />
+                </div>
+
+                {/* Image */}
+                <div className="w-24 h-24 bg-white/50 rounded-xl overflow-hidden flex-shrink-0 border border-white/30 shadow-inner relative">
+                    {image ? (
+                        <img src={image} alt={name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-300">
+                            <ShoppingBag className="w-8 h-8 opacity-50" />
+                        </div>
+                    )}
+                    {/* Type & Payment Badge */}
+                    {type_code === 'PREORDER' && (
+                        <div className="absolute top-0 left-0 flex flex-col items-start gap-0.5 pt-1 pl-1">
+                            <div className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg shadow-sm">
+                                PRE-ORDER
+                            </div>
+                            {/* Normalize Payment Option key (Legacy Support for 'FULL') */}
+                            {((item.payment_option === 'FULL_PAYMENT' || item.payment_option === 'FULL') ||
+                                (item.paymentOption === 'FULL_PAYMENT' || item.paymentOption === 'FULL')) ? (
+                                <div className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg shadow-sm">
+                                    FULL PAYMENT
+                                </div>
+                            ) : (
+                                <div className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-br-lg shadow-sm">
+                                    DEPOSIT
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0 flex flex-col justify-between h-24 py-1">
+                    <div>
+                        <h3 className="font-bold text-slate-900 text-lg truncate pr-4 leading-tight">{name}</h3>
+                        <p className="text-sm text-slate-500">{sku}</p>
+                    </div>
+
+                    <div className="flex justify-between items-end">
+                        {/* Quantity Stepper */}
+                        <div className="flex items-center border border-slate-300/60 rounded-full px-3 py-1 bg-white/40 h-8" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                disabled={item.quantity <= 1}
+                                className="text-slate-500 hover:text-slate-900 disabled:opacity-30 px-1"
+                            >
+                                <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="mx-3 text-sm font-bold w-4 text-center">{item.quantity}</span>
+                            <button
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                // Disable if hitting Max User Limit (Preorder) OR Max Stock (Retail)
+                                disabled={
+                                    (type_code === 'PREORDER' && item.max_qty_per_user && item.quantity >= item.max_qty_per_user) ||
+                                    (type_code === 'RETAIL' && item.quantity >= (item.maxStock || 999))
+                                }
+                                className="text-slate-500 hover:text-slate-900 disabled:opacity-30 px-1"
+                            >
+                                <Plus className="w-3 h-3" />
+                            </button>
+                        </div>
+
+                        {/* Price */}
+                        <div className="flex flex-col items-end gap-1">
+                            <span className="font-bold text-slate-900 text-lg">
+                                {formatPrice(
+                                    (type_code === 'PREORDER' &&
+                                        ((item.payment_option === 'FULL_PAYMENT' || item.payment_option === 'FULL') ||
+                                            (item.paymentOption === 'FULL_PAYMENT' || item.paymentOption === 'FULL'))
+                                    )
+                                        ? (item.full_price || item.price)
+                                        : (item.deposit_amount || item.price)
+                                )}
+                            </span>
+                            {item.originalPrice && item.originalPrice > item.price && (
+                                <span className="text-xs text-slate-400 line-through decoration-slate-400/50">
+                                    {formatPrice(item.originalPrice)}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Delete Action */}
+                <button
+                    onClick={(e) => { e.stopPropagation(); removeFromCart(item.id); }}
+                    className="text-slate-300 hover:text-red-500 transition-colors p-2 hover:bg-white/50 rounded-full self-start -mt-2 -mr-2"
+                    title="Remove item"
+                >
+                    <Trash2 className="w-5 h-5" />
+                </button>
+            </div>
+        );
+    };
 
     // --- RENDER ---
     if (items.length === 0) {
@@ -338,57 +369,23 @@ export default function Cart() {
                                             <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">In Stock</span>
                                         </h3>
                                     </div>
+                                    {groupA.map(renderCartItem)}
+                                </div>
+                            )}
 
-                                    {/* Info */}
-                                    <div className="flex-1 min-w-0 flex flex-col justify-between h-24 py-1">
-                                        <div>
-                                            <h3 className="font-bold text-slate-900 text-lg truncate pr-4 leading-tight">{item.name}</h3>
-                                            {/* Assuming variant info might be part of name or separate field in future, for now using placeholder logic if needed, or derived from name */}
-                                            <p className="text-sm text-slate-500">{item.name.includes('(') ? 'Model Selected' : 'Standard Edition'}</p>
-                                        </div>
-
-                                        <div className="flex justify-between items-end">
-                                            {/* Minimalist Quantity Stepper */}
-                                            <div className="flex items-center border border-slate-300/60 rounded-full px-3 py-1 bg-white/40 h-8">
-                                                <button
-                                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                    disabled={item.quantity <= 1}
-                                                    className="text-slate-500 hover:text-slate-900 disabled:opacity-30 px-1"
-                                                >
-                                                    <Minus className="w-3 h-3" />
-                                                </button>
-                                                <span className="mx-3 text-sm font-bold w-4 text-center">{item.quantity}</span>
-                                                <button
-                                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                    className="text-slate-500 hover:text-slate-900 px-1"
-                                                >
-                                                    <Plus className="w-3 h-3" />
-                                                </button>
-                                            </div>
-
-                                            {/* Price */}
-                                            <div className="flex flex-col items-end">
-                                                {calculateFinalPrice(item.price, item.promotion) < item.price ? (
-                                                    <>
-                                                        <span className="text-sm text-slate-400 line-through">
-                                                            {formatPrice(item.price * item.quantity)}
-                                                        </span>
-                                                        <span className="font-bold text-slate-900 text-lg">
-                                                            {formatPrice(calculateFinalPrice(item.price, item.promotion) * item.quantity)}
-                                                        </span>
-                                                    </>
-                                                ) : (
-                                                    <span className="font-bold text-slate-900 text-lg">
-                                                        {formatPrice(item.price * item.quantity)}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
+                            {/* GROUP 2: PRE-ORDER */}
+                            {groupB.length > 0 && (
+                                <div className="space-y-4 pt-4">
+                                    <div className="flex items-center gap-2 px-4">
+                                        <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                                        <h3 className="font-bold text-lg text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                                            <span>⏳ Pre-order</span>
+                                            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold border border-amber-200">Waitlist</span>
+                                        </h3>
                                     </div>
                                     <div className="space-y-4 p-4 rounded-[2rem] border border-amber-500/20 bg-amber-500/5 shadow-sm relative overflow-hidden">
                                         {/* Subtle Ambient for Preorder Group */}
                                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
                                         {groupB.map(renderCartItem)}
                                     </div>
                                 </div>

@@ -339,7 +339,17 @@ export default function OrderDetail() {
                                             <h3 className="text-sm font-bold text-slate-900">Package Information</h3>
                                             <p className="text-xs text-slate-500 mt-1">Tracking Code: <span className="font-mono bg-white px-2 py-0.5 rounded border ml-1 text-slate-900">{order.shipments.tracking_code}</span></p>
 
-                                            {order.packing_video_urls ? (
+                                            {order.is_blindbox_protected ? (
+                                                <div className="mt-4 p-4 bg-slate-100/50 border border-slate-200 rounded-lg flex flex-col items-center justify-center text-center space-y-2">
+                                                    <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
+                                                        <div className="w-6 h-6 text-slate-500">🔒</div>
+                                                    </div>
+                                                    <h4 className="text-sm font-semibold text-slate-900">Spoiler Protection Active</h4>
+                                                    <p className="text-xs text-slate-500 max-w-[250px]">
+                                                        This order contains <strong>Blindbox</strong> items. To maintain the surprise, the packing video will be available after the order is <strong>Completed</strong>.
+                                                    </p>
+                                                </div>
+                                            ) : order.packing_video_urls ? (
                                                 <div className="mt-4">
                                                     <p className="text-xs font-semibold text-slate-900 mb-2">Packing Evidence:</p>
                                                     {(() => {

@@ -5,15 +5,27 @@ import { cartService } from '@/services/cart.service';
 export interface CartItem {
     id: string | number;
     productId: string | number;
-    name: string;
-    price: number; // Đây là giá trị tiền thực tế user phải trả (Cọc hoặc Full)
-    originalPrice?: number; // Giá gốc để tham chiếu
     quantity: number;
-    image: string;
-    variantId?: number;
-    sku?: string;
+    price: number;
+    payment_option?: string;
+    max_qty_per_user?: number;
+
+    // Nested structure from Backend
+    product_variants: {
+        variant_id?: number;
+        products: {
+            name: string;
+            image: string;
+            type_code: string;
+            sku?: string;
+        };
+        price?: any;
+        product_preorder_configs?: any;
+    };
+
+    // Optional / Legacy (to avoid breaking if accessed, but should use nested)
     promotion?: import('@/types/product').ProductPromotion;
-    // Add other fields as needed
+    originalPrice?: number;
 }
 
 interface CartState {
@@ -47,7 +59,14 @@ export const useCartStore = create<CartState>()(
                     const items = data.items.map((i: any) => ({
                         ...i,
                         // Nếu là DEPOSIT thì dùng deposit_amount, ngược lại dùng price
-                        price: i.payment_option === 'DEPOSIT' ? (i.deposit_amount || i.price) : i.price
+                        // Fix: Price logic for Pre-order must respect stored payment_option
+                        // For Retail/Blindbox, price is just price.
+                        // For Pre-order: if DEPOSIT -> deposit_amount. if FULL -> full_price.
+                        price: i.product_variants?.products?.type_code === 'PREORDER'
+                            ? (i.payment_option === 'FULL_PAYMENT'
+                                ? (i.product_variants?.product_preorder_configs?.full_price || i.full_price || i.price)
+                                : (i.product_variants?.product_preorder_configs?.deposit_amount || i.deposit_amount || i.price))
+                            : i.price
                     }));
 
                     set({
@@ -81,14 +100,36 @@ export const useCartStore = create<CartState>()(
                 const currentItems = get().items;
                 const existingItem = currentItems.find(i =>
                     Number(i.productId) === productId &&
-                    Number(i.variantId) === variantId
+                    Number(i.product_variants?.variant_id) === variantId &&
+                    // CRITICAL FIX: Treat different payment options as DIFFERENT line items (or block mix)
+                    // Current Rule: User can have both options but usually we merge? 
+                    // No, if user adds Deposit then Adds Full -> They are distinct items or we block.
+                    // User Request: "hiện tại tôi chọn cọc 300k add to cart sau đó chọn cọc full 1tr2 vẫn âdd to cart nhưng kiểm tra cart là cọc 300 cho 2 sản phẩm đó"
+                    // => System merged them incorrectly. We must match payment_option too.
+                    (i.payment_option || 'DEPOSIT') === paymentOption
                 );
 
                 if (existingItem) {
-                    // Check mixed payment mode
-                    if (existingItem.payment_option && existingItem.payment_option !== paymentOption) {
-                        const msg = `You already have this item with '${existingItem.payment_option === 'DEPOSIT' ? 'Deposit' : 'Full Payment'}' option. Please remove it first to change payment mode.`;
-                        throw new Error(msg); // Let UI catch this
+                    // Logic: If same Variant + Same Option -> Merge Quantity
+                    // If same Variant + Diff Option -> Treated as new item (above check fails) 
+                    // BUT do we allow same variant with diff options in cart?
+                    // User said: "chọn cọc 300k... sau đó chọn cọc full 1tr2"
+                    // If we allow both, they should be separate lines.
+                    // If we enforce 1 option per variant, we throw error.
+                    // Let's SUPPORT both as separate items for flexibility, unless business rule strictly forbids.
+                    // Given the bug report, the issue was MERGING them. So checking payment_option in .find() fixes the merge issue.
+
+                    // We DO need to check Max Qty across ALL items of same variant though?
+                    // "Anti-scalping limit reached. You can only buy X units of this item."
+                    // So we should sum quantity of ALL items with same variant_id.
+
+                    const sameVariantItems = currentItems.filter(i => Number(i.product_variants?.variant_id) === variantId);
+                    const totalVariantQty = sameVariantItems.reduce((sum, i) => sum + i.quantity, 0);
+
+                    // Check max_qty_per_user (Accumulated)
+                    if (maxQty !== undefined && (totalVariantQty + quantity) > maxQty) {
+                        const msg = `Limit exceeded. You can only buy ${maxQty} of this item per user (across all options).`;
+                        throw new Error(msg);
                     }
 
                     // Check max_qty_per_user (Accumulated)
@@ -123,7 +164,7 @@ export const useCartStore = create<CartState>()(
                             productId: productId,
                             variantId: variantId,
                             quantity,
-                            paymentOption // Gửi option lên server
+                            paymentOption: paymentOption as any // Ensure type match
                         });
                         await get().fetchCart(); // Refresh lại cart chuẩn từ server
                     } catch (error: any) {
@@ -139,7 +180,7 @@ export const useCartStore = create<CartState>()(
                 let newItems;
                 if (existingItem) {
                     newItems = currentItems.map(i => {
-                        if (Number(i.productId) === productId && Number(i.variantId) === variantId) {
+                        if (Number(i.productId) === productId && Number(i.product_variants?.variant_id) === variantId && (i.payment_option || 'DEPOSIT') === paymentOption) {
                             return { ...i, quantity: i.quantity + quantity };
                         }
                         return i;
@@ -148,18 +189,25 @@ export const useCartStore = create<CartState>()(
                     newItems = [...currentItems, {
                         id: `temp-${Date.now()}`,
                         productId: productId,
-                        name: product.name,
-                        price: effectivePrice, // Lưu giá đã tính toán
-                        originalPrice: product.price,
                         quantity,
-                        image: product.image,
-                        variantId: variantId,
-                        sku: product.sku,
-                        type_code: typeCode,
+                        price: effectivePrice,
                         payment_option: paymentOption,
-                        deposit_amount: Number(product.deposit_amount),
-                        full_price: Number(product.full_price),
-                        max_qty_per_user: maxQty
+                        max_qty_per_user: maxQty,
+                        originalPrice: product.price,
+                        // Construct nested object for UI compatibility
+                        product_variants: {
+                            variant_id: variantId,
+                            products: {
+                                name: product.name,
+                                image: product.image,
+                                type_code: typeCode,
+                                sku: product.sku
+                            },
+                            product_preorder_configs: {
+                                deposit_amount: Number(product.deposit_amount),
+                                full_price: Number(product.full_price)
+                            }
+                        }
                     }];
                 }
 

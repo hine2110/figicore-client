@@ -12,7 +12,8 @@ export const shipmentService = {
         const formData = new FormData();
         formData.append('file', file);
         const response = await axiosInstance.post('/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 300000 // 5 minutes for large video uploads
         });
         return response.data; // { url, type, public_id }
     },
