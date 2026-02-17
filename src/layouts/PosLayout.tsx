@@ -12,6 +12,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 export default function PosLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -22,8 +28,10 @@ export default function PosLayout() {
         { name: 'Dashboard', path: '/pos/dashboard', icon: LayoutDashboard },
         { name: 'Sales Counter', path: '/pos/counter', icon: ScanBarcode },
         { name: 'Order Queue', path: '/pos/orders', icon: ClipboardList },
-        { name: 'Schedule', path: '/pos/schedule', icon: CalendarDays },
+        // { name: 'Schedule', path: '/pos/schedule', icon: CalendarDays }, // Replaced by Submenu
     ];
+
+    const [isScheduleOpen, setIsScheduleOpen] = useState(true);
 
     const isActive = (path: string) => location.pathname === path;
 
@@ -84,6 +92,39 @@ export default function PosLayout() {
                                 </Link>
                             )
                         })}
+
+                        {/* WORK SCHEDULE SUBMENU */}
+                        <Collapsible open={isScheduleOpen} onOpenChange={setIsScheduleOpen} className="space-y-1">
+                            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-800 hover:text-white group">
+                                <div className="flex items-center gap-3 text-neutral-300 group-hover:text-white">
+                                    <CalendarDays className="w-5 h-5" />
+                                    Work Schedule
+                                </div>
+                                {isScheduleOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="space-y-1 pl-10 pr-2">
+                                <Link
+                                    to="/pos/schedule"
+                                    onClick={() => setIsSidebarOpen(false)}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/pos/schedule')
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                                        }`}
+                                >
+                                    My Schedule
+                                </Link>
+                                <Link
+                                    to="/pos/timesheets"
+                                    onClick={() => setIsSidebarOpen(false)}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/pos/timesheets')
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                                        }`}
+                                >
+                                    My Timesheets
+                                </Link>
+                            </CollapsibleContent>
+                        </Collapsible>
                     </nav>
 
                     {/* Footer Actions */}

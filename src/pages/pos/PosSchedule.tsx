@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, ChevronLeft, ChevronRight, Filter, Briefcase, Moon, ScanFace, CheckCircle, LogOut } from 'lucide-react';
-import FaceCheckInModal from '@/components/FaceCheckInModal';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, Clock, ChevronLeft, ChevronRight, Filter, Briefcase, Moon, ScanFace, CheckCircle, LogOut, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,13 +12,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { axiosInstance } from '@/lib/axiosInstance';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, startOfDay } from 'date-fns';
 
 interface Timesheet {
     timesheet_id: number;
     check_in_at: string | null;
     check_out_at: string | null;
     status_code: string;
+    real_work_hours?: number;
 }
 
 interface WorkSchedule {
@@ -42,7 +43,10 @@ interface ScheduleSummary {
     total_hours: number;
 }
 
+import FaceCheckInModal from '@/components/FaceCheckInModal';
+
 export default function PosSchedule() {
+    const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
     const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
@@ -130,39 +134,35 @@ export default function PosSchedule() {
         fetchSchedules();
     }, [currentDate, viewMode]);
 
-    const isCheckInWindowOpen = (expectedStart: string | null): boolean => {
-        if (!expectedStart || !currentTime) return false;
-
-        // expectedStart is ISO string? The component uses `expected_start`.
-        // NOTE: expected_start usually comes as ISO string "YYYY-MM-DDTHH:mm:ss".
-        // But in PosSchedule original code: `getTimeFromIso` handles it.
-        // Wait, `expectedStart` argument here is from `shift.expected_start`.
+    const isCheckInWindowOpen = (expectedStart: string | null, expectedEnd: string | null): boolean => {
+        if (!expectedStart || !expectedEnd || !currentTime) return false;
 
         const start = new Date(expectedStart);
-        // If start date is valid
-        if (isNaN(start.getTime())) return false;
+        const end = new Date(expectedEnd);
+
+        // If dates are invalid
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
 
         const now = currentTime;
 
-        // Window: 5 minutes before start
-        const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
+        // Window: 15 minutes before start
+        const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
 
-        // Also check end time? 
-        // Requirement: (serverTime >= shiftStartTime - 5 mins) && (serverTime <= shiftEndTime)
-        // I don't have shiftEndTime here easily passed in, so I will pass shift object or just check start for now?
-        // Let's stick to start check for enabling "Check In" button.
-        // If the user is LATE, `now > start` is true. `now >= windowStart` is true.
-        // So they can check in.
-        // If I need to enforce "User cannot check in after shift end", I need `expectedEnd`.
-        // Implementation below passes button only if `isCheckInWindowOpen`.
+        // Window closes: 15 minutes AFTER end
+        const windowEnd = new Date(end.getTime() + 15 * 60 * 1000);
 
-        return now >= windowStart;
+        return now >= windowStart && now <= windowEnd;
     };
 
     const handleCheckInClick = (type: 'in' | 'out') => {
         // Validation for Check-out?
         setActiveCheckInType(type);
         setCheckInModalOpen(true);
+    };
+
+    const handleCheckInSuccess = () => {
+        setCheckInModalOpen(false);
+        fetchSchedules();
     };
 
     const handlePrev = () => {
@@ -181,7 +181,15 @@ export default function PosSchedule() {
         }
     };
 
-    const daysToDisplay = eachDayOfInterval({ start: startDate, end: endDate });
+    const daysInterval = eachDayOfInterval({ start: startDate, end: endDate });
+    const today = startOfDay(new Date());
+
+    // Filter days into two groups: Today & Future, and Past
+    const futureDays = daysInterval.filter(day => day >= today);
+    const pastDays = daysInterval.filter(day => day < today);
+
+    // Combine them: Future first, then Past
+    const daysToDisplay = [...futureDays, ...pastDays];
 
     const getSchedulesForDay = (day: Date) => {
         const dayStr = format(day, 'yyyy-MM-dd');
@@ -201,7 +209,7 @@ export default function PosSchedule() {
     const renderCountdown = (shiftStart: string) => {
         if (!currentTime) return null;
         const start = new Date(shiftStart);
-        const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
+        const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
 
         // If current time is BEFORE window start
         if (currentTime < windowStart) {
@@ -217,6 +225,24 @@ export default function PosSchedule() {
         return null;
     };
 
+    // Find Active Shift for "Quick Action" Button
+    const activeShift = schedules.find(s => {
+        const isToday = typeof s.date === 'string' && s.date.startsWith(format(new Date(), 'yyyy-MM-dd'));
+        if (!isToday) return false;
+
+        const timesheet = s.timesheets && s.timesheets.length > 0 ? s.timesheets[0] : null;
+        // If not checked out yet
+        if (timesheet?.check_out_at) return false;
+
+        // If ready to check in OR checked in and needs check out
+        // For check in: window must be open
+        if (!timesheet?.check_in_at) {
+            return s.expected_start ? isCheckInWindowOpen(s.expected_start, s.expected_end) : false;
+        }
+        // For check out: logic? Assuming check out always allowed if checked in
+        return true;
+    });
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -230,6 +256,20 @@ export default function PosSchedule() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
+                    {/* Global Check-in Button */}
+                    {isStation && activeShift && (
+                        <Button
+                            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md animate-pulse"
+                            onClick={() => {
+                                const ts = activeShift.timesheets?.[0];
+                                handleCheckInClick(ts?.check_in_at ? 'out' : 'in');
+                            }}
+                        >
+                            <ScanFace className="w-5 h-5 mr-2" />
+                            {activeShift.timesheets?.[0]?.check_in_at ? '📸 Chấm công ra ca' : '📸 Chấm công vào ca'}
+                        </Button>
+                    )}
+
                     <Select value={viewMode} onValueChange={(v: 'week' | 'month') => setViewMode(v)}>
                         <SelectTrigger className="w-[120px]">
                             <SelectValue placeholder="Select view" />
@@ -304,7 +344,9 @@ export default function PosSchedule() {
 
                                         // Requirement: Enable only if (serverTime >= shiftStartTime - 5 mins) && (serverTime <= shiftEndTime)
                                         // I'll check strict validity for CHECK-IN.
-                                        const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.expected_start) : false;
+                                        // Requirement: Enable only if (serverTime >= shiftStartTime - 15 mins) && (serverTime <= shiftEndTime + 15 mins)
+                                        // I'll check strict validity for CHECK-IN.
+                                        const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.expected_start, shift.expected_end) : false;
 
                                         // Should I disable if past shift end?
                                         // If strict: if (currentTime > new Date(shift.expected_end)) canCheckIn = false.
@@ -326,6 +368,17 @@ export default function PosSchedule() {
                                                                 <Badge variant={timesheet.status_code === 'LATE' ? 'destructive' : 'outline'} className="ml-2 text-[10px]">
                                                                     {timesheet.status_code}
                                                                 </Badge>
+                                                            )}
+                                                            {/* Deep Link to History */}
+                                                            {(timesheet || (shift.expected_start && new Date(shift.expected_start) < new Date())) && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => navigate('/pos/timesheets', { state: { targetDate: shift.date, targetShift: shift.shift_code } })}
+                                                                >
+                                                                    <ExternalLink className="w-4 h-4 mr-1" />
+                                                                    History
+                                                                </Button>
                                                             )}
                                                         </div>
                                                     </div>
@@ -361,7 +414,7 @@ export default function PosSchedule() {
                                                         {checkInState === 'out' && (
                                                             <Button
                                                                 size="sm"
-                                                                variant="destructive"
+                                                                className="bg-yellow-500 hover:bg-yellow-600 text-white"
                                                                 onClick={() => handleCheckInClick('out')}
                                                             >
                                                                 <LogOut className="w-4 h-4 mr-2" />
@@ -377,7 +430,7 @@ export default function PosSchedule() {
                                                                 disabled
                                                             >
                                                                 <CheckCircle className="w-4 h-4 mr-2" />
-                                                                Completed
+                                                                Completed {timesheet?.real_work_hours ? `(${timesheet.real_work_hours}h)` : ''}
                                                             </Button>
                                                         )}
                                                     </div>
@@ -397,11 +450,12 @@ export default function PosSchedule() {
                     )}
                 </div>
             )}
+
             <FaceCheckInModal
                 open={checkInModalOpen}
                 onOpenChange={setCheckInModalOpen}
                 checkInType={activeCheckInType}
-                onSuccess={fetchSchedules}
+                onSuccess={handleCheckInSuccess}
             />
         </div>
     );

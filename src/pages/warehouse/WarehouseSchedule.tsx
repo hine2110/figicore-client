@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, ChevronLeft, ChevronRight, Filter, Briefcase, Moon, ScanFace, CheckCircle, LogOut } from 'lucide-react';
-import FaceCheckInModal from '@/components/FaceCheckInModal';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, Clock, ChevronLeft, ChevronRight, Filter, Briefcase, Moon, ScanFace, CheckCircle, LogOut, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,14 +12,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { axiosInstance } from '@/lib/axiosInstance';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, startOfDay } from 'date-fns';
 
 interface Timesheet {
     timesheet_id: number;
     check_in_at: string | null;
     check_out_at: string | null;
     status_code: string;
+    real_work_hours?: number;
 }
 
 interface WorkSchedule {
@@ -43,6 +43,8 @@ interface ScheduleSummary {
     total_hours: number;
 }
 
+import FaceCheckInModal from '@/components/FaceCheckInModal';
+
 export default function WarehouseSchedule() {
     const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -62,14 +64,6 @@ export default function WarehouseSchedule() {
     useEffect(() => {
         const token = localStorage.getItem('FIGICORE_STATION_TOKEN');
         setIsStation(!!token);
-
-        // Strict Validation (Client Side Check)
-        // If we are in "Station Mode" (token exists), but backend rejects it, we should know.
-        // Since we don't have a dedicated verify endpoint, we rely on the first user interaction 
-        // OR we could try to hit a protected endpoint if we were better integrated.
-        // For now, if token is missing but we expect to be a station? 
-        // The requirement says "If mismatch... redirect to Register page".
-        // This implies if the user *thinks* they are a station but token is invalid.
 
         // 1. Fetch Server Time
         axiosInstance.get('/system/time').then(res => {
@@ -93,17 +87,23 @@ export default function WarehouseSchedule() {
         return () => clearInterval(timer);
     }, [timeOffset]);
 
-    // Check Token on Load (Mock Validation or Real if CheckIn fails)
-    // We can't proactively validate without endpoint. 
-    // But we can handle the "Verification Failed" case in the Modal.
+    const isCheckInWindowOpen = (expectedStart: string | null, expectedEnd: string | null): boolean => {
+        if (!expectedStart || !expectedEnd || !currentTime) return false;
 
-    const isCheckInWindowOpen = (expectedStart: string | null): boolean => {
-        if (!expectedStart || !currentTime) return false;
         const start = new Date(expectedStart);
-        if (isNaN(start.getTime())) return false;
+        const end = new Date(expectedEnd);
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+
         const now = currentTime;
-        const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
-        return now >= windowStart;
+
+        // Window: 15 minutes before start
+        const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
+
+        // Window closes: 15 minutes AFTER end
+        const windowEnd = new Date(end.getTime() + 15 * 60 * 1000);
+
+        return now >= windowStart && now <= windowEnd;
     };
 
     const handleCheckInClick = (type: 'in' | 'out') => {
@@ -112,12 +112,9 @@ export default function WarehouseSchedule() {
     };
 
     const handleCheckInSuccess = () => {
+        setCheckInModalOpen(false);
         fetchSchedules();
     };
-
-    // If check-in fails due to Invalid Station (handled in Modal?), we need to redirect.
-    // I can modify FaceCheckInModal to accept `onStationError`.
-    // But for now, I'll assume the requirement is met by the button logic and general flow.
 
     // Calculate dates based on View Mode
     const startDate = viewMode === 'week'
@@ -179,6 +176,16 @@ export default function WarehouseSchedule() {
         }
     };
 
+    const daysInterval = eachDayOfInterval({ start: startDate, end: endDate });
+    const today = startOfDay(new Date());
+
+    // Filter days into two groups: Today & Future, and Past
+    const futureDays = daysInterval.filter(day => day >= today);
+    const pastDays = daysInterval.filter(day => day < today);
+
+    // Combine them: Future first, then Past
+    const daysToDisplay = [...futureDays, ...pastDays];
+
     const getSchedulesForDay = (day: Date) => {
         const dayStr = format(day, 'yyyy-MM-dd');
         return schedules.filter(s => {
@@ -196,7 +203,7 @@ export default function WarehouseSchedule() {
     const renderCountdown = (shiftStart: string) => {
         if (!currentTime) return null;
         const start = new Date(shiftStart);
-        const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
+        const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
 
         if (currentTime < windowStart) {
             const diff = windowStart.getTime() - currentTime.getTime();
@@ -211,6 +218,20 @@ export default function WarehouseSchedule() {
         return null;
     };
 
+    // Find Active Shift for "Quick Action" Button
+    const activeShift = schedules.find(s => {
+        const isToday = typeof s.date === 'string' && s.date.startsWith(format(new Date(), 'yyyy-MM-dd'));
+        if (!isToday) return false;
+
+        const timesheet = s.timesheets && s.timesheets.length > 0 ? s.timesheets[0] : null;
+        if (timesheet?.check_out_at) return false;
+
+        if (!timesheet?.check_in_at) {
+            return s.expected_start ? isCheckInWindowOpen(s.expected_start, s.expected_end) : false;
+        }
+        return true;
+    });
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -224,6 +245,20 @@ export default function WarehouseSchedule() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
+                    {/* Global Check-in Button */}
+                    {isStation && activeShift && (
+                        <Button
+                            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md animate-pulse"
+                            onClick={() => {
+                                const ts = activeShift.timesheets?.[0];
+                                handleCheckInClick(ts?.check_in_at ? 'out' : 'in');
+                            }}
+                        >
+                            <ScanFace className="w-5 h-5 mr-2" />
+                            {activeShift.timesheets?.[0]?.check_in_at ? '📸 Chấm công ra ca' : '📸 Chấm công vào ca'}
+                        </Button>
+                    )}
+
                     <Select value={viewMode} onValueChange={(v: 'week' | 'month') => setViewMode(v)}>
                         <SelectTrigger className="w-[120px]">
                             <SelectValue placeholder="Select view" />
@@ -270,7 +305,7 @@ export default function WarehouseSchedule() {
                 <div className="text-center py-10">Loading schedules...</div>
             ) : (
                 <div className="grid grid-cols-1 gap-6">
-                    {eachDayOfInterval({ start: startDate, end: endDate }).map((day) => {
+                    {daysToDisplay.map((day) => {
                         const daySchedules = getSchedulesForDay(day);
                         if (daySchedules.length === 0) return null;
 
@@ -295,7 +330,7 @@ export default function WarehouseSchedule() {
                                             checkInState = 'out';
                                         }
 
-                                        const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.expected_start) : false;
+                                        const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.expected_start, shift.expected_end) : false;
                                         const countdown = shift.expected_start ? renderCountdown(shift.expected_start) : null;
 
                                         return (
@@ -312,6 +347,17 @@ export default function WarehouseSchedule() {
                                                                 <Badge variant={timesheet.status_code === 'LATE' ? 'destructive' : 'outline'} className="ml-2 text-[10px]">
                                                                     {timesheet.status_code}
                                                                 </Badge>
+                                                            )}
+                                                            {/* Deep Link to History */}
+                                                            {(timesheet || (shift.expected_start && new Date(shift.expected_start) < new Date())) && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => navigate('/warehouse/timesheets', { state: { targetDate: shift.date, targetShift: shift.shift_code } })}
+                                                                >
+                                                                    <ExternalLink className="w-4 h-4 mr-1" />
+                                                                    History
+                                                                </Button>
                                                             )}
                                                         </div>
                                                     </div>
@@ -346,7 +392,7 @@ export default function WarehouseSchedule() {
                                                         {checkInState === 'out' && (
                                                             <Button
                                                                 size="sm"
-                                                                variant="destructive"
+                                                                className="bg-yellow-500 hover:bg-yellow-600 text-white"
                                                                 onClick={() => handleCheckInClick('out')}
                                                             >
                                                                 <LogOut className="w-4 h-4 mr-2" />
@@ -362,7 +408,7 @@ export default function WarehouseSchedule() {
                                                                 disabled
                                                             >
                                                                 <CheckCircle className="w-4 h-4 mr-2" />
-                                                                Completed
+                                                                Completed {timesheet?.real_work_hours ? `(${timesheet.real_work_hours}h)` : ''}
                                                             </Button>
                                                         )}
                                                     </div>
@@ -382,6 +428,7 @@ export default function WarehouseSchedule() {
                     )}
                 </div>
             )}
+
             <FaceCheckInModal
                 open={checkInModalOpen}
                 onOpenChange={setCheckInModalOpen}
