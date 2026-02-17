@@ -11,6 +11,7 @@ import {
     LogOut,
     Menu,
     X,
+    Percent,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ export default function ManagerLayout() {
         { name: 'Sales & Reports', path: '/manager/reports', icon: BarChart3 },
         { name: 'Inventory Overview', path: '/manager/inventory', icon: PackageSearch },
         { name: 'Campaigns', path: '/manager/campaigns', icon: Megaphone },
+        { name: 'Promotions', path: '/manager/promotions', icon: Percent },
         { name: 'Return Approvals', path: '/manager/returns', icon: RotateCcw },
         { name: 'Shift Schedule', path: '/manager/shifts', icon: CalendarClock },
         { name: 'Feedback', path: '/manager/feedback', icon: MessageSquare },
@@ -61,14 +63,14 @@ export default function ManagerLayout() {
                     <div className="p-4 border-b border-neutral-800">
                         <div className="flex items-center gap-3">
                             <Avatar>
-                                <AvatarImage src={user?.avatarUrl} />
+                                <AvatarImage src={user?.avatar_url || ''} />
                                 <AvatarFallback className="bg-indigo-600 text-white">
-                                    {user?.name?.charAt(0)}
+                                    {user?.full_name?.charAt(0)}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="overflow-hidden">
-                                <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-                                <p className="text-xs text-neutral-500 capitalize">{user?.role}</p>
+                                <p className="text-sm font-medium text-white truncate">{user?.full_name}</p>
+                                <p className="text-xs text-neutral-500 capitalize">{user?.role_code?.replace('_', ' ').toLowerCase()}</p>
                             </div>
                         </div>
                     </div>

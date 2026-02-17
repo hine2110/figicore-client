@@ -24,6 +24,18 @@ export interface MediaItem {
     thumbnail?: string;
 }
 
+export interface ProductPreorderConfig {
+    config_id: number;
+    variant_id: number;
+    deposit_amount: string | number;
+    full_price: string | number;
+    total_slots: number;
+    sold_slots: number;
+    max_qty_per_user: number;
+    release_date?: string;
+    // stock_held?
+}
+
 export interface ProductVariant {
     variant_id: number;
     product_id: number;
@@ -36,6 +48,9 @@ export interface ProductVariant {
     media_assets?: any; // JSON, often [string] or MediaItem[]
     description?: string;
     deposit_amount?: string | number;
+    product_preorder_configs?: ProductPreorderConfig;
+    scale?: string;
+    material?: string;
 }
 
 export interface ProductBlindbox {
@@ -44,15 +59,11 @@ export interface ProductBlindbox {
     min_value: string | number;
     max_value: string | number;
     tier_config?: any;
+    start_time?: string;
+    end_time?: string;
 }
 
-export interface ProductPreorder {
-    product_id: number;
-    deposit_amount?: string | number;
-    full_price?: string | number;
-    release_date?: string;
-    max_slots?: number;
-}
+export type ProductPreorder = ProductPreorderConfig;
 
 export interface Product {
     product_id: number;
@@ -74,4 +85,27 @@ export interface Product {
     product_variants: ProductVariant[];
     product_blindboxes?: ProductBlindbox; // One-to-one
     product_preorders?: ProductPreorder; // One-to-one
+
+    product_promotions?: {
+        promotion_id: number;
+        name: string;
+        type_code: 'PERCENTAGE' | 'FIXED_AMOUNT';
+        value: number | string;
+        start_date: string;
+        end_date: string;
+        is_active: boolean;
+        min_apply_price?: number | string | null;
+        max_apply_price?: number | string | null;
+    };
+}
+
+export interface ProductPromotion {
+    promotion_id?: number;
+    value: string | number;
+    type_code: 'PERCENTAGE' | 'FIXED_AMOUNT';
+    is_active?: boolean;
+    start_date?: string;
+    end_date?: string;
+    min_apply_price?: number | string | null;
+    max_apply_price?: number | string | null;
 }

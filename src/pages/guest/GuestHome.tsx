@@ -77,12 +77,12 @@ export function GuestHome() {
     };
 
     const getPreorderDeposit = (product: any) => {
-        const pre = product.product_preorders || {};
+        const pre = product.product_variants?.[0]?.product_preorder_configs || {};
         return safeNumber(pre.deposit_amount);
     };
 
     const getPreorderFullPrice = (product: any) => {
-        const pre = product.product_preorders || {};
+        const pre = product.product_variants?.[0]?.product_preorder_configs || {};
         return safeNumber(pre.full_price);
     };
 
@@ -292,7 +292,7 @@ export function GuestHome() {
                             <Button
                                 variant="outline"
                                 className="bg-transparent border-white/30 text-white hover:bg-white hover:text-black rounded-none px-8 h-12 uppercase tracking-wider text-xs font-bold transition-all"
-                                onClick={() => navigate('/guest/browse?category=PREORDER')}
+                                onClick={() => navigate('/customer/preorder')}
                             >
                                 View All Pre-Orders
                             </Button>

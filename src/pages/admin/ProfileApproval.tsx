@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, FileText, ArrowRight } from 'lucide-react';
+import { CheckCircle2, XCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,21 +8,21 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ProfileRequest {
-  request_id: number;
-  user_id: number;
-  changed_data: Record<string, any>;
-  status_code: string;
-  created_at: string;
-  users: {
-    full_name: string;
-    email: string;
-    phone: string;
-    avatar_url: string | null;
-    role_code: string;
-    employees?: {
-        employee_code: string;
-    }
-  };
+    request_id: number;
+    user_id: number;
+    changed_data: Record<string, any>;
+    status_code: string;
+    created_at: string;
+    users: {
+        full_name: string;
+        email: string;
+        phone: string;
+        avatar_url: string | null;
+        role_code: string;
+        employees?: {
+            employee_code: string;
+        }
+    };
 }
 
 export default function ProfileApproval() {
@@ -60,11 +60,11 @@ export default function ProfileApproval() {
         return Object.entries(changedData)
             .filter(([key]) => key !== 'avatar_url')
             .map(([key, value]) => (
-            <div key={key} className="flex items-center gap-2 text-sm text-neutral-600">
-                <span className="font-semibold capitalize">{key.replace('_', ' ')}:</span>
-                <span>{String(value)}</span>
-            </div>
-        ));
+                <div key={key} className="flex items-center gap-2 text-sm text-neutral-600">
+                    <span className="font-semibold capitalize">{key.replace('_', ' ')}:</span>
+                    <span>{String(value)}</span>
+                </div>
+            ));
     };
 
     return (
@@ -117,14 +117,14 @@ export default function ProfileApproval() {
                             </div>
 
                             <div className="flex items-center gap-2 self-end md:self-center">
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                     onClick={() => handleAction(req.request_id, 'reject')}
                                 >
                                     <XCircle className="w-4 h-4 mr-2" /> Deny
                                 </Button>
-                                <Button 
+                                <Button
                                     className="bg-green-600 hover:bg-green-700"
                                     onClick={() => handleAction(req.request_id, 'approve')}
                                 >

@@ -30,6 +30,9 @@ import MarketingCampaigns from "@/pages/manager/MarketingCampaigns";
 import ReturnApprovals from "@/pages/manager/ReturnApprovals";
 import ShiftManagement from "@/pages/manager/ShiftManagement";
 import CustomerFeedback from "@/pages/manager/CustomerFeedback";
+// import StationConfirmPage from "@/pages/manager/StationConfirmPage";
+import PromotionListPage from "@/pages/manager/promotions/PromotionListPage";
+import PromotionCreatePage from "@/pages/manager/promotions/PromotionCreatePage";
 // import StaffDashboard from "@/pages/staff/StaffDashboard"; // Deprecated
 
 // Customer Pages
@@ -46,6 +49,7 @@ import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
 import OrderDetail from "@/pages/customer/OrderDetail"; // New Import
+import PreOrderPayment from "@/pages/customer/PreOrderPayment";
 import OrderSuccess from "@/pages/customer/OrderSuccess";
 import ScrollToTop from "@/components/ScrollToTop";
 
@@ -64,7 +68,13 @@ import OrderProcessing from "@/pages/pos/OrderProcessing";
 import PosSystem from "@/pages/pos/PosSystem";
 import PosDashboard from "@/pages/pos/PosDashboard";
 import PosSchedule from "@/pages/pos/PosSchedule";
+<<<<<<< HEAD
 import PosTimesheets from "@/pages/pos/PosTimesheets";
+=======
+import SessionManager from "@/pages/pos/SessionManager";
+import CustomerDetailPage from "@/pages/pos/CustomerDetailPage";
+import CustomerLookup from "@/pages/pos/CustomerLookup";
+>>>>>>> main
 
 // Guest Pages
 import { GuestHome } from "@/pages/guest/GuestHome";
@@ -139,6 +149,9 @@ export default function App() {
                             <Route path="shifts" element={<ShiftManagement />} />
                             <Route path="feedback" element={<CustomerFeedback />} />
                             <Route path="profile" element={<ProfilePage />} />
+                            {/* <Route path="Station-confirm" element={<StationConfirmPage />} /> */}
+                            <Route path="promotions" element={<PromotionListPage />} />
+                            <Route path="promotions/new" element={<PromotionCreatePage />} />
                         </Route>
                     </Route>
 
@@ -165,7 +178,13 @@ export default function App() {
                             <Route path="counter" element={<PosSystem />} />
                             <Route path="orders" element={<OrderProcessing />} />
                             <Route path="schedule" element={<PosSchedule />} />
+<<<<<<< HEAD
                             <Route path="timesheets" element={<PosTimesheets />} />
+=======
+                            <Route path="sessions" element={<SessionManager />} />
+                            <Route path="customers" element={<CustomerLookup />} />
+                            <Route path="customer/:id" element={<CustomerDetailPage />} />
+>>>>>>> main
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
@@ -185,6 +204,7 @@ export default function App() {
                             <Route path="order-success" element={<OrderSuccess />} />
 
                             <Route path="orders/:id" element={<OrderDetail />} /> {/* New Route */}
+                            <Route path="preorders/:id/pay" element={<PreOrderPayment />} />
                             <Route path="wallet" element={<CustomerWallet />} />
                             <Route path="profile" element={<CustomerProfile />} />
                             <Route path="auctions" element={<CustomerAuctions />} />

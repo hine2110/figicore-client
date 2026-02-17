@@ -20,7 +20,7 @@ const RANKS: RankConfig[] = [
         code: 'BRONZE',
         label: 'Newbie Collector',
         threshold: 0,
-        color: 'text-orange-700 bg-orange-100',
+        color: 'text-orange-900 bg-orange-200',
         icon: Trophy,
         benefits: ['Standard Access']
     },
@@ -36,7 +36,7 @@ const RANKS: RankConfig[] = [
         code: 'GOLD',
         label: 'Elite Collector',
         threshold: 500,
-        color: 'text-yellow-700 bg-yellow-100',
+        color: 'text-yellow-900 bg-yellow-200',
         icon: Crown,
         benefits: ['5% Discount', 'Pre-order Priority', 'Free Shipping > 1M']
     },
@@ -130,7 +130,7 @@ export default function MembershipCard({ user }: MembershipCardProps) {
                         <div className="col-span-3 text-right">Requirement</div>
                         <div className="col-span-5 pl-4">Benefits</div>
                     </div>
-                    {RANKS.map((rank, idx) => (
+                    {RANKS.map((rank) => (
                         <div key={rank.code} className={`grid grid-cols-12 p-3 border-b last:border-0 border-neutral-100 items-center ${rank.code === currentRankCode ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : ''}`}>
                             <div className="col-span-4 flex items-center gap-2">
                                 <rank.icon className={`w-4 h-4 ${rank.color.split(' ')[0]}`} />

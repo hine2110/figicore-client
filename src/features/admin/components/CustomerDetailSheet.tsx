@@ -1,7 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, MapPin, Wallet, Trophy, Package } from "lucide-react";
+import { Mail, Phone, MapPin, Wallet, Trophy } from "lucide-react";
 import { Customer, customersService } from "@/services/customers.service";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
@@ -78,8 +78,8 @@ export default function CustomerDetailSheet({ customerId, open, onOpenChange, on
                             </h2>
                             <div className="flex items-center gap-2 mt-2">
                                 <Badge variant="outline" className={`border-neutral-200 
-                                    ${customer.current_rank_code === 'GOLD' ? 'bg-amber-50 text-amber-700' : 
-                                      customer.current_rank_code === 'PLATINUM' ? 'bg-slate-50 text-slate-700' : 'bg-neutral-50 text-neutral-600'}
+                                    ${customer.current_rank_code === 'GOLD' ? 'bg-yellow-200 text-yellow-900 border-yellow-500' :
+                                        customer.current_rank_code === 'PLATINUM' ? 'bg-slate-50 text-slate-700' : 'bg-neutral-50 text-neutral-600'}
                                 `}>
                                     {customer.current_rank_code || 'MEMBER'}
                                 </Badge>
@@ -121,7 +121,7 @@ export default function CustomerDetailSheet({ customerId, open, onOpenChange, on
                                     <p className="text-sm font-medium text-neutral-900 truncate" title={customer.email}>{customer.email}</p>
                                 </div>
                             </div>
-                            
+
                             <div className="p-4 flex items-center gap-4 hover:bg-neutral-50/50 transition-colors">
                                 <Phone className="w-5 h-5 text-neutral-400" />
                                 <div className="flex-1">
@@ -185,7 +185,7 @@ export default function CustomerDetailSheet({ customerId, open, onOpenChange, on
                                 await userService.updateStatus(customerId, statusConfirm.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE');
                                 toast({ title: "Success", description: "User status updated successfully." });
                                 onUpdateSuccess();
-                                fetchCustomerDetails(customerId); 
+                                fetchCustomerDetails(customerId);
                             }
                         } catch (error) {
                             toast({ title: "Error", description: "Failed to update status", variant: "destructive" });

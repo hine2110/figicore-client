@@ -5,7 +5,7 @@ import { CreateOrderPayload, OrderDTO } from '@/types/order.types';
 const BASE = '/orders';
 
 export const orderService = {
-    getMyOrders: async (params: PaginationParams): Promise<PaginatedResponse<OrderDTO>> => {
+    getMyOrders: async (params: PaginationParams & { status?: string }): Promise<PaginatedResponse<OrderDTO>> => {
         const response = await axiosInstance.get(`${BASE}/my-orders`, { params });
         return response.data;
     },
@@ -17,6 +17,27 @@ export const orderService = {
 
     getOrderById: async (id: string): Promise<ApiResponse<OrderDTO>> => {
         const response = await axiosInstance.get(`${BASE}/${id}`);
+        return response.data;
+    },
+
+    // Pre-order Contract Methods
+    getMyContracts: async (): Promise<any[]> => {
+        const response = await axiosInstance.get(`/orders/contracts/my-contracts`);
+        return response.data;
+    },
+
+    getContract: async (id: number): Promise<any> => {
+        const response = await axiosInstance.get(`${BASE}/contracts/${id}`);
+        return response.data;
+    },
+
+    createFinalPayment: async (id: number, payload: { shipping_address_id: number, payment_method_code: string }): Promise<any> => {
+        const response = await axiosInstance.post(`${BASE}/contracts/${id}/final-payment`, payload);
+        return response.data;
+    },
+
+    mockPreorderPayment: async (id: number): Promise<any> => {
+        const response = await axiosInstance.post(`${BASE}/contracts/${id}/mock-final-pay`);
         return response.data;
     },
 

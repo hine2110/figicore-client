@@ -6,8 +6,8 @@ export default function ProtectedRoute() {
     const location = useLocation();
 
     if (!isAuthenticated) {
-        // Redirect to login (or home in this simplified version) while saving the attempted location
-        return <Navigate to="/guest/home" state={{ from: location }} replace />;
+        // Redirect to login with proper return url
+        return <Navigate to={`/guest/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
     }
 
     return <Outlet />;

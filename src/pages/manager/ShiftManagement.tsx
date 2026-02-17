@@ -165,7 +165,7 @@ export default function ShiftManagement() {
             console.error("Failed to fetch schedules", error);
             handleApiError(error);
         } finally {
-            setLoading(false);
+
         }
     };
 

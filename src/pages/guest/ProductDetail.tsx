@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Lock, Play, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { productsService } from '@/services/products.service';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { cn, calculateFinalPrice } from '@/lib/utils';
 
 export default function GuestProductDetail() {
     const { id } = useParams();
@@ -58,7 +58,7 @@ export default function GuestProductDetail() {
     useEffect(() => setSelectedImage(0), [selectedVariant]);
 
     const handleLoginRedirect = () => {
-        navigate(`/guest/login?redirect=/product/${id}`);
+        navigate(`/guest/login?redirect=/customer/product/${id}`);
     };
 
     const formatPrice = (p: any) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(p));
@@ -189,11 +189,35 @@ export default function GuestProductDetail() {
                                     <div className="text-3xl font-bold text-neutral-900">{formatPrice(product.product_blindboxes?.price || 0)}</div>
                                 ) : product.type_code === 'PREORDER' ? (
                                     <div>
-                                        <div className="text-3xl font-bold text-orange-600">{formatPrice(Number(product.product_preorders?.deposit_amount) || 0)} <span className="text-sm font-medium text-neutral-500">Deposit</span></div>
-                                        <div className="text-sm text-neutral-400">Full Price: {formatPrice(Number(product.product_preorders?.full_price) || 0)}</div>
+                                        <div className="text-3xl font-bold text-orange-600">{formatPrice(Number(product.product_variants?.[0]?.product_preorder_configs?.deposit_amount) || 0)} <span className="text-sm font-medium text-neutral-500">Deposit</span></div>
+                                        <div className="text-sm text-neutral-400">Full Price: {formatPrice(Number(product.product_variants?.[0]?.product_preorder_configs?.full_price) || 0)}</div>
                                     </div>
                                 ) : (
-                                    <div className="text-3xl font-bold text-neutral-900">{selectedVariant ? formatPrice(selectedVariant.price) : 'Select Option'}</div>
+                                    <div className="text-3xl font-bold text-neutral-900">
+                                        {(() => {
+                                            if (!selectedVariant) return 'Select Option';
+
+                                            const price = Number(selectedVariant.price);
+                                            const promoDetails = product.product_promotions;
+                                            const finalPrice = calculateFinalPrice(price, promoDetails);
+                                            const hasDiscount = finalPrice < price;
+
+                                            if (hasDiscount) {
+                                                return (
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-red-600">{formatPrice(finalPrice)}</span>
+                                                        <span className="text-lg text-neutral-400 line-through font-medium">
+                                                            {formatPrice(price)}
+                                                        </span>
+                                                        <Badge variant="destructive" className="ml-2 text-sm">
+                                                            {promoDetails?.type_code === 'PERCENTAGE' ? `-${Number(promoDetails.value)}%` : 'SALE'}
+                                                        </Badge>
+                                                    </div>
+                                                );
+                                            }
+                                            return formatPrice(price);
+                                        })()}
+                                    </div>
                                 )}
                             </div>
 

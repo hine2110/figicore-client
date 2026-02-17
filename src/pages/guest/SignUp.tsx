@@ -1,8 +1,8 @@
 import { GuestLayout } from '@/layouts/GuestLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, User, Phone, ArrowRight, Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Mail, Lock, User, Phone, ArrowRight, Loader2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { authService } from '@/services/auth.service';
 import { motion } from 'framer-motion';
@@ -134,7 +134,6 @@ export function SignUp() {
 
         setIsLoading(true);
         try {
-            // No verifyOtp method separate, register does verification
             await authService.register({
                 email: formData.email,
                 otp: formData.otp
@@ -150,212 +149,188 @@ export function SignUp() {
 
     return (
         <GuestLayout activePage="register">
-            <div className="min-h-screen flex bg-gray-200 text-gray-900 font-sans">
-                {/* LEFT PANEL: VISUAL */}
-                <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
-                    {/* Background Image - Art Toy / Mystery Box Theme */}
-                    <div className="absolute inset-0 opacity-60 bg-[url('/images/grok-video-7969ef1c-ed4c-42e6-99bf-226b6746aa90-ezgif.com-video-to-gif-converter.gif')] bg-cover bg-center" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
-
-                    <div className="relative z-10 flex flex-col justify-end p-16 h-full">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8 }}
-                        >
-                            <div className="flex items-center gap-3 mb-6 text-amber-500 font-bold tracking-widest uppercase text-sm">
-                                <Sparkles className="w-5 h-5" />
-                                Exclusive Access
-                            </div>
-                            <h1 className="text-6xl font-serif mb-6 leading-tight text-white">
-                                Start Your <br /> Collection <br /> <span className="text-amber-500 italic">FigiCore</span>
-                            </h1>
-                            <p className="text-xl text-neutral-400 max-w-md font-light leading-relaxed">
-                                Join our community of collectors and get early access to limited edition drops, mystery boxes, and exclusive events.
-                            </p>
-                        </motion.div>
-                    </div>
+            <div className="min-h-screen bg-[#F2F2F7] relative overflow-hidden flex items-center justify-center p-4 py-12">
+                {/* Ambient Background */}
+                <div className="fixed inset-0 pointer-events-none z-0 opacity-50">
+                    <div className="absolute top-[-20%] right-[-10%] w-[70%] h-[70%] ambient-glow-blue rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '8s' }} />
+                    <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] ambient-glow-purple rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '10s' }} />
                 </div>
 
-                {/* RIGHT PANEL: FORM */}
-                <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative bg-gray-200">
-                    <div className="max-w-md w-full space-y-8">
-                        <div className="text-center lg:text-left">
-                            <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">Create Account</h2>
-                            <p className="text-gray-500">Enter your details to join FigiCore</p>
+                {/* Glass Card */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="relative z-10 w-full max-w-lg bg-white/60 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-[2rem] p-8 md:p-12"
+                >
+                    <div className="text-center mb-8">
+                        <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Create Account</h1>
+                        <p className="text-slate-500 text-sm">Join FigiCore community today</p>
+                    </div>
+
+                    {generalError && (
+                        <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+                            {generalError}
+                        </div>
+                    )}
+
+                    {message && (
+                        <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-100 text-green-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+                            {message}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        {/* Name */}
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Full Name</label>
+                            <div className="relative group">
+                                <User className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                <Input
+                                    id="fullName"
+                                    className="h-12 pl-12 bg-white/50 border-slate-200 text-slate-900 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all font-medium"
+                                    placeholder="Enter your name"
+                                    value={formData.fullName}
+                                    onChange={handleChange}
+                                    onBlur={handleBlur}
+                                />
+                            </div>
+                            {errors.fullName && <p className="text-red-500 text-xs pl-1 font-medium">{errors.fullName}</p>}
                         </div>
 
-                        {generalError && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                className="bg-red-900/30 border border-red-800 text-red-200 px-4 py-3 rounded text-sm"
-                            >
-                                {generalError}
-                            </motion.div>
-                        )}
+                        {/* Phone */}
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Phone</label>
+                            <div className="relative group">
+                                <Phone className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                <Input
+                                    id="phone"
+                                    className="h-12 pl-12 bg-white/50 border-slate-200 text-slate-900 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all font-medium"
+                                    placeholder="Enter phone number"
+                                    value={formData.phone}
+                                    onChange={handleChange}
+                                    onBlur={handleBlur}
+                                />
+                            </div>
+                            {errors.phone && <p className="text-red-500 text-xs pl-1 font-medium">{errors.phone}</p>}
+                        </div>
 
-                        {message && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                className="bg-green-900/30 border border-green-800 text-green-200 px-4 py-3 rounded text-sm"
-                            >
-                                {message}
-                            </motion.div>
-                        )}
+                        {/* Email */}
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email</label>
+                            <div className="relative group">
+                                <Mail className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    className="h-12 pl-12 bg-white/50 border-slate-200 text-slate-900 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all font-medium"
+                                    placeholder="Enter email address"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    onBlur={handleBlur}
+                                />
+                            </div>
+                            {errors.email && <p className="text-red-500 text-xs pl-1 font-medium">{errors.email}</p>}
+                        </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="space-y-5">
-                                {/* Name Input */}
-                                <div className="space-y-1">
-                                    <div className="relative">
-                                        <User className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
-                                        <Input
-                                            id="fullName"
-                                            className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
-                                            placeholder="Full Name"
-                                            value={formData.fullName}
-                                            onChange={handleChange}
-                                            onBlur={handleBlur}
-                                        />
-                                    </div>
-                                    {errors.fullName && <p className="text-red-500 text-xs pl-1">{errors.fullName}</p>}
+                        {/* Password Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Password</label>
+                                <div className="relative group">
+                                    <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        className="h-12 pl-12 bg-white/50 border-slate-200 text-slate-900 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all font-medium"
+                                        placeholder="Password"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                    />
                                 </div>
-
-                                {/* Phone Input */}
-                                <div className="space-y-1">
-                                    <div className="relative">
-                                        <Phone className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
-                                        <Input
-                                            id="phone"
-                                            className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
-                                            placeholder="Phone Number"
-                                            value={formData.phone}
-                                            onChange={handleChange}
-                                            onBlur={handleBlur}
-                                        />
-                                    </div>
-                                    {errors.phone && <p className="text-red-500 text-xs pl-1">{errors.phone}</p>}
-                                </div>
-
-                                {/* Email Input */}
-                                <div className="space-y-1">
-                                    <div className="relative">
-                                        <Mail className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
-                                        <Input
-                                            id="email"
-                                            type="email"
-                                            className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
-                                            placeholder="Email Address"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            onBlur={handleBlur}
-                                        />
-                                    </div>
-                                    {errors.email && <p className="text-red-500 text-xs pl-1">{errors.email}</p>}
-                                </div>
-
-                                {/* Password Fields Row */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <div className="relative">
-                                            <Lock className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
-                                            <Input
-                                                id="password"
-                                                type="password"
-                                                className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
-                                                placeholder="Password"
-                                                value={formData.password}
-                                                onChange={handleChange}
-                                                onBlur={handleBlur}
-                                            />
-                                        </div>
-                                        {errors.password && <p className="text-red-500 text-xs pl-1">{errors.password}</p>}
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="relative">
-                                            <Lock className="absolute left-3 top-3.5 h-5 w-5 text-neutral-500" />
-                                            <Input
-                                                id="confirmPassword"
-                                                type="password"
-                                                className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 pl-10 h-12 focus:border-amber-500 focus:ring-amber-500/20 transition-all"
-                                                placeholder="Confirm"
-                                                value={formData.confirmPassword}
-                                                onChange={handleChange}
-                                                onBlur={handleBlur}
-                                            />
-                                        </div>
-                                        {errors.confirmPassword && <p className="text-red-500 text-xs pl-1">{errors.confirmPassword}</p>}
-                                    </div>
-                                </div>
-
-                                {/* OTP Section */}
-                                <div className="space-y-2 pt-2">
-                                    {!otpSent ? (
-                                        <Button
-                                            type="button"
-                                            onClick={handleSendOtp}
-                                            disabled={isLoading}
-                                            variant="outline"
-                                            className="w-full h-12 border-amber-600/30 text-amber-600 hover:bg-amber-50 bg-amber-50/50 font-bold uppercase tracking-wider text-xs"
-                                        >
-                                            {isLoading ? 'Sending...' : 'Send Verification Code'}
-                                        </Button>
-                                    ) : (
-                                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    id="otp"
-                                                    className="bg-white border-amber-500/50 text-amber-600 text-center tracking-[0.5em] text-lg font-bold h-12 focus:border-amber-500 focus:ring-amber-500/20"
-                                                    placeholder="• • • • • •"
-                                                    value={formData.otp}
-                                                    onChange={handleChange}
-                                                    maxLength={6}
-                                                />
-                                            </div>
-                                            <div className="flex justify-between items-center text-xs">
-                                                <span className="text-neutral-500">Expires in {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleSendOtp}
-                                                    className="text-amber-600 hover:text-amber-700 underline font-medium"
-                                                    disabled={timer > 0}
-                                                >
-                                                    Resend Code
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                {errors.password && <p className="text-red-500 text-xs pl-1 font-medium">{errors.password}</p>}
                             </div>
 
-                            {/* Submit Button */}
-                            <Button
-                                type="submit"
-                                className="w-full h-14 text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-900/20 uppercase tracking-widest transition-all hover:scale-[1.01]"
-                                disabled={!otpSent || isLoading}
-                            >
-                                {isLoading ? (
-                                    <span className="flex items-center gap-2">Creating Account...</span>
-                                ) : (
-                                    <span className="flex items-center gap-2 justify-center">Complete Registration <ArrowRight className="w-4 h-4" /></span>
-                                )}
-                            </Button>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Confirm</label>
+                                <div className="relative group">
+                                    <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                    <Input
+                                        id="confirmPassword"
+                                        type="password"
+                                        className="h-12 pl-12 bg-white/50 border-slate-200 text-slate-900 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all font-medium"
+                                        placeholder="Confirm"
+                                        value={formData.confirmPassword}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                    />
+                                </div>
+                                {errors.confirmPassword && <p className="text-red-500 text-xs pl-1 font-medium">{errors.confirmPassword}</p>}
+                            </div>
+                        </div>
 
-                            {/* Footer */}
-                            <p className="text-center text-gray-500 text-sm mt-8">
-                                Already have an account?{' '}
-                                <span
-                                    className="text-amber-600 hover:text-amber-700 font-bold cursor-pointer transition-colors"
-                                    onClick={() => navigate('/guest/login')}
+                        {/* OTP Section */}
+                        <div className="pt-2">
+                            {!otpSent ? (
+                                <Button
+                                    type="button"
+                                    onClick={handleSendOtp}
+                                    disabled={isLoading}
+                                    className="w-full h-12 bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold uppercase tracking-wider text-xs rounded-xl transition-all border border-slate-200"
                                 >
-                                    Sign In
-                                </span>
-                            </p>
-                        </form>
-                    </div>
-                </div>
+                                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Verification Code'}
+                                </Button>
+                            ) : (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                    <div className="text-center">
+                                        <label className="text-xs font-bold text-blue-600 uppercase tracking-wider">Enter OTP</label>
+                                    </div>
+                                    <Input
+                                        id="otp"
+                                        className="bg-white border-blue-200 text-blue-900 text-center tracking-[0.5em] text-lg font-bold h-12 rounded-xl focus:border-blue-500 focus:ring-blue-500/20"
+                                        placeholder="• • • • • •"
+                                        value={formData.otp}
+                                        onChange={handleChange}
+                                        maxLength={6}
+                                    />
+                                    <div className="flex justify-between items-center text-xs px-1">
+                                        <span className="text-slate-500 font-medium">Expires in {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}</span>
+                                        <button
+                                            type="button"
+                                            onClick={handleSendOtp}
+                                            className="text-blue-600 hover:text-blue-700 font-bold hover:underline transition-all"
+                                            disabled={timer > 0}
+                                        >
+                                            Resend Code
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Submit Button */}
+                        <Button
+                            type="submit"
+                            className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] mt-4"
+                            disabled={!otpSent || isLoading}
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /> Processing...</span>
+                            ) : (
+                                <span className="flex items-center gap-2 justify-center">Complete Registration <ArrowRight className="w-4 h-4" /></span>
+                            )}
+                        </Button>
+
+                        {/* Footer */}
+                        <p className="text-center text-slate-500 text-sm mt-8">
+                            Already have an account?{' '}
+                            <Link to="/guest/login" className="text-blue-600 hover:text-blue-700 font-bold transition-colors">
+                                Sign In
+                            </Link>
+                        </p>
+                    </form>
+                </motion.div>
             </div>
         </GuestLayout>
     );
