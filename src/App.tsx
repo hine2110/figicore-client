@@ -61,12 +61,14 @@ import GoodsReceipt from "@/pages/warehouse/GoodsReceipt";
 import ReturnInspection from "@/pages/warehouse/ReturnInspection";
 import WarehouseDashboard from "@/pages/warehouse/WarehouseDashboard";
 import WarehouseSchedule from "@/pages/warehouse/WarehouseSchedule";
+import WarehouseTimesheets from "@/pages/warehouse/WarehouseTimesheets";
 
 // POS Pages
 import OrderProcessing from "@/pages/pos/OrderProcessing";
 import PosSystem from "@/pages/pos/PosSystem";
 import PosDashboard from "@/pages/pos/PosDashboard";
 import PosSchedule from "@/pages/pos/PosSchedule";
+import PosTimesheets from "@/pages/pos/PosTimesheets";
 import SessionManager from "@/pages/pos/SessionManager";
 import CustomerDetailPage from "@/pages/pos/CustomerDetailPage";
 import CustomerLookup from "@/pages/pos/CustomerLookup";
@@ -161,6 +163,7 @@ export default function App() {
                             <Route path="returns" element={<ReturnInspection />} />
                             <Route path="profile" element={<ProfilePage />} />
                             <Route path="schedule" element={<WarehouseSchedule />} />
+                            <Route path="timesheets" element={<WarehouseTimesheets />} />
                         </Route>
                     </Route>
 
@@ -172,6 +175,7 @@ export default function App() {
                             <Route path="counter" element={<PosSystem />} />
                             <Route path="orders" element={<OrderProcessing />} />
                             <Route path="schedule" element={<PosSchedule />} />
+                            <Route path="timesheets" element={<PosTimesheets />} />
                             <Route path="sessions" element={<SessionManager />} />
                             <Route path="customers" element={<CustomerLookup />} />
                             <Route path="customer/:id" element={<CustomerDetailPage />} />

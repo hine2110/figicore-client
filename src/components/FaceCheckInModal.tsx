@@ -1,110 +1,192 @@
-import { useRef, useState, useCallback } from 'react';
+
+import React, { useRef, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Camera, RefreshCw, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { axiosInstance } from '@/lib/axiosInstance';
-import { Loader2, Camera, AlertOctagon, CheckCircle } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuthStore } from '@/store/useAuthStore';
+import { toast } from '@/components/ui/use-toast';
 
 interface FaceCheckInModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    checkInType: 'in' | 'out'; // Check-in or Check-out
-    onSuccess: () => void;
+    checkInType: 'in' | 'out'; // 'in' -> Check In, 'out' -> Check Out
+    onSuccess?: () => void;
 }
 
-export default function FaceCheckInModal({ open, onOpenChange, checkInType, onSuccess }: FaceCheckInModalProps) {
+const FaceCheckInModal: React.FC<FaceCheckInModalProps> = ({ open, onOpenChange, checkInType, onSuccess }) => {
     const webcamRef = useRef<Webcam>(null);
-    const { user } = useAuthStore();
-    const { toast } = useToast();
+    const [imgSrc, setImgSrc] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [result, setResult] = useState<{ success: boolean; message: string; confidence?: number } | null>(null);
 
-    const capture = useCallback(async () => {
-        const imageSrc = webcamRef.current?.getScreenshot();
-        if (!imageSrc) return;
+    const capture = useCallback(() => {
+        if (webcamRef.current) {
+            const imageSrc = webcamRef.current.getScreenshot();
+            setImgSrc(imageSrc);
+        }
+    }, [webcamRef]);
+
+    const retake = () => {
+        setImgSrc(null);
+        setResult(null);
+    };
+
+    // Helper: Convert Base64 to Blob
+    const dataURItoBlob = (dataURI: string) => {
+        const byteString = atob(dataURI.split(',')[1]);
+        const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], { type: mimeString });
+    };
+
+    const handleConfirm = async () => {
+        if (!imgSrc) return;
 
         setLoading(true);
-        setError(null);
-
-        const stationToken = localStorage.getItem('FIGICORE_STATION_TOKEN');
-        if (!stationToken) {
-            setError("Station token missing. This device is not authorized.");
-            setLoading(false);
-            return;
-        }
-
         try {
+            const blob = dataURItoBlob(imgSrc);
+            const formData = new FormData();
+            formData.append('file', blob, 'face-checkin.jpg');
+
+            // API Endpoint based on Type
             const endpoint = checkInType === 'in' ? '/check-in/verify-check-in' : '/check-in/verify-check-out';
-            await axiosInstance.post(endpoint, {
-                employeeId: user?.user_id, // Fixed: user_id instead of id
-                stationToken,
-                imageBase64: imageSrc
+
+            const response = await axiosInstance.post(endpoint, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            // Success (200/201)
+            const confidence = response.data.confidence;
+            setResult({
+                success: true,
+                message: `Chấm công thành công! (Độ chính xác: ${typeof confidence === 'number' ? confidence.toFixed(1) : confidence}%)`,
+                confidence
             });
 
             toast({
-                title: checkInType === 'in' ? "Check-in Successful" : "Check-out Recorded",
-                description: `You have successfully checked ${checkInType}.`,
+                title: "Thành công",
+                description: response.data.message || "Chấm công thành công!",
+                className: "bg-green-600 text-white border-none",
             });
-            onSuccess();
-            onOpenChange(false);
-        } catch (err: any) {
-            console.error("Check-in Error:", err);
-            const msg = err.response?.data?.message || err.message || "Face verification failed.";
-            if (msg.includes("Face not matched") || msg.includes("Face data not found")) {
-                setError("Face not recognized. Please try again or ensure you are registered.");
-            } else {
-                setError(msg);
+
+            if (onSuccess) {
+                setTimeout(() => {
+                    onSuccess();
+                    onOpenChange(false);
+                    setImgSrc(null);
+                    setResult(null);
+                }, 1500);
             }
+
+        } catch (error: any) {
+            console.error("Check-in failed", error);
+
+            const errorMessage = error.response?.data?.message || "Khuôn mặt không khớp hoặc lỗi hệ thống.";
+
+            setResult({
+                success: false,
+                message: errorMessage
+            });
+            toast({
+                title: "Thất bại",
+                description: errorMessage,
+                variant: "destructive",
+            });
         } finally {
             setLoading(false);
         }
-    }, [webcamRef, checkInType, onSuccess, onOpenChange, toast, user?.user_id]);
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md bg-white border-neutral-200">
                 <DialogHeader>
-                    <DialogTitle>{checkInType === 'in' ? 'Face Verification Check-In' : 'Face Verification Check-Out'}</DialogTitle>
-                    <DialogDescription>
-                        Look at the camera to verify your identity.
+                    <DialogTitle className="text-center text-xl font-bold">
+                        {checkInType === 'in' ? 'Face Check-In' : 'Face Check-Out'}
+                    </DialogTitle>
+                    <DialogDescription className="text-center">
+                        Di chuyển khuôn mặt vào khung hình để xác thực.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex flex-col items-center gap-4 py-4">
-                    <div className="relative rounded-lg overflow-hidden border-2 border-neutral-200 w-full aspect-video bg-black">
-                        <Webcam
-                            audio={false}
-                            ref={webcamRef}
-                            screenshotFormat="image/jpeg"
-                            videoConstraints={{ facingMode: "user" }}
-                            className="w-full h-full object-cover"
-                        />
+                <div className="flex flex-col items-center space-y-4 py-4">
+                    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden ring-4 ring-neutral-100 shadow-xl">
+                        {imgSrc ? (
+                            <img src={imgSrc} alt="Captured" className="w-full h-full object-cover transform scale-x-[-1]" />
+                        ) : (
+                            <Webcam
+                                audio={false}
+                                ref={webcamRef}
+                                screenshotFormat="image/jpeg"
+                                className="w-full h-full object-cover transform scale-x-[-1]"
+                                videoConstraints={{ facingMode: "user" }}
+                            />
+                        )}
+
+                        {/* Overlay Frame */}
+                        {!imgSrc && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-48 h-64 border-2 border-white/50 rounded-full box-content shadow-[0_0_0_999px_rgba(0,0,0,0.5)]"></div>
+                            </div>
+                        )}
+
                         {loading && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm text-white">
-                                <Loader2 className="w-8 h-8 animate-spin" />
-                                <span className="ml-2">Verifying...</span>
+                            <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white backdrop-blur-sm">
+                                <Loader2 className="w-10 h-10 animate-spin mb-2" />
+                                <span className="font-medium">Đang xử lý...</span>
                             </div>
                         )}
                     </div>
 
-                    {error && (
-                        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-md w-full">
-                            <AlertOctagon className="w-4 h-4 shrink-0" />
-                            <span>{error}</span>
+                    {/* Result Message */}
+                    {result && (
+                        <div className={`flex items-center gap-2 p-3 rounded-lg w-full justify-center ${result.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                            {result.success ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                            <span className="font-medium text-sm">{result.message}</span>
                         </div>
                     )}
-                </div>
 
-                <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
-                    <Button onClick={capture} disabled={loading}>
-                        <Camera className="w-4 h-4 mr-2" />
-                        Capture & Verify
-                    </Button>
+                    <div className="flex gap-3 w-full">
+                        {!imgSrc ? (
+                            <Button
+                                className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-lg font-semibold shadow-lg shadow-blue-200"
+                                onClick={capture}
+                            >
+                                <Camera className="w-5 h-5 mr-2" />
+                                Chụp ảnh
+                            </Button>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 h-12"
+                                    onClick={retake}
+                                    disabled={loading || (result?.success)}
+                                >
+                                    <RefreshCw className="w-4 h-4 mr-2" />
+                                    Chụp lại
+                                </Button>
+                                <Button
+                                    className="flex-1 h-12 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200"
+                                    onClick={handleConfirm}
+                                    disabled={loading || (result?.success)}
+                                >
+                                    {loading ? 'Đang gửi...' : 'Xác nhận'}
+                                </Button>
+                            </>
+                        )}
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>
     );
-}
+};
+
+export default FaceCheckInModal;

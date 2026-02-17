@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, ChevronLeft, ChevronRight, Filter, Briefcase, Moon, ScanFace, CheckCircle, LogOut } from 'lucide-react';
-import FaceCheckInModal from '@/components/FaceCheckInModal';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, Clock, ChevronLeft, ChevronRight, Filter, Briefcase, Moon, ScanFace, CheckCircle, LogOut, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,14 +12,16 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { axiosInstance } from '@/lib/axiosInstance';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, startOfDay } from 'date-fns';
 import SessionManager from './SessionManager';
+import FaceCheckInModal from '@/components/FaceCheckInModal';
 
 interface Timesheet {
     timesheet_id: number;
     check_in_at: string | null;
     check_out_at: string | null;
     status_code: string;
+    real_work_hours?: number;
 }
 
 interface WorkSchedule {
@@ -44,6 +46,7 @@ interface ScheduleSummary {
 }
 
 export default function PosSchedule() {
+    const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
     const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
@@ -52,7 +55,7 @@ export default function PosSchedule() {
 
     // Check-in State
     const [isStation, setIsStation] = useState(false);
-    const [currentTime, setCurrentTime] = useState<Date | null>(null); // Start null until synced
+    const [currentTime, setCurrentTime] = useState<Date | null>(null);
     const [timeOffset, setTimeOffset] = useState<number>(0);
     const [checkInModalOpen, setCheckInModalOpen] = useState(false);
     const [activeCheckInType, setActiveCheckInType] = useState<'in' | 'out'>('in');
@@ -71,18 +74,15 @@ export default function PosSchedule() {
             setCurrentTime(new Date(serverTime));
         }).catch(err => {
             console.error("Time sync failed", err);
-            // Fallback to local time if sync fails
             setCurrentTime(new Date());
         });
 
         const timer = setInterval(() => {
-            // Use offset to calculate current server time
             setCurrentTime(prev => {
-                if (!prev) return new Date(); // Or manage better?
                 // Re-calculate using Date.now() + offset to avoid drift
                 return new Date(Date.now() + timeOffset);
             });
-        }, 1000); // Update every second for countdown
+        }, 1000);
 
         return () => clearInterval(timer);
     }, [timeOffset]);
@@ -131,39 +131,31 @@ export default function PosSchedule() {
         fetchSchedules();
     }, [currentDate, viewMode]);
 
-    const isCheckInWindowOpen = (expectedStart: string | null): boolean => {
-        if (!expectedStart || !currentTime) return false;
-
-        // expectedStart is ISO string? The component uses `expected_start`.
-        // NOTE: expected_start usually comes as ISO string "YYYY-MM-DDTHH:mm:ss".
-        // But in PosSchedule original code: `getTimeFromIso` handles it.
-        // Wait, `expectedStart` argument here is from `shift.expected_start`.
+    const isCheckInWindowOpen = (expectedStart: string | null, expectedEnd: string | null): boolean => {
+        if (!expectedStart || !expectedEnd || !currentTime) return false;
 
         const start = new Date(expectedStart);
-        // If start date is valid
-        if (isNaN(start.getTime())) return false;
+        const end = new Date(expectedEnd);
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
 
         const now = currentTime;
+        // Window: 15 minutes before start
+        const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
+        // Window closes: 15 minutes AFTER end
+        const windowEnd = new Date(end.getTime() + 15 * 60 * 1000);
 
-        // Window: 5 minutes before start
-        const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
-
-        // Also check end time? 
-        // Requirement: (serverTime >= shiftStartTime - 5 mins) && (serverTime <= shiftEndTime)
-        // I don't have shiftEndTime here easily passed in, so I will pass shift object or just check start for now?
-        // Let's stick to start check for enabling "Check In" button.
-        // If the user is LATE, `now > start` is true. `now >= windowStart` is true.
-        // So they can check in.
-        // If I need to enforce "User cannot check in after shift end", I need `expectedEnd`.
-        // Implementation below passes button only if `isCheckInWindowOpen`.
-
-        return now >= windowStart;
+        return now >= windowStart && now <= windowEnd;
     };
 
     const handleCheckInClick = (type: 'in' | 'out') => {
-        // Validation for Check-out?
         setActiveCheckInType(type);
         setCheckInModalOpen(true);
+    };
+
+    const handleCheckInSuccess = () => {
+        setCheckInModalOpen(false);
+        fetchSchedules();
     };
 
     const handlePrev = () => {
@@ -182,7 +174,12 @@ export default function PosSchedule() {
         }
     };
 
-    const daysToDisplay = eachDayOfInterval({ start: startDate, end: endDate });
+    const daysInterval = eachDayOfInterval({ start: startDate, end: endDate });
+    const today = startOfDay(new Date());
+
+    const futureDays = daysInterval.filter(day => day >= today);
+    const pastDays = daysInterval.filter(day => day < today);
+    const daysToDisplay = [...futureDays, ...pastDays];
 
     const getSchedulesForDay = (day: Date) => {
         const dayStr = format(day, 'yyyy-MM-dd');
@@ -198,13 +195,11 @@ export default function PosSchedule() {
         return match ? match[1] : '--:--';
     };
 
-    // Helper: Countdown
     const renderCountdown = (shiftStart: string) => {
         if (!currentTime) return null;
         const start = new Date(shiftStart);
-        const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
+        const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
 
-        // If current time is BEFORE window start
         if (currentTime < windowStart) {
             const diff = windowStart.getTime() - currentTime.getTime();
             const minutes = Math.floor(diff / 60000);
@@ -218,12 +213,26 @@ export default function PosSchedule() {
         return null;
     };
 
+    const activeShift = schedules.find(s => {
+        const isToday = typeof s.date === 'string' && s.date.startsWith(format(new Date(), 'yyyy-MM-dd'));
+        if (!isToday) return false;
+
+        const timesheet = s.timesheets && s.timesheets.length > 0 ? s.timesheets[0] : null;
+        if (timesheet?.check_out_at) return false;
+
+        if (!timesheet?.check_in_at) {
+            return s.expected_start ? isCheckInWindowOpen(s.expected_start, s.expected_end) : false;
+        }
+        return true;
+    });
+
     return (
         <div className="p-8 h-screen overflow-y-auto">
             <div className="space-y-6">
                 {/* Session Management */}
                 <SessionManager />
 
+                {/* Header Control */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-neutral-900">POS Schedule</h1>
@@ -254,29 +263,49 @@ export default function PosSchedule() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Shifts</CardTitle>
-                            <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{loading ? '...' : summary?.total_shifts || 0}</div>
-                            <p className="text-xs text-muted-foreground">in selected {viewMode}</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{loading ? '...' : summary?.total_hours || 0}</div>
-                            <p className="text-xs text-muted-foreground">calculated duration</p>
-                        </CardContent>
-                    </Card>
+                {/* Global Quick Action & Stats */}
+                <div className="flex flex-col gap-4">
+                    {/* Global Check-in Button */}
+                    {isStation && activeShift && (
+                        <div className="flex justify-start">
+                            <Button
+                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md animate-pulse"
+                                onClick={() => {
+                                    const ts = activeShift.timesheets?.[0];
+                                    handleCheckInClick(ts?.check_in_at ? 'out' : 'in');
+                                }}
+                            >
+                                <ScanFace className="w-5 h-5 mr-2" />
+                                {activeShift.timesheets?.[0]?.check_in_at ? '📸 Chấm công ra ca' : '📸 Chấm công vào ca'}
+                            </Button>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Total Shifts</CardTitle>
+                                <Briefcase className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{loading ? '...' : summary?.total_shifts || 0}</div>
+                                <p className="text-xs text-muted-foreground">in selected {viewMode}</p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{loading ? '...' : summary?.total_hours || 0}</div>
+                                <p className="text-xs text-muted-foreground">calculated duration</p>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
 
+                {/* Schedules List */}
                 {loading ? (
                     <div className="text-center py-10">Loading schedules...</div>
                 ) : (
@@ -307,48 +336,53 @@ export default function PosSchedule() {
                                                 checkInState = 'out';
                                             }
 
-                                            // Requirement: Enable only if (serverTime >= shiftStartTime - 5 mins) && (serverTime <= shiftEndTime)
-                                            // I'll check strict validity for CHECK-IN.
-                                            const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.expected_start) : false;
-
-                                            // Should I disable if past shift end?
-                                            // If strict: if (currentTime > new Date(shift.expected_end)) canCheckIn = false.
-                                            // I will assume simple window "start - 5min" for now as per my isCheckInWindowOpen logic.
-                                            // The user also requested: "Display a countdown timer if the current time is more than 5 minutes before the shift starts."
+                                            const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.expected_start, shift.expected_end) : false;
                                             const countdown = shift.expected_start ? renderCountdown(shift.expected_start) : null;
 
                                             return (
                                                 <div key={shift.schedule_id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-neutral-50 transition-colors">
+                                                    {/* Left: Info */}
                                                     <div className="flex items-start md:items-center gap-4">
                                                         <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
                                                             {(shift.employees?.users?.full_name || 'Me').charAt(0)}
                                                         </div>
                                                         <div>
                                                             <div className="font-medium text-neutral-900">{shift.employees?.users?.full_name || 'My Shift'}</div>
-                                                            <div className="text-sm text-neutral-500">
-                                                                {shift.shift_code}
+                                                            <div className="text-sm text-neutral-500 flex items-center flex-wrap gap-2">
+                                                                <span>{shift.shift_code}</span>
                                                                 {timesheet?.status_code && (
-                                                                    <Badge variant={timesheet.status_code === 'LATE' ? 'destructive' : 'outline'} className="ml-2 text-[10px]">
+                                                                    <Badge variant={timesheet.status_code === 'LATE' ? 'destructive' : 'outline'} className="text-[10px]">
                                                                         {timesheet.status_code}
                                                                     </Badge>
                                                                 )}
+                                                                {/* History Link */}
+                                                                {(timesheet || (shift.expected_start && new Date(shift.expected_start) < new Date())) && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-6 px-2 text-xs"
+                                                                        onClick={() => navigate('/pos/timesheets', { state: { targetDate: shift.date, targetShift: shift.shift_code } })}
+                                                                    >
+                                                                        <ExternalLink className="w-3 h-3 mr-1" /> History
+                                                                    </Button>
+                                                                )}
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-6 text-sm">
-                                                        <div className="flex items-center gap-2 text-neutral-600">
-                                                            <Clock className="w-4 h-4" />
-                                                            {getTimeFromIso(shift.expected_start)} - {getTimeFromIso(shift.expected_end)}
-                                                            {countdown}
+                                                        <div className="flex items-center gap-6 text-sm ml-auto md:ml-0">
+                                                            <div className="flex items-center gap-2 text-neutral-600">
+                                                                <Clock className="w-4 h-4" />
+                                                                {getTimeFromIso(shift.expected_start)} - {getTimeFromIso(shift.expected_end)}
+                                                                {countdown}
+                                                            </div>
+                                                            {shift.expected_end && shift.expected_start && shift.expected_end < shift.expected_start && (
+                                                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                                                                    <Moon className="w-3 h-3" /> Overnight
+                                                                </Badge>
+                                                            )}
                                                         </div>
-                                                        {shift.expected_end && shift.expected_start && shift.expected_end < shift.expected_start && (
-                                                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
-                                                                <Moon className="w-3 h-3" /> Overnight
-                                                            </Badge>
-                                                        )}
                                                     </div>
 
-                                                    {/* Check-in Logic */}
+                                                    {/* Right: Check-in Actions */}
                                                     {isStation && (
                                                         <div className="flex items-center">
                                                             {checkInState === 'in' && (
@@ -358,8 +392,7 @@ export default function PosSchedule() {
                                                                     disabled={!canCheckIn}
                                                                     onClick={() => handleCheckInClick('in')}
                                                                 >
-                                                                    <ScanFace className="w-4 h-4 mr-2" />
-                                                                    Check In
+                                                                    <ScanFace className="w-4 h-4 mr-2" /> Check In
                                                                 </Button>
                                                             )}
 
@@ -369,8 +402,7 @@ export default function PosSchedule() {
                                                                     variant="destructive"
                                                                     onClick={() => handleCheckInClick('out')}
                                                                 >
-                                                                    <LogOut className="w-4 h-4 mr-2" />
-                                                                    Check Out
+                                                                    <LogOut className="w-4 h-4 mr-2" /> Check Out
                                                                 </Button>
                                                             )}
 
@@ -382,7 +414,7 @@ export default function PosSchedule() {
                                                                     disabled
                                                                 >
                                                                     <CheckCircle className="w-4 h-4 mr-2" />
-                                                                    Completed
+                                                                    Completed {timesheet?.real_work_hours ? `(${timesheet.real_work_hours}h)` : ''}
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -397,18 +429,19 @@ export default function PosSchedule() {
 
                         {schedules.length === 0 && (
                             <div className="text-center py-10 text-neutral-500 border rounded-lg bg-neutral-50">
-                                You have no shifts scheduled for this {viewMode === 'week' ? 'week' : 'month'}.
+                                Bạn không có ca làm nào trong {viewMode === 'week' ? 'tuần' : 'tháng'} này.
                             </div>
                         )}
                     </div>
                 )}
-                <FaceCheckInModal
-                    open={checkInModalOpen}
-                    onOpenChange={setCheckInModalOpen}
-                    checkInType={activeCheckInType}
-                    onSuccess={fetchSchedules}
-                />
             </div>
+
+            <FaceCheckInModal
+                open={checkInModalOpen}
+                onOpenChange={setCheckInModalOpen}
+                checkInType={activeCheckInType}
+                onSuccess={handleCheckInSuccess}
+            />
         </div>
     );
 }
