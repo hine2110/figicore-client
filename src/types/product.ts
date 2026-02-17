@@ -63,6 +63,8 @@ export interface ProductBlindbox {
     end_time?: string;
 }
 
+export type ProductPreorder = ProductPreorderConfig;
+
 export interface Product {
     product_id: number;
     name: string;
@@ -83,7 +85,7 @@ export interface Product {
     product_variants: ProductVariant[];
     product_blindboxes?: ProductBlindbox; // One-to-one
     product_preorders?: ProductPreorder; // One-to-one
-    
+
     product_promotions?: {
         promotion_id: number;
         name: string;

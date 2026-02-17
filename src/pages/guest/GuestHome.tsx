@@ -77,12 +77,12 @@ export function GuestHome() {
     };
 
     const getPreorderDeposit = (product: any) => {
-        const pre = product.product_preorders || {};
+        const pre = product.product_variants?.[0]?.product_preorder_configs || {};
         return safeNumber(pre.deposit_amount);
     };
 
     const getPreorderFullPrice = (product: any) => {
-        const pre = product.product_preorders || {};
+        const pre = product.product_variants?.[0]?.product_preorder_configs || {};
         return safeNumber(pre.full_price);
     };
 

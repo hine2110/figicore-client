@@ -8,5 +8,10 @@ export const inventoryService = {
         return response.data;
     },
 
+    getHistory: async (params: any): Promise<ApiResponse<any>> => {
+        const response = await axiosInstance.get('/inventory/receipts', { params });
+        return response.data;
+    },
+
     // Future: Get receipts, details, etc.
 };
