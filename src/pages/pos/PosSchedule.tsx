@@ -12,6 +12,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { axiosInstance } from '@/lib/axiosInstance';
+
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, startOfDay } from 'date-fns';
 import SessionManager from './SessionManager';
 import FaceCheckInModal from '@/components/FaceCheckInModal';
@@ -65,7 +66,7 @@ export default function PosSchedule() {
         const token = localStorage.getItem('FIGICORE_STATION_TOKEN');
         setIsStation(!!token);
 
-        // 1. Fetch Server Time once
+        // 1. Fetch Server Time
         axiosInstance.get('/system/time').then(res => {
             const serverTime = new Date(res.data.server_time).getTime();
             const localTime = Date.now();
@@ -86,6 +87,24 @@ export default function PosSchedule() {
 
         return () => clearInterval(timer);
     }, [timeOffset]);
+
+    const isCheckInWindowOpen = (expectedStart: string | null): boolean => {
+        if (!expectedStart || !currentTime) return false;
+        const start = new Date(expectedStart);
+        if (isNaN(start.getTime())) return false;
+        const now = currentTime;
+        const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
+        return now >= windowStart;
+    };
+
+    const handleCheckInClick = (type: 'in' | 'out') => {
+        setActiveCheckInType(type);
+        setCheckInModalOpen(true);
+    };
+
+    const handleCheckInSuccess = () => {
+        fetchSchedules();
+    };
 
     // Calculate dates based on View Mode
     const startDate = viewMode === 'week'
@@ -157,7 +176,6 @@ export default function PosSchedule() {
         setCheckInModalOpen(false);
         fetchSchedules();
     };
-
     const handlePrev = () => {
         if (viewMode === 'week') {
             setCurrentDate(subWeeks(currentDate, 1));
@@ -173,6 +191,7 @@ export default function PosSchedule() {
             setCurrentDate(addMonths(currentDate, 1));
         }
     };
+
 
     const daysInterval = eachDayOfInterval({ start: startDate, end: endDate });
     const today = startOfDay(new Date());
@@ -303,7 +322,9 @@ export default function PosSchedule() {
                             </CardContent>
                         </Card>
                     </div>
+
                 </div>
+            </div>
 
                 {/* Schedules List */}
                 {loading ? (
@@ -381,6 +402,19 @@ export default function PosSchedule() {
                                                             )}
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div className="flex items-center gap-6 text-sm">
+                                                    <div className="flex items-center gap-2 text-neutral-600">
+                                                        <Clock className="w-4 h-4" />
+                                                        {getTimeFromIso(shift.expected_start)} - {getTimeFromIso(shift.expected_end)}
+                                                        {countdown}
+                                                    </div>
+                                                    {shift.expected_end && shift.expected_start && shift.expected_end < shift.expected_start && (
+                                                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                                                            <Moon className="w-3 h-3" /> Overnight
+                                                        </Badge>
+                                                    )}
+                                                </div>
 
                                                     {/* Right: Check-in Actions */}
                                                     {isStation && (

@@ -19,6 +19,7 @@ export interface PosProductVariant {
     price: number;
     current_stock: number;
     thumbnail: string | null;
+    tax_rate?: number; // Added for Tax Integration
 }
 
 // Product with multiple variants
@@ -40,6 +41,8 @@ export interface PosCartItem {
     price: number;
     quantity: number;
     thumbnail: string | null;
+    tax_rate?: number; // Added for Tax Integration
+    tax_amount?: number; // Optional: Store calculated tax amount
 }
 
 export interface PosOrderItem {
@@ -54,6 +57,13 @@ export interface CreatePosOrderRequest {
     note?: string;
     discount_amount?: number;
     status_code?: string; // COMPLETED, PARKED
+
+    // VAT Mock Fields
+    is_vat_export?: boolean;
+    vat_tax_number?: string;
+    vat_company_name?: string;
+    vat_company_address?: string;
+    vat_invoice_email?: string;
 }
 
 export interface PosOrder {
@@ -61,16 +71,29 @@ export interface PosOrder {
     order_code: string;
     session_id: number;
     total_amount: number;
+    total_tax?: number; // Added: Tax amount
     paid_amount: number;
     discount_amount: number;
     payment_method_code: string;
     status_code: string;
     created_at: string;
+
+    // VAT Invoice Fields (Mock)
+    is_vat_export?: boolean;
+    vat_tax_number?: string;
+    vat_company_name?: string;
+    vat_company_address?: string;
+    vat_invoice_email?: string;
     users?: {
         user_id: number;
         full_name: string;
         phone?: string;
         email?: string;
+        customers?: {
+            current_rank_code: string;
+            total_spent: number;
+            loyalty_points: number;
+        };
     };
     employees?: {
         users: {

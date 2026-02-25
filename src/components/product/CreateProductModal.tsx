@@ -3,7 +3,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { useToast } from "@/components/ui/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, ChevronRight, CheckCircle2, Box, Info, Trash2, Plus, RefreshCw, X, Calendar, Tag, Image as ImageIcon, Eye, Layers, Printer, Sparkles } from "lucide-react";
+import { Loader2, ChevronRight, CheckCircle2, Box, Info, Trash2, Plus, RefreshCw, X, Calendar, Tag, Image as ImageIcon, Eye, Layers, Printer, Sparkles, ChevronDown } from "lucide-react";
 // @ts-ignore
 import Barcode from 'react-barcode';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -970,6 +970,15 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                 </FormItem>
                                             )} />
 
+                                            {watchedType === "RETAIL" && (
+                                                <div className="w-fit space-y-1.5 pt-2">
+                                                    <FormLabel className="text-[11px] font-semibold text-neutral-500 uppercase tracking-tight">Tax Rate</FormLabel>
+                                                    <div className="h-9 px-3 flex items-center bg-neutral-50 border border-neutral-200 rounded-md text-sm text-neutral-700 cursor-default">
+                                                        <span>1% GTGT, 0,5% TNCN (Phân phối, cung cấp hàng hóa)</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* DYNAMIC FIELDS based on Type */}
                                             <div className="space-y-6">
 
@@ -1136,6 +1145,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                 </div>
                                                             ))}
                                                         </div>
+
                                                     </div>
                                                 )}
 
@@ -1312,8 +1322,9 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                             />
                         </div>
                     </>
-                )}
+                )
+                }
             </DialogContent>
-        </Dialog >
+        </Dialog>
     );
 }

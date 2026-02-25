@@ -84,7 +84,7 @@ export default function PosDashboard() {
     const hourlyData = analytics.sales_by_hour || [];
     const paymentData = [
         { name: 'Cash', value: Number(analytics.payment_breakdown?.CASH?.amount || 0), color: '#10b981' },
-        { name: 'Transfer', value: Number(analytics.payment_breakdown?.BANK_TRANSFER?.amount || 0), color: '#3b82f6' },
+        { name: 'Transfer', value: Number(analytics.payment_breakdown?.QR_BANK?.amount || 0), color: '#3b82f6' },
         { name: 'Card', value: Number(analytics.payment_breakdown?.CARD?.amount || 0), color: '#8b5cf6' },
         { name: 'Wallet', value: Number(analytics.payment_breakdown?.WALLET?.amount || 0), color: '#f59e0b' },
     ].filter(item => item.value > 0);
@@ -104,7 +104,7 @@ export default function PosDashboard() {
     const avgOrderValue = stats.order_count > 0 ? stats.total_sales / stats.order_count : 0;
 
     return (
-        <div className="p-8 h-screen overflow-y-auto">
+        <div className="space-y-4">
             <div className="space-y-4 pb-4 animate-in fade-in duration-500">
                 {/* Header */}
                 <div className="flex justify-between items-end mb-1">

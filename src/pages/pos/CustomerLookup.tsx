@@ -68,7 +68,7 @@ export default function CustomerLookup() {
     };
 
     return (
-        <div className="h-full bg-neutral-50/50 p-6 flex flex-col overflow-hidden animate-in fade-in duration-500">
+        <div className="flex flex-col animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex justify-between items-center mb-8 shrink-0">
                 <div>
