@@ -155,7 +155,7 @@ export default function CustomerShop() {
 
     const getDisplayPrice = (product: any) => {
         if (product.type_code === 'PREORDER') {
-            const dep = Number(product.product_preorders?.deposit_amount || 0);
+            const dep = Number(product.product_variants?.[0]?.product_preorder_configs?.deposit_amount || 0);
             return isNaN(dep) ? 'Contact' : `Dep: ${formatPrice(dep)}`;
         }
         if (product.type_code === 'BLINDBOX') {

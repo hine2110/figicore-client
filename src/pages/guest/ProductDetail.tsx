@@ -189,14 +189,14 @@ export default function GuestProductDetail() {
                                     <div className="text-3xl font-bold text-neutral-900">{formatPrice(product.product_blindboxes?.price || 0)}</div>
                                 ) : product.type_code === 'PREORDER' ? (
                                     <div>
-                                        <div className="text-3xl font-bold text-orange-600">{formatPrice(Number(product.product_preorders?.deposit_amount) || 0)} <span className="text-sm font-medium text-neutral-500">Deposit</span></div>
-                                        <div className="text-sm text-neutral-400">Full Price: {formatPrice(Number(product.product_preorders?.full_price) || 0)}</div>
+                                        <div className="text-3xl font-bold text-orange-600">{formatPrice(Number(product.product_variants?.[0]?.product_preorder_configs?.deposit_amount) || 0)} <span className="text-sm font-medium text-neutral-500">Deposit</span></div>
+                                        <div className="text-sm text-neutral-400">Full Price: {formatPrice(Number(product.product_variants?.[0]?.product_preorder_configs?.full_price) || 0)}</div>
                                     </div>
                                 ) : (
                                     <div className="text-3xl font-bold text-neutral-900">
                                         {(() => {
                                             if (!selectedVariant) return 'Select Option';
-                                            
+
                                             const price = Number(selectedVariant.price);
                                             const promoDetails = product.product_promotions;
                                             const finalPrice = calculateFinalPrice(price, promoDetails);

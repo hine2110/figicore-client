@@ -219,7 +219,7 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
     const isBlindbox = product.type_code === 'BLINDBOX';
     const isPreorder = product.type_code === 'PREORDER';
     const bb = product.product_blindboxes?.[0];
-    const pre = product.product_preorders?.[0];
+    const pre = product.product_variants?.[0]?.product_preorder_configs;
 
     return (
         <div className="flex flex-col h-full bg-white relative overflow-hidden">
@@ -640,7 +640,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                     formValues.target_margin = Number(bb.target_margin);
                 }
             } else if (p.type_code === 'PREORDER') {
-                const pre = p.product_preorders?.[0];
+                const pre = p.product_variants?.[0]?.product_preorder_configs;
                 if (pre) {
                     formValues.release_date = pre.release_date ? new Date(pre.release_date).toISOString().split('T')[0] : "";
                 }

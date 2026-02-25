@@ -12,6 +12,7 @@ import { cartService } from '@/services/cart.service';
 import CustomerLayout from '@/layouts/CustomerLayout';
 import { useToast } from '@/components/ui/use-toast';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/constants/order-status';
+import { CreateReturnModal } from '@/components/returns/CreateReturnModal';
 
 export default function OrderDetail() {
     const { id } = useParams();
@@ -20,6 +21,9 @@ export default function OrderDetail() {
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [isBuyAgainLoading, setIsBuyAgainLoading] = useState(false);
+
+    // Return States
+    const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -166,6 +170,12 @@ export default function OrderDetail() {
         }
     };
 
+    const updatedAt = order.updated_at ? new Date(order.updated_at).getTime() : Date.now();
+    const isWithin72Hours = ((Date.now() - updatedAt) / (1000 * 60 * 60)) <= 72;
+    const isReturnable = ['COMPLETED', 'DELIVERED'].includes(order.status_code) && isWithin72Hours;
+    const isReturning = order.status_code === 'RETURNING';
+    const isReturned = order.status_code === 'RETURNED';
+
     return (
         <CustomerLayout>
             <div className="bg-neutral-50/50 min-h-screen py-8">
@@ -243,6 +253,27 @@ export default function OrderDetail() {
                                                 </div>
                                             );
                                         })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Return Status Banners */}
+                            {isReturning && (
+                                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-amber-800">Return Request Processing</h4>
+                                        <p className="text-xs text-amber-700 mt-1">Your return request has been submitted and is currently awaiting approval or warehouse inspection.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {isReturned && (
+                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+                                    <CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-blue-800">Order Returned</h4>
+                                        <p className="text-xs text-blue-700 mt-1">Items from this order have been successfully returned. Any applicable refunds have been credited to your internal wallet.</p>
                                     </div>
                                 </div>
                             )}
@@ -339,7 +370,17 @@ export default function OrderDetail() {
                                             <h3 className="text-sm font-bold text-slate-900">Package Information</h3>
                                             <p className="text-xs text-slate-500 mt-1">Tracking Code: <span className="font-mono bg-white px-2 py-0.5 rounded border ml-1 text-slate-900">{order.shipments.tracking_code}</span></p>
 
-                                            {order.packing_video_urls ? (
+                                            {order.is_blindbox_protected ? (
+                                                <div className="mt-4 p-4 bg-slate-100/50 border border-slate-200 rounded-lg flex flex-col items-center justify-center text-center space-y-2">
+                                                    <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
+                                                        <div className="w-6 h-6 text-slate-500">🔒</div>
+                                                    </div>
+                                                    <h4 className="text-sm font-semibold text-slate-900">Spoiler Protection Active</h4>
+                                                    <p className="text-xs text-slate-500 max-w-[250px]">
+                                                        This order contains <strong>Blindbox</strong> items. To maintain the surprise, the packing video will be available after the order is <strong>Completed</strong>.
+                                                    </p>
+                                                </div>
+                                            ) : order.packing_video_urls ? (
                                                 <div className="mt-4">
                                                     <p className="text-xs font-semibold text-slate-900 mb-2">Packing Evidence:</p>
                                                     {(() => {
@@ -397,7 +438,16 @@ export default function OrderDetail() {
                                     <Button className="bg-slate-900 text-white hover:bg-black" onClick={() => navigate('/customer/checkout', { state: { orderId: order.order_id } })}>Pay Now via Checkout</Button>
                                 </>
                             )}
-                            {['COMPLETED', 'CANCELLED'].includes(order.status_code) && (
+                            {isReturnable && (
+                                <Button
+                                    variant="outline"
+                                    className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                                    onClick={() => setIsReturnModalOpen(true)}
+                                >
+                                    Request Return/Refund
+                                </Button>
+                            )}
+                            {['COMPLETED', 'CANCELLED', 'RETURNED'].includes(order.status_code) && (
                                 <Button
                                     variant="outline"
                                     onClick={handleBuyAgain}
@@ -411,6 +461,16 @@ export default function OrderDetail() {
                     </Card>
                 </div>
             </div>
+
+            {/* Modals */}
+            {isReturnable && (
+                <CreateReturnModal
+                    open={isReturnModalOpen}
+                    onOpenChange={setIsReturnModalOpen}
+                    order={order}
+                    onSuccess={() => fetchOrderDetail(id!)}
+                />
+            )}
         </CustomerLayout>
     );
 }

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Calendar } from "lucide-react";
+import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Calendar, Copy, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/use-toast";
 import api from "@/services/api";
 import AddressDialog from "@/components/customer/AddressDialog";
 import AddressSelectorDialog from "@/components/customer/AddressSelectorDialog";
+import { io } from 'socket.io-client';
 
 export default function Checkout() {
     const navigate = useNavigate();
@@ -30,9 +31,25 @@ export default function Checkout() {
     const [showAddressForm, setShowAddressForm] = useState(false);
     const [showAddressSelector, setShowAddressSelector] = useState(false);
     const [showCancelDialog, setShowCancelDialog] = useState(false);
+    const [showQRModal, setShowQRModal] = useState(false);
+    const [copiedField, setCopiedField] = useState<string | null>(null);
 
     // Selected Payment Method (Global for Group)
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('QR_BANK');
+
+    // Generate VietQR URL dynamically based on current orders
+    const qrUrl = useMemo(() => {
+        if (orders.length === 0) return '';
+        const bankName = import.meta.env.VITE_SEPAY_BANK_NAME || 'MB';
+        const accountNo = import.meta.env.VITE_SEPAY_ACCOUNT_NUMBER || '0935655266';
+        const amount = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+
+        // Use paymentRef if available (group checkout), else fallback to single order_id
+        const paymentCode = paymentRef || orders[0].order_id;
+        const content = `FIGI ${paymentCode}`;
+
+        return `https://img.vietqr.io/image/${bankName}-${accountNo}-compact2.jpg?amount=${amount}&addInfo=${encodeURIComponent(content)}&accountName=FIGICORE`;
+    }, [orders, paymentRef]);
 
     // 1. Helper: Format Currency
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
@@ -102,10 +119,49 @@ export default function Checkout() {
         return () => clearInterval(timer);
     }, [timeLeft]);
 
+    // 4.5. Socket Listener for Payment Update
+    useEffect(() => {
+        if (!showQRModal || orders.length === 0) return;
+
+        // Use VITE_API_BASE_URL (e.g. http://localhost:3000) and append /events namespace
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const socketUrl = `${baseUrl}/events`;
+        const socket = io(socketUrl);
+
+        socket.on('connect', () => {
+            console.log('✅ Connected to Payment Events Namespace');
+        });
+
+        const paymentCode = paymentRef || orders[0].order_id;
+        const eventName = `payment:success:${paymentCode}`;
+
+        socket.on(eventName, () => {
+            console.log(`🔔 Received ${eventName}. Redirecting to Success...`);
+            toast({
+                title: "Payment Successful!",
+                description: "We have received your payment and confirmed your order(s).",
+                className: "bg-emerald-600 text-white border-emerald-700"
+            });
+            setShowQRModal(false);
+            navigate('/customer/order-success');
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [showQRModal, orders]);
+
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
         return `${m}:${s < 10 ? '0' : ''}${s}`;
+    };
+
+    const handleCopy = (text: string, field: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedField(field);
+        toast({ title: "Copied to clipboard", duration: 2000 });
+        setTimeout(() => setCopiedField(null), 2000);
     };
 
     // 5. Actions
@@ -141,6 +197,13 @@ export default function Checkout() {
             toast({ variant: "destructive", title: "Order Expired", description: "Please recreate your order." });
             return;
         }
+
+        if (selectedPaymentMethod === 'QR_BANK') {
+            setShowQRModal(true);
+            // TODO: Start polling or socket listener here
+            return;
+        }
+
         setIsProcessing(true);
         try {
             if (paymentRef) {
@@ -379,7 +442,86 @@ export default function Checkout() {
                         </div>
                     </div>
 
-                    {/* Modals */}
+                    {showQRModal && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                            <div className="bg-white rounded-[24px] shadow-2xl max-w-sm w-full overflow-hidden flex flex-col items-center animate-in zoom-in-95 duration-300 border border-white/20">
+                                <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 w-full p-6 text-center relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2"></div>
+                                    <div className="absolute bottom-0 right-0 w-32 h-32 bg-indigo-400/20 rounded-full blur-2xl translate-x-1/2 translate-y-1/2"></div>
+
+                                    <h3 className="text-white font-extrabold text-xl relative z-10 tracking-tight">Scan QR to Pay</h3>
+                                    <p className="text-blue-100 text-sm mt-1 mb-2 relative z-10 font-medium">Open Banking App to Scan</p>
+                                </div>
+
+                                <div className="p-6 w-full flex flex-col items-center bg-slate-50 relative">
+                                    {/* QR Frame */}
+                                    <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xl mb-6 relative z-10 -mt-16 group hover:-translate-y-1 transition-transform">
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-blue-400 to-indigo-500 rounded-2xl blur-md opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                                        <img
+                                            src={qrUrl}
+                                            alt="VietQR"
+                                            className="w-56 h-56 object-contain relative z-10 rounded-xl"
+                                        />
+                                    </div>
+
+                                    <div className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Account</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-slate-800 text-sm">{import.meta.env.VITE_SEPAY_ACCOUNT_NUMBER || '0935655266'}</span>
+                                                <button onClick={() => handleCopy(import.meta.env.VITE_SEPAY_ACCOUNT_NUMBER || '0935655266', 'account')} className="text-slate-400 hover:text-blue-600 transition-colors bg-slate-50 p-1.5 rounded-md">
+                                                    {copiedField === 'account' ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <Separator className="bg-slate-100" />
+
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Amount</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-extrabold text-blue-600 text-lg tracking-tight">{formatPrice(grandTotal)}</span>
+                                                <button onClick={() => handleCopy(grandTotal.toString(), 'amount')} className="text-slate-400 hover:text-blue-600 transition-colors bg-slate-50 p-1.5 rounded-md">
+                                                    {copiedField === 'amount' ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <Separator className="bg-slate-100" />
+
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Content</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded text-sm tracking-wide">
+                                                    {orders.length > 0 ? `FIGI ${paymentRef || orders[0].order_id}` : ''}
+                                                </span>
+                                                <button onClick={() => handleCopy(orders.length > 0 ? `FIGI ${paymentRef || orders[0].order_id}` : '', 'content')} className="text-slate-400 hover:text-blue-600 transition-colors bg-slate-50 p-1.5 rounded-md">
+                                                    {copiedField === 'content' ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-8 flex items-center justify-center gap-3 bg-blue-50/50 px-5 py-3 rounded-full border border-blue-100/50 max-w-[280px]">
+                                        <div className="relative flex h-3 w-3">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                                        </div>
+                                        <p className="text-blue-700 text-[13px] font-semibold tracking-tight">Awaiting Auto-Confirmation...</p>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 w-full border-t border-slate-100 bg-white">
+                                    <Button variant="ghost" className="w-full font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl h-11" onClick={() => setShowQRModal(false)}>
+                                        Pay Later & Close
+                                    </Button>
+                                    <p className="text-[11px] text-center mt-3 text-slate-400 font-medium">
+                                        Ref: {paymentRef || legacyOrderId} • Secured by SePay
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Standard Cancel Dialog (Existing) */}
                     {showCancelDialog && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                             <div className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full mx-4">
