@@ -12,8 +12,11 @@ import {
     Menu,
     X,
     Percent,
+    Bell
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/components/ui/use-toast";
+import { io } from "socket.io-client";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +25,31 @@ export default function ManagerLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const location = useLocation();
     const { user, logout } = useAuthStore();
+    const { toast } = useToast();
+    const [unreadReturns, setUnreadReturns] = useState(0);
+
+    // Socket Listener for Real-Time Notifications
+    useEffect(() => {
+        if (user?.role_code !== 'MANAGER') return; // Only connect for managers if needed
+
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const socketUrl = `${baseUrl}/events`;
+        const socket = io(socketUrl);
+
+        socket.on('connect', () => console.log('✅ Manager Connected to Events Socket'));
+
+        socket.on('manager:new_return_request', (data) => {
+            console.log("🔔 Received new return request:", data);
+            setUnreadReturns(prev => prev + 1);
+            toast({
+                title: "New Return Request!",
+                description: `Return #${data.return_id} from ${data.users?.full_name || 'a customer'} requires your approval.`,
+                className: "bg-orange-600 text-white border-orange-700"
+            });
+        });
+
+        return () => { socket.disconnect(); };
+    }, [user, toast]);
 
     const navItems = [
         { name: 'Dashboard', path: '/manager/dashboard', icon: LayoutDashboard },
@@ -85,8 +113,8 @@ export default function ManagerLayout() {
                                     to={item.path}
                                     onClick={() => setIsSidebarOpen(false)}
                                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(item.path)
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'hover:bg-neutral-800 hover:text-white'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'hover:bg-neutral-800 hover:text-white'
                                         }`}
                                 >
                                     <Icon className="w-5 h-5" />
@@ -130,10 +158,20 @@ export default function ManagerLayout() {
             {/* Main Content */}
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Header */}
-                <header className="bg-white border-b border-neutral-200 h-16 flex items-center px-8 justify-between lg:justify-end">
+                <header className="bg-white border-b border-neutral-200 h-16 flex items-center px-4 lg:px-8 justify-between lg:justify-end">
                     <div className="lg:hidden w-8"></div>
-                    <div className="flex items-center gap-4">
-                        <div className="text-sm text-right">
+                    <div className="flex items-center gap-6">
+                        {/* Notification Bell */}
+                        <Link to="/manager/returns" className="relative text-neutral-500 hover:text-neutral-900 transition-colors" onClick={() => setUnreadReturns(0)}>
+                            <Bell className="w-5 h-5" />
+                            {unreadReturns > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                                    {unreadReturns}
+                                </span>
+                            )}
+                        </Link>
+
+                        <div className="text-sm text-right hidden sm:block">
                             <p className="font-semibold text-neutral-900">Store Performance</p>
                             <p className="text-xs text-green-600 font-medium">+12% vs last week</p>
                         </div>
