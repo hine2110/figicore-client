@@ -139,7 +139,7 @@ export default function OrderProcessing() {
     };
 
     return (
-        <div className="h-full bg-neutral-50/50 p-6 flex flex-col gap-6 overflow-hidden animate-in fade-in duration-500">
+        <div className="flex flex-col gap-6 animate-in fade-in duration-500">
             {/* Header Area */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
                 <div>

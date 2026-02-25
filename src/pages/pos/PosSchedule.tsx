@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import { axiosInstance } from '@/lib/axiosInstance';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
-import SessionManager from './SessionManager';
 
 interface Timesheet {
     timesheet_id: number;
@@ -52,7 +51,7 @@ export default function PosSchedule() {
 
     // Check-in State
     const [isStation, setIsStation] = useState(false);
-    const [currentTime, setCurrentTime] = useState<Date | null>(null); // Start null until synced
+    const [currentTime, setCurrentTime] = useState<Date | null>(null);
     const [timeOffset, setTimeOffset] = useState<number>(0);
     const [checkInModalOpen, setCheckInModalOpen] = useState(false);
     const [activeCheckInType, setActiveCheckInType] = useState<'in' | 'out'>('in');
@@ -62,7 +61,7 @@ export default function PosSchedule() {
         const token = localStorage.getItem('FIGICORE_STATION_TOKEN');
         setIsStation(!!token);
 
-        // 1. Fetch Server Time once
+        // 1. Fetch Server Time
         axiosInstance.get('/system/time').then(res => {
             const serverTime = new Date(res.data.server_time).getTime();
             const localTime = Date.now();
@@ -71,21 +70,36 @@ export default function PosSchedule() {
             setCurrentTime(new Date(serverTime));
         }).catch(err => {
             console.error("Time sync failed", err);
-            // Fallback to local time if sync fails
             setCurrentTime(new Date());
         });
 
         const timer = setInterval(() => {
-            // Use offset to calculate current server time
             setCurrentTime(prev => {
-                if (!prev) return new Date(); // Or manage better?
-                // Re-calculate using Date.now() + offset to avoid drift
+                if (!prev) return new Date();
                 return new Date(Date.now() + timeOffset);
             });
-        }, 1000); // Update every second for countdown
+        }, 1000);
 
         return () => clearInterval(timer);
     }, [timeOffset]);
+
+    const isCheckInWindowOpen = (expectedStart: string | null): boolean => {
+        if (!expectedStart || !currentTime) return false;
+        const start = new Date(expectedStart);
+        if (isNaN(start.getTime())) return false;
+        const now = currentTime;
+        const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
+        return now >= windowStart;
+    };
+
+    const handleCheckInClick = (type: 'in' | 'out') => {
+        setActiveCheckInType(type);
+        setCheckInModalOpen(true);
+    };
+
+    const handleCheckInSuccess = () => {
+        fetchSchedules();
+    };
 
     // Calculate dates based on View Mode
     const startDate = viewMode === 'week'
@@ -131,41 +145,6 @@ export default function PosSchedule() {
         fetchSchedules();
     }, [currentDate, viewMode]);
 
-    const isCheckInWindowOpen = (expectedStart: string | null): boolean => {
-        if (!expectedStart || !currentTime) return false;
-
-        // expectedStart is ISO string? The component uses `expected_start`.
-        // NOTE: expected_start usually comes as ISO string "YYYY-MM-DDTHH:mm:ss".
-        // But in PosSchedule original code: `getTimeFromIso` handles it.
-        // Wait, `expectedStart` argument here is from `shift.expected_start`.
-
-        const start = new Date(expectedStart);
-        // If start date is valid
-        if (isNaN(start.getTime())) return false;
-
-        const now = currentTime;
-
-        // Window: 5 minutes before start
-        const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
-
-        // Also check end time? 
-        // Requirement: (serverTime >= shiftStartTime - 5 mins) && (serverTime <= shiftEndTime)
-        // I don't have shiftEndTime here easily passed in, so I will pass shift object or just check start for now?
-        // Let's stick to start check for enabling "Check In" button.
-        // If the user is LATE, `now > start` is true. `now >= windowStart` is true.
-        // So they can check in.
-        // If I need to enforce "User cannot check in after shift end", I need `expectedEnd`.
-        // Implementation below passes button only if `isCheckInWindowOpen`.
-
-        return now >= windowStart;
-    };
-
-    const handleCheckInClick = (type: 'in' | 'out') => {
-        // Validation for Check-out?
-        setActiveCheckInType(type);
-        setCheckInModalOpen(true);
-    };
-
     const handlePrev = () => {
         if (viewMode === 'week') {
             setCurrentDate(subWeeks(currentDate, 1));
@@ -182,8 +161,6 @@ export default function PosSchedule() {
         }
     };
 
-    const daysToDisplay = eachDayOfInterval({ start: startDate, end: endDate });
-
     const getSchedulesForDay = (day: Date) => {
         const dayStr = format(day, 'yyyy-MM-dd');
         return schedules.filter(s => {
@@ -198,13 +175,11 @@ export default function PosSchedule() {
         return match ? match[1] : '--:--';
     };
 
-    // Helper: Countdown
     const renderCountdown = (shiftStart: string) => {
         if (!currentTime) return null;
         const start = new Date(shiftStart);
         const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
 
-        // If current time is BEFORE window start
         if (currentTime < windowStart) {
             const diff = windowStart.getTime() - currentTime.getTime();
             const minutes = Math.floor(diff / 60000);
@@ -219,196 +194,182 @@ export default function PosSchedule() {
     };
 
     return (
-        <div className="p-8 h-screen overflow-y-auto">
-            <div className="space-y-6">
-                {/* Session Management */}
-                <SessionManager />
-
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-neutral-900">POS Schedule</h1>
-                        <p className="text-neutral-500">Manage your shifts and attendance.</p>
-                        {currentTime && (
-                            <p className="text-xs text-neutral-400 mt-1">
-                                Server Time: {format(currentTime, 'HH:mm:ss')}
-                            </p>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Select value={viewMode} onValueChange={(v: 'week' | 'month') => setViewMode(v)}>
-                            <SelectTrigger className="w-[120px]">
-                                <SelectValue placeholder="Select view" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="week">Weekly</SelectItem>
-                                <SelectItem value="month">Monthly</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft className="w-4 h-4" /></Button>
-                        <span className="font-medium min-w-[170px] text-center">{formattedDateRange}</span>
-                        <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight className="w-4 h-4" /></Button>
-                        <Button variant="outline" className="ml-2 gap-2" onClick={fetchSchedules}>
-                            <Filter className="w-4 h-4" /> Refresh
-                        </Button>
-                    </div>
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-neutral-900">POS Schedule</h1>
+                    <p className="text-neutral-500">Manage your shifts and attendance.</p>
+                    {currentTime && (
+                        <p className="text-xs text-neutral-400 mt-1">
+                            Server Time: {format(currentTime, 'HH:mm:ss')}
+                        </p>
+                    )}
                 </div>
+                <div className="flex items-center gap-2">
+                    <Select value={viewMode} onValueChange={(v: 'week' | 'month') => setViewMode(v)}>
+                        <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Select view" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="week">Weekly</SelectItem>
+                            <SelectItem value="month">Monthly</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Shifts</CardTitle>
-                            <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{loading ? '...' : summary?.total_shifts || 0}</div>
-                            <p className="text-xs text-muted-foreground">in selected {viewMode}</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{loading ? '...' : summary?.total_hours || 0}</div>
-                            <p className="text-xs text-muted-foreground">calculated duration</p>
-                        </CardContent>
-                    </Card>
+                    <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft className="w-4 h-4" /></Button>
+                    <span className="font-medium min-w-[170px] text-center">{formattedDateRange}</span>
+                    <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight className="w-4 h-4" /></Button>
+                    <Button variant="outline" className="ml-2 gap-2" onClick={fetchSchedules}>
+                        <Filter className="w-4 h-4" /> Refresh
+                    </Button>
                 </div>
+            </div>
 
-                {loading ? (
-                    <div className="text-center py-10">Loading schedules...</div>
-                ) : (
-                    <div className="grid grid-cols-1 gap-6">
-                        {daysToDisplay.map((day) => {
-                            const daySchedules = getSchedulesForDay(day);
-                            if (daySchedules.length === 0) return null;
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Shifts</CardTitle>
+                        <Briefcase className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{loading ? '...' : summary?.total_shifts || 0}</div>
+                        <p className="text-xs text-muted-foreground">in selected {viewMode}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{loading ? '...' : summary?.total_hours || 0}</div>
+                        <p className="text-xs text-muted-foreground">calculated duration</p>
+                    </CardContent>
+                </Card>
+            </div>
 
-                            return (
-                                <Card key={day.toISOString()} className="overflow-hidden border-neutral-200">
-                                    <div className="bg-neutral-50 p-4 border-b border-neutral-200 flex justify-between items-center">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="w-4 h-4 text-neutral-500" />
-                                            <span className="font-semibold text-neutral-900">{format(day, 'EEEE')}</span>
-                                            <span className="text-neutral-500">{format(day, 'MMM d')}</span>
-                                        </div>
-                                        <Badge variant="secondary" className="bg-white">{daySchedules.length} Shifts</Badge>
+            {loading ? (
+                <div className="text-center py-10">Loading schedules...</div>
+            ) : (
+                <div className="grid grid-cols-1 gap-6">
+                    {eachDayOfInterval({ start: startDate, end: endDate }).map((day) => {
+                        const daySchedules = getSchedulesForDay(day);
+                        if (daySchedules.length === 0) return null;
+
+                        return (
+                            <Card key={day.toISOString()} className="overflow-hidden border-neutral-200">
+                                <div className="bg-neutral-50 p-4 border-b border-neutral-200 flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="w-4 h-4 text-neutral-500" />
+                                        <span className="font-semibold text-neutral-900">{format(day, 'EEEE')}</span>
+                                        <span className="text-neutral-500">{format(day, 'MMM d')}</span>
                                     </div>
-                                    <div className="divide-y divide-neutral-100">
-                                        {daySchedules.map((shift) => {
-                                            // Determine State
-                                            const timesheet = shift.timesheets && shift.timesheets.length > 0 ? shift.timesheets[0] : null;
+                                    <Badge variant="secondary" className="bg-white">{daySchedules.length} Shifts</Badge>
+                                </div>
+                                <div className="divide-y divide-neutral-100">
+                                    {daySchedules.map((shift) => {
+                                        const timesheet = shift.timesheets && shift.timesheets.length > 0 ? shift.timesheets[0] : null;
 
-                                            let checkInState: 'in' | 'out' | 'completed' = 'in';
-                                            if (timesheet?.check_out_at) {
-                                                checkInState = 'completed';
-                                            } else if (timesheet?.check_in_at) {
-                                                checkInState = 'out';
-                                            }
+                                        let checkInState: 'in' | 'out' | 'completed' = 'in';
+                                        if (timesheet?.check_out_at) {
+                                            checkInState = 'completed';
+                                        } else if (timesheet?.check_in_at) {
+                                            checkInState = 'out';
+                                        }
 
-                                            // Requirement: Enable only if (serverTime >= shiftStartTime - 5 mins) && (serverTime <= shiftEndTime)
-                                            // I'll check strict validity for CHECK-IN.
-                                            const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.expected_start) : false;
+                                        const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.expected_start) : false;
+                                        const countdown = shift.expected_start ? renderCountdown(shift.expected_start) : null;
 
-                                            // Should I disable if past shift end?
-                                            // If strict: if (currentTime > new Date(shift.expected_end)) canCheckIn = false.
-                                            // I will assume simple window "start - 5min" for now as per my isCheckInWindowOpen logic.
-                                            // The user also requested: "Display a countdown timer if the current time is more than 5 minutes before the shift starts."
-                                            const countdown = shift.expected_start ? renderCountdown(shift.expected_start) : null;
-
-                                            return (
-                                                <div key={shift.schedule_id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-neutral-50 transition-colors">
-                                                    <div className="flex items-start md:items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                                                            {(shift.employees?.users?.full_name || 'Me').charAt(0)}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-medium text-neutral-900">{shift.employees?.users?.full_name || 'My Shift'}</div>
-                                                            <div className="text-sm text-neutral-500">
-                                                                {shift.shift_code}
-                                                                {timesheet?.status_code && (
-                                                                    <Badge variant={timesheet.status_code === 'LATE' ? 'destructive' : 'outline'} className="ml-2 text-[10px]">
-                                                                        {timesheet.status_code}
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
+                                        return (
+                                            <div key={shift.schedule_id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-neutral-50 transition-colors">
+                                                <div className="flex items-start md:items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                                                        {(shift.employees?.users?.full_name || 'Me').charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium text-neutral-900">{shift.employees?.users?.full_name || 'My Shift'}</div>
+                                                        <div className="text-sm text-neutral-500">
+                                                            {shift.shift_code}
+                                                            {timesheet?.status_code && (
+                                                                <Badge variant={timesheet.status_code === 'LATE' ? 'destructive' : 'outline'} className="ml-2 text-[10px]">
+                                                                    {timesheet.status_code}
+                                                                </Badge>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-6 text-sm">
-                                                        <div className="flex items-center gap-2 text-neutral-600">
-                                                            <Clock className="w-4 h-4" />
-                                                            {getTimeFromIso(shift.expected_start)} - {getTimeFromIso(shift.expected_end)}
-                                                            {countdown}
-                                                        </div>
-                                                        {shift.expected_end && shift.expected_start && shift.expected_end < shift.expected_start && (
-                                                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
-                                                                <Moon className="w-3 h-3" /> Overnight
-                                                            </Badge>
-                                                        )}
+                                                </div>
+                                                <div className="flex items-center gap-6 text-sm">
+                                                    <div className="flex items-center gap-2 text-neutral-600">
+                                                        <Clock className="w-4 h-4" />
+                                                        {getTimeFromIso(shift.expected_start)} - {getTimeFromIso(shift.expected_end)}
+                                                        {countdown}
                                                     </div>
-
-                                                    {/* Check-in Logic */}
-                                                    {isStation && (
-                                                        <div className="flex items-center">
-                                                            {checkInState === 'in' && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    className={canCheckIn ? "bg-blue-600 hover:bg-blue-700" : "bg-neutral-300 text-neutral-500 cursor-not-allowed"}
-                                                                    disabled={!canCheckIn}
-                                                                    onClick={() => handleCheckInClick('in')}
-                                                                >
-                                                                    <ScanFace className="w-4 h-4 mr-2" />
-                                                                    Check In
-                                                                </Button>
-                                                            )}
-
-                                                            {checkInState === 'out' && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="destructive"
-                                                                    onClick={() => handleCheckInClick('out')}
-                                                                >
-                                                                    <LogOut className="w-4 h-4 mr-2" />
-                                                                    Check Out
-                                                                </Button>
-                                                            )}
-
-                                                            {checkInState === 'completed' && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    className="text-green-600 border-green-200 bg-green-50"
-                                                                    disabled
-                                                                >
-                                                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                                                    Completed
-                                                                </Button>
-                                                            )}
-                                                        </div>
+                                                    {shift.expected_end && shift.expected_start && shift.expected_end < shift.expected_start && (
+                                                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">
+                                                            <Moon className="w-3 h-3" /> Overnight
+                                                        </Badge>
                                                     )}
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                </Card>
-                            )
-                        })}
 
-                        {schedules.length === 0 && (
-                            <div className="text-center py-10 text-neutral-500 border rounded-lg bg-neutral-50">
-                                You have no shifts scheduled for this {viewMode === 'week' ? 'week' : 'month'}.
-                            </div>
-                        )}
-                    </div>
-                )}
-                <FaceCheckInModal
-                    open={checkInModalOpen}
-                    onOpenChange={setCheckInModalOpen}
-                    checkInType={activeCheckInType}
-                    onSuccess={fetchSchedules}
-                />
-            </div>
+                                                {isStation && (
+                                                    <div className="flex items-center">
+                                                        {checkInState === 'in' && (
+                                                            <Button
+                                                                size="sm"
+                                                                className={canCheckIn ? "bg-blue-600 hover:bg-blue-700" : "bg-neutral-300 text-neutral-500 cursor-not-allowed"}
+                                                                disabled={!canCheckIn}
+                                                                onClick={() => handleCheckInClick('in')}
+                                                            >
+                                                                <ScanFace className="w-4 h-4 mr-2" />
+                                                                Check In
+                                                            </Button>
+                                                        )}
+
+                                                        {checkInState === 'out' && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                onClick={() => handleCheckInClick('out')}
+                                                            >
+                                                                <LogOut className="w-4 h-4 mr-2" />
+                                                                Check Out
+                                                            </Button>
+                                                        )}
+
+                                                        {checkInState === 'completed' && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="text-green-600 border-green-200 bg-green-50"
+                                                                disabled
+                                                            >
+                                                                <CheckCircle className="w-4 h-4 mr-2" />
+                                                                Completed
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </Card>
+                        )
+                    })}
+
+                    {schedules.length === 0 && (
+                        <div className="text-center py-10 text-neutral-500 border rounded-lg bg-neutral-50">
+                            Bạn không có ca làm nào trong {viewMode === 'week' ? 'tuần' : 'tháng'} này.
+                        </div>
+                    )}
+                </div>
+            )}
+            <FaceCheckInModal
+                open={checkInModalOpen}
+                onOpenChange={setCheckInModalOpen}
+                checkInType={activeCheckInType}
+                onSuccess={handleCheckInSuccess}
+            />
         </div>
     );
 }

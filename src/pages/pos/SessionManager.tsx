@@ -127,7 +127,7 @@ export default function SessionManager() {
     }
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto p-6">
+        <div className="space-y-6 max-w-4xl mx-auto">
             {/* Current Session Status */}
             {currentSession ? (
                 <div className="grid gap-6 md:grid-cols-2">

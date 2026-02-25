@@ -212,31 +212,10 @@
   /* Hardware acceleration */
 }
 
-<<<<<<< HEAD
 .ambient-glow-blue {
   @apply bg-blue-500/30 blur-[120px];
 }
 
 .ambient-glow-purple {
   @apply bg-indigo-500/30 blur-[120px];
-=======
-@keyframes float-up {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 0;
-  }
-
-  20% {
-    opacity: 0.8;
-  }
-
-  100% {
-    transform: translateY(-100vh) scale(0.5);
-    opacity: 0;
-  }
-}
-
-.animate-float-up {
-  animation: float-up 10s linear infinite;
->>>>>>> b8e89e2c48e400a9b0e0f734d01c3f8f3b1a5797
 }

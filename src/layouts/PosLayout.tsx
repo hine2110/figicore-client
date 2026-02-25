@@ -26,7 +26,7 @@ export default function PosLayout() {
             name: 'Dashboard',
             path: '/pos/dashboard',
             icon: LayoutDashboard,
-            description: 'Overview & Analytics'
+            //description: 'Overview & Analytics'
         },
         {
             name: 'Sales Counter',
@@ -155,9 +155,11 @@ export default function PosLayout() {
             </Sheet>
 
             {/* Main Content */}
-            <div className="flex-1 overflow-hidden">
-                <Outlet />
-            </div>
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                <div className="p-4 md:p-8 flex-1 overflow-y-auto">
+                    <Outlet />
+                </div>
+            </main>
         </div>
     );
 }
