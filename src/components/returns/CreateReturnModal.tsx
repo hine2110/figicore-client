@@ -116,13 +116,13 @@ export function CreateReturnModal({ open, onOpenChange, order, onSuccess }: Crea
             const uploadedVideoUrl = uploadResult.url;
             setUploadProgress(40); // Base progress
 
-            // 2. Upload Images
+            // 2. Upload Images (Parallel execution!)
             const uploadedImageUrls: string[] = [];
-            for (let i = 0; i < imageFiles.length; i++) {
-                // Reuse upload API (it usually accepts both depending on server config)
-                const imgRes = await shipmentService.uploadVideo(imageFiles[i]);
-                uploadedImageUrls.push(imgRes.url);
-                setUploadProgress(40 + Math.floor(40 * ((i + 1) / imageFiles.length)));
+            if (imageFiles.length > 0) {
+                const uploadPromises = imageFiles.map((file) => shipmentService.uploadVideo(file));
+                const results = await Promise.all(uploadPromises);
+                uploadedImageUrls.push(...results.map(res => res.url));
+                setUploadProgress(80); // Quick jump as they complete together
             }
 
             // 3. Submit Return Request

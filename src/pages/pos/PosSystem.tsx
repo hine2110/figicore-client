@@ -102,25 +102,53 @@ export default function StaffPOS() {
         try {
             const activeOrder = await getActiveOrder();
             if (activeOrder && activeOrder.status_code === 'PENDING' && activeOrder.order_items) {
-                const restoredCart = activeOrder.order_items.map((item: any) => ({
-                    variant_id: item.variant_id,
-                    sku: item.product_variants.sku,
-                    product_name: item.product_variants.products.name,
-                    option_name: item.product_variants.option_name,
-                    price: Number(item.unit_price),
-                    quantity: item.quantity,
-                    thumbnail: item.product_variants.thumbnail || item.product_variants.products.thumbnail,
-                    tax_rate: Number(item.tax_rate || 0),
-                    tax_amount: Number(item.tax_amount || 0),
-                }));
+                const restoredCart = activeOrder.order_items.map((item: any) => {
+                    const variant = item.product_variants;
+                    const product = variant.products;
+
+                    // Extract thumbnail logic (Sync with backend posSearch)
+                    let thumbnail = null;
+
+                    // 1. Try product.media_urls
+                    if (product.media_urls) {
+                        try {
+                            const mediaArray = Array.isArray(product.media_urls)
+                                ? product.media_urls
+                                : (product.media_urls as any).images || [];
+                            thumbnail = mediaArray[0] || null;
+                        } catch (e) {
+                            thumbnail = null;
+                        }
+                    }
+
+                    // 2. Fallback to variant.media_assets
+                    if (!thumbnail && variant.media_assets) {
+                        try {
+                            const assets = typeof variant.media_assets === 'string'
+                                ? JSON.parse(variant.media_assets)
+                                : variant.media_assets;
+                            thumbnail = Array.isArray(assets) && assets[0] ? assets[0] : null;
+                        } catch (e) {
+                            thumbnail = null;
+                        }
+                    }
+
+                    return {
+                        variant_id: item.variant_id,
+                        sku: variant.sku,
+                        product_name: product.name,
+                        option_name: variant.option_name,
+                        price: Number(item.unit_price),
+                        quantity: item.quantity,
+                        thumbnail: thumbnail,
+                        tax_rate: Number(item.tax_rate || 0),
+                        tax_amount: Number(item.tax_amount || 0),
+                    };
+                });
                 setCart(restoredCart);
                 if (activeOrder.users) {
                     setSelectedCustomer(activeOrder.users);
                 }
-                toast({
-                    title: 'Cart Restored',
-                    description: 'Your previous pending session has been recovered.',
-                });
             }
         } catch (error) {
             console.error("Failed to restore active order", error);
