@@ -16,16 +16,47 @@ export const openSession = async (opening_cash: number) => {
     return response.data;
 };
 
-export const closeSession = async (sessionId: number, closing_cash: number, note?: string) => {
+export const closeSession = async (
+    sessionId: number,
+    closing_cash: number,
+    note?: string,
+    expenses?: number,
+    cash_breakdown?: any,
+    cash_revenue_app?: number
+) => {
     const response = await axiosInstance.post(`${API_BASE}/sessions/${sessionId}/close`, {
         closing_cash,
         note,
+        expenses,
+        cash_breakdown,
+        cash_revenue_app,
     });
     return response.data;
 };
 
 export const getCurrentSession = async (): Promise<{ success: boolean; data: PosSession | null }> => {
     const response = await axiosInstance.get(`${API_BASE}/sessions/current`);
+    return response.data;
+};
+
+export const getSessions = async (page: number = 1, limit: number = 10): Promise<{
+    success: boolean;
+    data: PosSession[];
+    total: number;
+    page: number;
+    limit: number;
+}> => {
+    const response = await axiosInstance.get(`${API_BASE}/sessions`, {
+        params: { page, limit }
+    });
+    return response.data;
+};
+
+export const getSessionDetails = async (sessionId: number): Promise<{
+    success: boolean;
+    data: PosSession & { orders: any[] };
+}> => {
+    const response = await axiosInstance.get(`${API_BASE}/sessions/${sessionId}`);
     return response.data;
 };
 
@@ -79,16 +110,25 @@ export const syncActiveOrder = async (syncData: {
 };
 
 // Order Management
-export const getOrders = async (page: number = 1, limit: number = 12): Promise<{
+export const getOrders = async (params: {
+    page?: number;
+    limit?: number;
+    date?: string;
+    payment_method?: string;
+    status?: string;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
+}): Promise<{
     success: boolean;
     count: number;
     data: PosOrder[];
     total: number;
+    total_revenue: number;
     page: number;
     limit: number;
 }> => {
     const response = await axiosInstance.get(`${API_BASE}/orders`, {
-        params: { page, limit }
+        params
     });
     return response.data;
 };
@@ -145,7 +185,7 @@ export const getSessionAnalytics = async (): Promise<{
     success: boolean;
     data: any;
 }> => {
-    const response = await axiosInstance.get(`${API_BASE}/orders/analytics`);
+    const response = await axiosInstance.get(`${API_BASE}/sessions/analytics`);
     return response.data;
 };
 

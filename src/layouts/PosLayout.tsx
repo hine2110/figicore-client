@@ -207,7 +207,7 @@ export default function PosLayout() {
             </Sheet>
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-hidden relative w-full h-full">
+            <div className={`flex-1 overflow-y-auto relative w-full h-full ${location.pathname === '/pos/counter' ? 'p-0' : 'p-8'}`}>
                 <Outlet />
             </div>
         </div>

@@ -34,6 +34,9 @@ import CustomerFeedback from "@/pages/manager/CustomerFeedback";
 // import StationConfirmPage from "@/pages/manager/StationConfirmPage";
 import PromotionListPage from "@/pages/manager/promotions/PromotionListPage";
 import PromotionCreatePage from "@/pages/manager/promotions/PromotionCreatePage";
+import PromotionEditPage from "@/pages/manager/promotions/PromotionEditPage";
+import VoucherListPage from "@/pages/manager/vouchers/VoucherListPage";
+import VoucherCreatePage from "@/pages/manager/vouchers/VoucherCreatePage";
 // import StaffDashboard from "@/pages/staff/StaffDashboard"; // Deprecated
 
 // Customer Pages
@@ -48,6 +51,7 @@ import Checkout from "@/pages/customer/Checkout";
 import CustomerWallet from "@/pages/customer/CustomerWallet";
 import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
+import CustomerAuctionRoom from "@/pages/customer/AuctionRoom";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
 import OrderDetail from "@/pages/customer/OrderDetail"; // New Import
 import PreOrderPayment from "@/pages/customer/PreOrderPayment";
@@ -148,9 +152,11 @@ export default function App() {
                             <Route path="timesheets" element={<ManagerTimesheets />} />
                             <Route path="feedback" element={<CustomerFeedback />} />
                             <Route path="profile" element={<ProfilePage />} />
-                            {/* <Route path="Station-confirm" element={<StationConfirmPage />} /> */}
                             <Route path="promotions" element={<PromotionListPage />} />
                             <Route path="promotions/new" element={<PromotionCreatePage />} />
+                            <Route path="promotions/:id/edit" element={<PromotionEditPage />} />
+                            <Route path="vouchers" element={<VoucherListPage />} />
+                            <Route path="vouchers/new" element={<VoucherCreatePage />} />
                         </Route>
                     </Route>
 
@@ -204,6 +210,7 @@ export default function App() {
                             <Route path="wallet" element={<CustomerWallet />} />
                             <Route path="profile" element={<CustomerProfile />} />
                             <Route path="auctions" element={<CustomerAuctions />} />
+                            <Route path="auctions/:id" element={<CustomerAuctionRoom />} />
                         </Route>
                     </Route>
 

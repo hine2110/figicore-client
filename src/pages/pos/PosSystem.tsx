@@ -14,8 +14,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
 import RegisterCustomerModal from './RegisterCustomerModal';
+import OrderDetailsModal from './OrderDetailsModal';
+import CashPaymentModal from './components/CashPaymentModal';
 import { PosProductCard } from './components/PosProductCard';
 import { PosCartItem as CartItemComponent } from './components/PosCartItem';
+import type { PosOrder } from '@/types/pos.types';
 import {
     Popover,
     PopoverContent,
@@ -29,6 +32,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Building2, Mail, MapPin, ReceiptText } from 'lucide-react';
 
 
 
@@ -66,6 +71,18 @@ export default function StaffPOS() {
     const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
     const [registerModalOpen, setRegisterModalOpen] = useState(false);
 
+    // VAT Mock State
+    const [isVatExport, setIsVatExport] = useState(false);
+    const [vatTaxNumber, setVatTaxNumber] = useState('');
+    const [vatCompanyName, setVatCompanyName] = useState('');
+    const [vatCompanyAddress, setVatCompanyAddress] = useState('');
+    const [vatInvoiceEmail, setVatInvoiceEmail] = useState('');
+
+    // Success Modal State
+    const [lastCreatedOrder, setLastCreatedOrder] = useState<PosOrder | null>(null);
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+    const [isCashModalOpen, setIsCashModalOpen] = useState(false);
+
 
 
     const { toast } = useToast();
@@ -87,23 +104,53 @@ export default function StaffPOS() {
         try {
             const activeOrder = await getActiveOrder();
             if (activeOrder && activeOrder.status_code === 'PENDING' && activeOrder.order_items) {
-                const restoredCart = activeOrder.order_items.map((item: any) => ({
-                    variant_id: item.variant_id,
-                    sku: item.product_variants.sku,
-                    product_name: item.product_variants.products.name,
-                    option_name: item.product_variants.option_name,
-                    price: Number(item.unit_price),
-                    quantity: item.quantity,
-                    thumbnail: item.product_variants.thumbnail || item.product_variants.products.thumbnail,
-                }));
+                const restoredCart = activeOrder.order_items.map((item: any) => {
+                    const variant = item.product_variants;
+                    const product = variant.products;
+
+                    // Extract thumbnail logic (Sync with backend posSearch)
+                    let thumbnail = null;
+
+                    // 1. Try product.media_urls
+                    if (product.media_urls) {
+                        try {
+                            const mediaArray = Array.isArray(product.media_urls)
+                                ? product.media_urls
+                                : (product.media_urls as any).images || [];
+                            thumbnail = mediaArray[0] || null;
+                        } catch (e) {
+                            thumbnail = null;
+                        }
+                    }
+
+                    // 2. Fallback to variant.media_assets
+                    if (!thumbnail && variant.media_assets) {
+                        try {
+                            const assets = typeof variant.media_assets === 'string'
+                                ? JSON.parse(variant.media_assets)
+                                : variant.media_assets;
+                            thumbnail = Array.isArray(assets) && assets[0] ? assets[0] : null;
+                        } catch (e) {
+                            thumbnail = null;
+                        }
+                    }
+
+                    return {
+                        variant_id: item.variant_id,
+                        sku: variant.sku,
+                        product_name: product.name,
+                        option_name: variant.option_name,
+                        price: Number(item.unit_price),
+                        quantity: item.quantity,
+                        thumbnail: thumbnail,
+                        tax_rate: Number(item.tax_rate || 0),
+                        tax_amount: Number(item.tax_amount || 0),
+                    };
+                });
                 setCart(restoredCart);
                 if (activeOrder.users) {
                     setSelectedCustomer(activeOrder.users);
                 }
-                toast({
-                    title: 'Cart Restored',
-                    description: 'Your previous pending session has been recovered.',
-                });
             }
         } catch (error) {
             console.error("Failed to restore active order", error);
@@ -279,6 +326,8 @@ export default function StaffPOS() {
                 price: variant.price,
                 quantity: 1,
                 thumbnail: variant.thumbnail || product.thumbnail,
+                tax_rate: (variant as any).tax_rate || 0, // Store Tax Rate
+                tax_amount: (variant.price * ((variant as any).tax_rate || 0)) / 100
             }];
         });
     };
@@ -335,6 +384,8 @@ export default function StaffPOS() {
         setCart(prev => prev.map(item => {
             if (item.variant_id === variantId) {
                 const newQuantity = Math.max(1, item.quantity + delta);
+                // Recalculate tax amount for line item if needed, but we calculate total tax globally usually.
+                // But for precision, we can store it.
                 return { ...item, quantity: newQuantity };
             }
             return item;
@@ -366,16 +417,26 @@ export default function StaffPOS() {
     };
 
     const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const taxAmount = cartTotal * 0.08;
+    // Dynamic Tax Calculation
+    const taxAmount = cart.reduce((sum, item) => {
+        const itemTax = (item.price * item.quantity) * ((item.tax_rate || 0) / 100);
+        return sum + itemTax;
+    }, 0);
+
     const finalTotal = cartTotal + taxAmount;
 
-    const handleCheckout = async (paymentMethod: string) => {
+    const handleCheckout = async (paymentMethod: string, cashInfo?: { received: number, change: number }) => {
         if (!hasSession) {
             toast({
                 title: 'No Active Session',
                 description: 'Please open a shift first',
                 variant: 'destructive',
             });
+            return;
+        }
+
+        if (paymentMethod === 'CASH' && !cashInfo) {
+            setIsCashModalOpen(true);
             return;
         }
 
@@ -390,16 +451,26 @@ export default function StaffPOS() {
 
         setCheckoutLoading(true);
         try {
-            const orderData = {
+            const orderData: any = {
                 items: cart.map(item => ({
                     variant_id: item.variant_id,
                     quantity: item.quantity,
                 })),
                 payment_method_code: paymentMethod,
                 user_id: selectedCustomer?.user_id || undefined,
+                is_vat_export: isVatExport,
+                vat_tax_number: isVatExport ? vatTaxNumber : undefined,
+                vat_company_name: isVatExport ? vatCompanyName : undefined,
+                vat_company_address: isVatExport ? vatCompanyAddress : undefined,
+                vat_invoice_email: isVatExport ? vatInvoiceEmail : undefined,
+                cash_received: cashInfo?.received,
+                cash_change: cashInfo?.change,
             };
 
             const response = await createPosOrder(orderData);
+
+            setLastCreatedOrder(response.data);
+            setIsReceiptModalOpen(true);
 
             toast({
                 title: 'Success',
@@ -420,6 +491,12 @@ export default function StaffPOS() {
             });
         } finally {
             setCheckoutLoading(false);
+            // Reset VAT state after checkout
+            setIsVatExport(false);
+            setVatTaxNumber('');
+            setVatCompanyName('');
+            setVatCompanyAddress('');
+            setVatInvoiceEmail('');
         }
     };
 
@@ -856,13 +933,89 @@ export default function StaffPOS() {
                     </div>
 
                     <div className="bg-white/80 backdrop-blur-xl border-t border-neutral-200 p-4 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-20 rounded-t-3xl mx-1 mb-1">
+                        {/* VAT Toggle & Form */}
+                        <Card className="p-4 mb-4 border-indigo-100 bg-indigo-50/30">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    <ReceiptText className="w-4 h-4 text-indigo-600" />
+                                    <Label className="text-sm font-bold text-neutral-900 cursor-pointer" htmlFor="vat-toggle">
+                                        Export VAT Invoice
+                                    </Label>
+                                </div>
+                                <Switch
+                                    id="vat-toggle"
+                                    checked={isVatExport}
+                                    onCheckedChange={setIsVatExport}
+                                />
+                            </div>
+                            <p className="text-[10px] text-neutral-500 mb-3">Enable this to provide company details for an official VAT invoice.</p>
+
+                            {isVatExport && (
+                                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="space-y-1.5">
+                                        <div className="relative">
+                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                                                <AlertCircle className="w-3.5 h-3.5" />
+                                            </div>
+                                            <Input
+                                                placeholder="Tax Identification Number (MST)"
+                                                className="pl-9 h-9 bg-white border-neutral-200 text-sm focus:ring-indigo-500/20"
+                                                value={vatTaxNumber}
+                                                onChange={(e) => setVatTaxNumber(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <div className="relative">
+                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                                                <Building2 className="w-3.5 h-3.5" />
+                                            </div>
+                                            <Input
+                                                placeholder="Company Name"
+                                                className="pl-9 h-9 bg-white border-neutral-200 text-sm focus:ring-indigo-500/20"
+                                                value={vatCompanyName}
+                                                onChange={(e) => setVatCompanyName(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <div className="relative">
+                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                                                <MapPin className="w-3.5 h-3.5" />
+                                            </div>
+                                            <Input
+                                                placeholder="Company Registered Address"
+                                                className="pl-9 h-9 bg-white border-neutral-200 text-sm focus:ring-indigo-500/20"
+                                                value={vatCompanyAddress}
+                                                onChange={(e) => setVatCompanyAddress(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <div className="relative">
+                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                                                <Mail className="w-3.5 h-3.5" />
+                                            </div>
+                                            <Input
+                                                type="email"
+                                                placeholder="Email to receive invoice"
+                                                className="pl-9 h-9 bg-white border-neutral-200 text-sm focus:ring-indigo-500/20"
+                                                value={vatInvoiceEmail}
+                                                onChange={(e) => setVatInvoiceEmail(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </Card>
+
                         <div className="space-y-2 mb-4">
                             <div className="flex justify-between text-neutral-600 text-sm">
                                 <span>Subtotal</span>
                                 <span className="font-medium text-neutral-900">{cartTotal.toLocaleString('vi-VN')}₫</span>
                             </div>
                             <div className="flex justify-between text-neutral-600 text-sm">
-                                <span>Tax (8%)</span>
+                                <span>Tax (VAT)</span>
                                 <span>{taxAmount.toLocaleString('vi-VN')}₫</span>
                             </div>
                             <Separator className="my-1.5 bg-neutral-200/60" />
@@ -923,6 +1076,22 @@ export default function StaffPOS() {
                 onSuccess={(newCustomer) => {
                     handleSelectCustomer(newCustomer);
                     setRegisterModalOpen(false);
+                }}
+            />
+            <OrderDetailsModal
+                order={lastCreatedOrder}
+                open={isReceiptModalOpen}
+                onClose={() => setIsReceiptModalOpen(false)}
+            />
+            <CashPaymentModal
+                open={isCashModalOpen}
+                onClose={() => setIsCashModalOpen(false)}
+                totalAmount={finalTotal}
+                hasCustomer={!!selectedCustomer}
+                onRegisterCustomer={() => setRegisterModalOpen(true)}
+                onConfirm={(received, change) => {
+                    setIsCashModalOpen(false);
+                    handleCheckout('CASH', { received, change });
                 }}
             />
         </div>

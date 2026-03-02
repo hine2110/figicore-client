@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     CreditCard, User,
     Printer, CheckCircle2, Clock, XCircle, ShoppingBag,
-    Receipt, Calendar
+    Receipt, Calendar, FileText, Download, Building, Mail
 } from 'lucide-react';
 import {
     Table,
@@ -18,11 +18,10 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import type { PosOrder } from '@/types/pos.types';
 import { cn } from '@/lib/utils';
 
 interface OrderDetailsModalProps {
-    order: PosOrder | null;
+    order: any; // Using any for flexibility with extended fields
     open: boolean;
     onClose: () => void;
     onOrderCancelled?: (orderId: number) => void;
@@ -57,13 +56,194 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
     return (
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="max-w-2xl bg-neutral-50/95 backdrop-blur-xl p-0 gap-0 overflow-hidden border-white/20 shadow-2xl rounded-[1.5rem]">
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    @media print {
+                        @page {
+                            margin: 0;
+                            size: 80mm auto;
+                        }
+                        body {
+                            background: white !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+                        #root, .dialog-overlay, .screen-only {
+                            display: none !important;
+                        }
+                        [role="dialog"] {
+                            background: white !important;
+                            border: none !important;
+                            box-shadow: none !important;
+                            position: absolute !important;
+                            top: 0 !important;
+                            left: 0 !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            width: 100% !important;
+                            max-width: none !important;
+                            border-radius: 0 !important;
+                            transform: none !important;
+                        }
+                        .thermal-receipt-container {
+                            display: block !important;
+                            width: 80mm;
+                            margin: 0 auto;
+                            padding: 5mm;
+                            background: white;
+                            color: black;
+                            font-family: 'Courier New', Courier, monospace;
+                            visibility: visible !important;
+                            position: static !important;
+                        }
+                        .thermal-receipt-container * {
+                            visibility: visible !important;
+                        }
+                    }
+                    .thermal-receipt-container {
+                        display: none;
+                    }
+                `}} />
+
+                {/* hidden thermal receipt for printing */}
+                <div className="thermal-receipt-container text-black bg-white w-[80mm] p-4 text-[13px] leading-tight font-mono">
+                    <div className="text-center mb-4">
+                        <h2 className="text-lg font-bold uppercase">FIGI CORE POS</h2>
+                        <p className="text-[11px]">76 Huỳnh Văn Nghệ, Ngũ Hành Sơn, ĐN</p>
+                        <p className="text-[11px]">SĐT: 0868884343</p>
+                        <div className="border-b border-dashed border-black my-2"></div>
+                        <h3 className="text-md font-bold uppercase">
+                            {order.is_vat_export ? 'HOÁ ĐƠN GIÁ TRỊ GIA TĂNG' : 'HOÁ ĐƠN THANH TOÁN'}
+                        </h3>
+                        <p className="text-[11px]">Số: {order.order_code}</p>
+                    </div>
+
+                    {order.is_vat_export && (
+                        <div className="mb-3 text-[10px] space-y-0.5 border-b border-dotted border-black pb-2">
+                            <p className="font-bold uppercase text-[11px]">Đơn vị mua hàng:</p>
+                            <p className="font-bold">{order.vat_company_name}</p>
+                            <p>MST: <span className="font-bold">{order.vat_tax_number}</span></p>
+                            <p>Địa chỉ: {order.vat_company_address}</p>
+                            {order.vat_invoice_email && <p>Email: {order.vat_invoice_email}</p>}
+                        </div>
+                    )}
+
+                    <div className="space-y-1 mb-3 text-[11px]">
+                        <div className="flex justify-between">
+                            <span>Giờ vào: {format(new Date(order.created_at), "HH:mm dd/MM/yyyy")}</span>
+                            <span>Giờ in: {format(new Date(), "HH:mm")}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Thu ngân:</span>
+                            <span className="font-bold">{order.employees?.users?.full_name || 'Staff'}</span>
+                        </div>
+                        <div className="border-b border-dotted border-black/30 my-1"></div>
+                        <div className="flex justify-between">
+                            <span>Khách hàng:</span>
+                            <span className="font-bold">{order.users?.full_name || 'Khách lẻ'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Điện thoại:</span>
+                            <span>{order.users?.phone || 'N/A'}</span>
+                        </div>
+                        {order.users?.customers && (
+                            <>
+                                <div className="flex justify-between">
+                                    <span>Hạng thẻ:</span>
+                                    <span className="font-bold uppercase">{order.users?.customers?.current_rank_code}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Điểm cộng thêm:</span>
+                                    <span className="font-bold">
+                                        +{(() => {
+                                            const oldSpent = Number(order.users?.customers?.total_spent || 0) - Number(order.total_amount);
+                                            const oldPoints = Math.floor(oldSpent / 100000);
+                                            const newPoints = Math.floor(Number(order.users?.customers?.total_spent || 0) / 100000);
+                                            return Math.max(0, newPoints - oldPoints);
+                                        })()} điểm
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Tổng điểm tích lũy:</span>
+                                    <span>{(order.users?.customers?.loyalty_points || 0).toLocaleString()} điểm</span>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="mb-2">
+                        <div className="flex font-bold border-b border-dashed border-black pb-1 mb-1 text-[11px]">
+                            <span className="flex-1">Mặt hàng</span>
+                            <span className="w-12 text-center">SL</span>
+                            <span className="w-20 text-right">T.Tiền</span>
+                        </div>
+                        {order.order_items?.map((item: any, idx: number) => (
+                            <div key={idx} className="flex py-0.5 text-[11px]">
+                                <span className="flex-1 leading-none">{(item.product_variants?.products?.name || 'Item').toUpperCase()}</span>
+                                <span className="w-12 text-center">{item.quantity}</span>
+                                <span className="w-20 text-right">{Number(item.total_price).toLocaleString()}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="border-t border-dashed border-black pt-2 space-y-1 text-[11px]">
+                        <div className="flex justify-between text-[11px]">
+                            <span>Tiền hàng ({order.order_items?.length || 0})</span>
+                            <span>{(Number(order.total_amount) - Number(order.total_tax || 0) + Number(order.discount_amount || 0)).toLocaleString()}</span>
+                        </div>
+                        {Number(order.total_tax) > 0 && (
+                            <div className="flex justify-between text-[11px]">
+                                <span>Thuế VAT</span>
+                                <span>{Number(order.total_tax).toLocaleString()}</span>
+                            </div>
+                        )}
+                        {Number(order.discount_amount) > 0 && (
+                            <div className="flex justify-between">
+                                <span>Tổng giảm giá</span>
+                                <span>-{Number(order.discount_amount).toLocaleString()}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between text-[14px] font-bold border-t border-dotted border-black pt-1">
+                            <span>THANH TOÁN</span>
+                            <span>{Number(order.total_amount).toLocaleString()}₫</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>{getPaymentMethodLabel(order.payment_method_code)}</span>
+                            <span>{Number(order.total_amount).toLocaleString()}</span>
+                        </div>
+                        {order.payment_method_code === 'CASH' && order.cash_received && (
+                            <>
+                                <div className="flex justify-between">
+                                    <span>Khách đưa</span>
+                                    <span>{Number(order.cash_received).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Tiền trả lại</span>
+                                    <span>{Number(order.cash_change || 0).toLocaleString()}</span>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="text-center mt-6 space-y-1 text-[11px] font-bold">
+                        <p className="border-t border-dashed border-black pt-3">Bạn sẽ được MIỄN PHÍ đơn này nếu thông tin tích điểm không phải của bạn.</p>
+                        <p className="font-normal italic text-[10px]">Hóa đơn có sai sót gì cảm phiền bạn gọi 1900 998808 để được hỗ trợ nha.</p>
+                        <p className="text-md mt-2">Figi Core cảm ơn bạn nhé ~</p>
+                        <p className="text-[10px]">Wifi: Figi Core Guest</p>
+                        <p className="text-[10px]">Pass: figicore2026</p>
+                    </div>
+                </div>
 
                 {/* Header - Glassmorphism */}
-                <div className="px-6 py-5 border-b border-neutral-200/60 flex justify-between items-start bg-white/50 backdrop-blur-md sticky top-0 z-10">
+                <div className="screen-only px-6 py-5 border-b border-neutral-200/60 flex justify-between items-start bg-white/50 backdrop-blur-md sticky top-0 z-10">
                     <div>
                         <DialogTitle className="text-xl font-bold text-neutral-900 flex items-center gap-3">
-                            <Receipt className="w-6 h-6 text-indigo-600" />
-                            Order Receipt
+                            {order.is_vat_export ? (
+                                <FileText className="w-6 h-6 text-red-600" />
+                            ) : (
+                                <Receipt className="w-6 h-6 text-indigo-600" />
+                            )}
+                            {order.is_vat_export ? "Official VAT Invoice" : "Order Receipt"}
                             <Badge variant="secondary" className={cn("font-bold border px-2.5 py-0.5 h-6 text-[10px] uppercase tracking-wide rounded-full flex items-center gap-1.5", StatusInfo.color)}>
                                 <StatusIcon className="w-3 h-3" />
                                 {StatusInfo.label}
@@ -80,13 +260,19 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                             </span>
                         </div>
                     </div>
-                    {/* Official Stamp Effect (Optional decorative element) */}
-                    <div className="w-16 h-16 rounded-full border-4 border-neutral-200/50 flex items-center justify-center -rotate-12 opacity-50">
-                        <span className="text-[10px] font-bold text-neutral-300 uppercase text-center leading-tight">Official<br />Receipt</span>
+                    {/* Official Stamp Effect */}
+                    <div className={cn(
+                        "w-20 h-20 rounded-full border-4 flex flex-col items-center justify-center -rotate-12 opacity-40 transition-all",
+                        order.is_vat_export ? "border-red-500 text-red-600" : "border-neutral-200/50 text-neutral-300"
+                    )}>
+                        <span className="text-[10px] font-black uppercase text-center leading-none">
+                            {order.is_vat_export ? "E-INVOICE\nVERIFIED" : "Official\nReceipt"}
+                        </span>
+                        {order.is_vat_export && <CheckCircle2 className="w-4 h-4 mt-1" />}
                     </div>
                 </div>
 
-                <ScrollArea className="max-h-[70vh]">
+                <ScrollArea className="screen-only max-h-[70vh]">
                     <div className="p-6 space-y-6">
 
                         {/* 1. Customer & Payment Cards */}
@@ -136,6 +322,41 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                             </div>
                         </div>
 
+                        {/* 1.1 Company Info (Only for VAT export) */}
+                        {order.is_vat_export && (
+                            <div className="bg-red-50/50 rounded-2xl border border-red-100 p-5 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                                <div className="absolute top-0 right-0 p-2 text-red-100">
+                                    <Building className="w-16 h-16" />
+                                </div>
+                                <h4 className="text-xs font-bold text-red-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <Building className="w-3.5 h-3.5" /> Buyer Information (Enterprise)
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 relative z-10">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-neutral-400 uppercase">Entity Name</p>
+                                        <p className="font-bold text-neutral-800 text-sm leading-tight">{order.vat_company_name}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-neutral-400 uppercase">Tax ID (MST)</p>
+                                        <p className="font-mono font-bold text-red-600 text-sm tracking-widest">{order.vat_tax_number}</p>
+                                    </div>
+                                    <div className="space-y-1 md:col-span-2">
+                                        <p className="text-[10px] font-bold text-neutral-400 uppercase">Registered Address</p>
+                                        <p className="text-neutral-600 text-sm">{order.vat_company_address}</p>
+                                    </div>
+                                    {order.vat_invoice_email && (
+                                        <div className="space-y-1 md:col-span-2">
+                                            <p className="text-[10px] font-bold text-neutral-400 uppercase">E-Invoice Recipient</p>
+                                            <p className="text-neutral-600 text-sm flex items-center gap-2">
+                                                <Mail className="w-3.5 h-3.5 text-neutral-400" />
+                                                {order.vat_invoice_email}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* 2. Order Items (Receipt Style) */}
                         <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col">
                             <div className="p-4 bg-neutral-50/50 border-b border-neutral-100 flex justify-between items-center">
@@ -158,7 +379,7 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                                     </TableHeader>
                                     <TableBody>
                                         {order.order_items && order.order_items.length > 0 ? (
-                                            order.order_items.map((item, index) => (
+                                            order.order_items.map((item: any, index: number) => (
                                                 <TableRow key={item.order_item_id || index} className="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors">
                                                     <TableCell className="pl-6 py-3">
                                                         <div className="font-medium text-neutral-900 text-sm">
@@ -199,15 +420,21 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                             <div className="bg-neutral-50/30 p-4 sm:p-6 space-y-3">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-neutral-500">Subtotal</span>
-                                    <span className="font-medium text-neutral-900">{Number(order.total_amount).toLocaleString('vi-VN')}₫</span>
+                                    <span className="font-medium text-neutral-900">
+                                        {(Number(order.total_amount) - Number(order.total_tax || 0) + Number(order.discount_amount || 0)).toLocaleString('vi-VN')}₫
+                                    </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-neutral-500">Tax / VAT</span>
-                                    <span className="font-medium text-neutral-900">Included</span>
+                                    <span className="font-medium text-neutral-900">
+                                        {order.total_tax ? `${Number(order.total_tax).toLocaleString('vi-VN')}₫` : '0₫'}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-neutral-500">Discount</span>
-                                    <span className="font-medium text-green-600">-0₫</span>
+                                    <span className="font-medium text-green-600">
+                                        -{Number(order.discount_amount || 0).toLocaleString('vi-VN')}₫
+                                    </span>
                                 </div>
                                 <Separator className="bg-neutral-200 dash-array" />
                                 <div className="flex justify-between items-end pt-1">
@@ -216,6 +443,19 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                                         {Number(order.total_amount).toLocaleString('vi-VN')}₫
                                     </span>
                                 </div>
+
+                                {order.payment_method_code === 'CASH' && order.cash_received && (
+                                    <div className="mt-4 pt-4 border-t border-neutral-100 space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-neutral-500 font-medium">Cash Received</span>
+                                            <span className="font-bold text-neutral-900">{Number(order.cash_received).toLocaleString('vi-VN')}₫</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-neutral-500 font-medium">Change Given</span>
+                                            <span className="font-bold text-amber-600">{Number(order.cash_change || 0).toLocaleString('vi-VN')}₫</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -232,12 +472,18 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                 </ScrollArea>
 
                 {/* Actions Footer */}
-                <div className="p-5 border-t border-neutral-200 bg-white flex justify-between items-center gap-3">
+                <div className="screen-only p-5 border-t border-neutral-200 bg-white flex justify-between items-center gap-3">
                     <div className="flex gap-2">
                         <Button variant="outline" className="border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 rounded-xl" onClick={() => window.print()}>
                             <Printer className="w-4 h-4 mr-2" />
                             Print
                         </Button>
+                        {order.is_vat_export && (
+                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-xl shadow-sm">
+                                <Download className="w-4 h-4 mr-2" />
+                                Download VAT (.pdf)
+                            </Button>
+                        )}
                         {(order.status_code === 'PARKED' || order.status_code === 'PENDING_PAYMENT') && (
                             <Button
                                 variant="outline"

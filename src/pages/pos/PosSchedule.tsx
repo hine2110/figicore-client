@@ -12,8 +12,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { axiosInstance } from '@/lib/axiosInstance';
+
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, startOfDay } from 'date-fns';
-import SessionManager from './SessionManager';
 import FaceCheckInModal from '@/components/FaceCheckInModal';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -72,7 +72,7 @@ export default function PosSchedule() {
         const token = localStorage.getItem('FIGICORE_STATION_TOKEN');
         setIsStation(!!token);
 
-        // 1. Fetch Server Time once
+        // 1. Fetch Server Time
         axiosInstance.get('/system/time').then(res => {
             const serverTime = new Date(res.data.server_time).getTime();
             const localTime = Date.now();
@@ -85,7 +85,7 @@ export default function PosSchedule() {
         });
 
         const timer = setInterval(() => {
-            setCurrentTime(prev => {
+            setCurrentTime(() => {
                 // Re-calculate using Date.now() + offset to avoid drift
                 return new Date(Date.now() + timeOffset);
             });
@@ -93,6 +93,7 @@ export default function PosSchedule() {
 
         return () => clearInterval(timer);
     }, [timeOffset]);
+
 
     // Calculate dates based on View Mode
     const startDate = viewMode === 'week'
@@ -181,7 +182,6 @@ export default function PosSchedule() {
         setCheckInModalOpen(false);
         fetchSchedules();
     };
-
     const handlePrev = () => {
         if (viewMode === 'week') {
             setCurrentDate(subWeeks(currentDate, 1));
@@ -197,6 +197,7 @@ export default function PosSchedule() {
             setCurrentDate(addMonths(currentDate, 1));
         }
     };
+
 
     const daysInterval = eachDayOfInterval({ start: startDate, end: endDate });
     const today = startOfDay(new Date());
@@ -257,11 +258,8 @@ export default function PosSchedule() {
     });
 
     return (
-        <div className="p-8 h-screen overflow-y-auto">
+        <div className="h-full">
             <div className="space-y-6">
-                {/* Session Management */}
-                <SessionManager />
-
                 {/* Header Control */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
@@ -367,7 +365,7 @@ export default function PosSchedule() {
                                             }
 
                                             const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.date, shift.expected_start, shift.expected_end) : false;
-                                            const countdown = shift.expected_start ? renderCountdown(shift.date, shift.expected_start) : null;
+                                            //const countdown = shift.expected_start ? renderCountdown(shift.date, shift.expected_start) : null;
                                             return (
                                                 <div key={shift.schedule_id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-neutral-50 transition-colors">
                                                     {/* Left: Info */}
@@ -453,7 +451,7 @@ export default function PosSchedule() {
                                         })}
                                     </div>
                                 </Card>
-                            )
+                            );
                         })}
 
                         {schedules.length === 0 && (

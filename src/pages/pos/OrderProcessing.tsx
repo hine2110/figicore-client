@@ -19,11 +19,13 @@ import {
     CheckCircle2,
     XCircle,
     Calendar,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import { getOrders, cancelOrder } from '@/services/posService';
 import { useToast } from '@/components/ui/use-toast';
 import type { PosOrder } from '@/types/pos.types';
-import { format } from 'date-fns';
+import { format, addDays, subDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import OrderDetailsModal from './OrderDetailsModal';
 import { cn } from '@/lib/utils';
@@ -35,7 +37,12 @@ export default function OrderProcessing() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedOrder, setSelectedOrder] = useState<PosOrder | null>(null);
     const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-    const [statusFilter, setStatusFilter] = useState<string>('ALL');
+    const [statusFilter, setStatusFilter] = useState<string>('COMPLETED');
+    const [paymentFilter, setPaymentFilter] = useState<string>('ALL');
+    const [dateFilter, setDateFilter] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+    const [sortBy, setSortBy] = useState<string>('created_at');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [totalRevenue, setTotalRevenue] = useState(0);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -47,20 +54,61 @@ export default function OrderProcessing() {
 
     useEffect(() => {
         loadOrders(currentPage);
-    }, [currentPage]);
+    }, [currentPage, statusFilter, paymentFilter, dateFilter, sortBy, sortOrder]);
 
     const loadOrders = async (page: number) => {
         setLoading(true);
         try {
-            const response = await getOrders(page, itemsPerPage);
+            const params: any = {
+                page,
+                limit: itemsPerPage,
+                sort_by: sortBy,
+                sort_order: sortOrder
+            };
+
+            if (statusFilter && statusFilter !== 'ALL') params.status = statusFilter;
+            if (paymentFilter && paymentFilter !== 'ALL') params.payment_method = paymentFilter;
+            if (dateFilter) params.date = dateFilter;
+
+            const response = await getOrders(params);
             setOrders(response.data);
-            setTotalItems(response.total || response.count); // Fallback if total missing (shouldn't happen)
-            setTotalPages(Math.ceil((response.total || response.count) / itemsPerPage));
+            setTotalItems(response.total);
+            setTotalPages(Math.ceil(response.total / itemsPerPage));
+            setTotalRevenue(response.total_revenue || 0);
         } catch (error) {
             console.error('Failed to load orders:', error);
+            toast({
+                title: 'Error',
+                description: 'Failed to load orders',
+                variant: 'destructive',
+            });
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSort = (column: string) => {
+        if (sortBy === column) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(column);
+            setSortOrder('desc');
+        }
+        setCurrentPage(1);
+    };
+
+    const handlePrevDay = () => {
+        const currentDate = dateFilter ? new Date(dateFilter) : new Date();
+        const newDate = subDays(currentDate, 1);
+        setDateFilter(format(newDate, 'yyyy-MM-dd'));
+        setCurrentPage(1);
+    };
+
+    const handleNextDay = () => {
+        const currentDate = dateFilter ? new Date(dateFilter) : new Date();
+        const newDate = addDays(currentDate, 1);
+        setDateFilter(format(newDate, 'yyyy-MM-dd'));
+        setCurrentPage(1);
     };
 
     const handleCancelOrder = async (orderId: number) => {
@@ -139,7 +187,7 @@ export default function OrderProcessing() {
     };
 
     return (
-        <div className="h-full bg-neutral-50/50 p-6 flex flex-col gap-6 overflow-hidden animate-in fade-in duration-500">
+        <div className="flex flex-col gap-6 animate-in fade-in duration-500">
             {/* Header Area */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
                 <div>
@@ -167,21 +215,94 @@ export default function OrderProcessing() {
                 </div>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none shrink-0">
-                {['ALL', 'COMPLETED', 'PENDING', 'CANCELLED'].map((status) => (
-                    <button
-                        key={status}
-                        onClick={() => setStatusFilter(status)}
-                        className={cn(
-                            "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap border",
-                            statusFilter === status
-                                ? "bg-neutral-900 text-white border-neutral-900 shadow-md transform scale-105"
-                                : "bg-white text-neutral-500 border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300"
-                        )}
+            <div className="flex flex-wrap items-center gap-4 bg-white p-4 px-6 rounded-[1.5rem] border border-neutral-100 shadow-sm">
+                <div className="flex items-center gap-1 bg-neutral-50 p-1 rounded-xl border border-neutral-100 min-w-[240px]">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handlePrevDay}
+                        className="h-8 w-8 text-neutral-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all"
                     >
-                        {status === 'ALL' ? 'All Orders' : status.charAt(0) + status.slice(1).toLowerCase()}
-                    </button>
-                ))}
+                        <ChevronLeft className="w-4 h-4" />
+                    </Button>
+
+                    <div className="flex items-center flex-1 justify-center px-2">
+                        <Calendar className="w-4 h-4 text-neutral-400 mr-2" />
+                        <input
+                            type="date"
+                            value={dateFilter}
+                            onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
+                            className="bg-transparent text-sm font-bold text-neutral-600 focus:outline-none py-1 cursor-pointer w-[110px]"
+                        />
+                    </div>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleNextDay}
+                        className="h-8 w-8 text-neutral-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all"
+                    >
+                        <ChevronRight className="w-4 h-4" />
+                    </Button>
+
+                    {dateFilter && (
+                        <button
+                            onClick={() => { setDateFilter(''); setCurrentPage(1); }}
+                            className="p-1.5 hover:bg-neutral-200 rounded-md transition-colors ml-1"
+                        >
+                            <XCircle className="w-4 h-4 text-neutral-400" />
+                        </button>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-2 bg-neutral-50 p-1.5 rounded-xl border border-neutral-100 min-w-[200px]">
+                    <Clock className="w-4 h-4 text-neutral-400 ml-2" />
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                        className="bg-transparent text-sm font-bold text-neutral-600 focus:outline-none w-full cursor-pointer py-1"
+                    >
+                        <option value="ALL">Everything</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="PENDING">Pending</option>
+                    </select>
+                </div>
+
+                <div className="flex items-center gap-2 bg-neutral-50 p-1.5 rounded-xl border border-neutral-100 min-w-[200px]">
+                    <ShoppingBag className="w-4 h-4 text-neutral-400 ml-2" />
+                    <select
+                        value={paymentFilter}
+                        onChange={(e) => { setPaymentFilter(e.target.value); setCurrentPage(1); }}
+                        className="bg-transparent text-sm font-bold text-neutral-600 focus:outline-none w-full cursor-pointer py-1"
+                    >
+                        <option value="ALL">All Payment Methods</option>
+                        <option value="CASH">Cash Payment</option>
+                        <option value="QR_BANK">QR Transfer</option>
+                        <option value="WALLET">E-Wallet</option>
+                        <option value="CARD">Credit Card</option>
+                    </select>
+                </div>
+
+
+
+                <div className="flex-1" />
+
+                <div className="flex flex-col items-end">
+                    {/* Revenue Card - Ultra Light & Aligned with 'Total' column */}
+                    <div className="bg-indigo-50/20 rounded-[1.25rem] py-2 px-6 border border-indigo-100/20 relative overflow-hidden group min-w-[180px]">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:bg-indigo-500/10 transition-all duration-700" />
+                        <div className="relative z-10 flex flex-col items-end">
+                            <span className="text-indigo-300 text-[9px] font-black uppercase tracking-[1.5px]">Total Revenue</span>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-black tracking-tight text-indigo-900">{totalRevenue.toLocaleString('vi-VN')}</span>
+                                <span className="text-indigo-500 text-xs font-bold italic">₫</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Extra spacer to push the revenue card to align with 'Total' column (bypassing Status & Action) */}
+                <div className="w-[320px] hidden xl:block" />
             </div>
 
             {/* Orders Table Container */}
@@ -192,9 +313,29 @@ export default function OrderProcessing() {
                             <TableRow className="hover:bg-transparent border-gray-100">
                                 <TableHead className="font-bold text-neutral-500 text-xs uppercase tracking-wider pl-6">Order Code</TableHead>
                                 <TableHead className="font-bold text-neutral-500 text-xs uppercase tracking-wider">Customer</TableHead>
-                                <TableHead className="font-bold text-neutral-500 text-xs uppercase tracking-wider">Date</TableHead>
+                                <TableHead
+                                    className="font-bold text-neutral-500 text-xs uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => handleSort('created_at')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        Date
+                                        {sortBy === 'created_at' && (
+                                            <span className="text-indigo-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                        )}
+                                    </div>
+                                </TableHead>
                                 <TableHead className="font-bold text-neutral-500 text-xs uppercase tracking-wider">Payment</TableHead>
-                                <TableHead className="font-bold text-neutral-500 text-xs uppercase tracking-wider text-right">Total</TableHead>
+                                <TableHead
+                                    className="font-bold text-neutral-500 text-xs uppercase tracking-wider text-right cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => handleSort('total_amount')}
+                                >
+                                    <div className="flex items-center justify-end gap-1">
+                                        Total
+                                        {sortBy === 'total_amount' && (
+                                            <span className="text-indigo-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                        )}
+                                    </div>
+                                </TableHead>
                                 <TableHead className="font-bold text-neutral-500 text-xs uppercase tracking-wider text-center">Status</TableHead>
                                 <TableHead className="font-bold text-neutral-500 text-xs uppercase tracking-wider text-right pr-6">Action</TableHead>
                             </TableRow>
@@ -304,13 +445,23 @@ export default function OrderProcessing() {
 
                 {/* Footer / Pagination placeholder if needed */}
                 {/* Pagination Controls */}
-                <PaginationControls
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    onPageChange={setCurrentPage}
-                />
+                <div className="flex justify-between items-center px-6 py-4 border-t border-neutral-100">
+                    <div className="text-[10px] font-black text-neutral-300 uppercase tracking-widest">
+                        Showing {itemsPerPage} per page
+                    </div>
+                    <div className="flex items-center gap-6">
+                        <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                            {orders.length} / {totalItems} orders
+                        </div>
+                        <PaginationControls
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            totalItems={totalItems}
+                            itemsPerPage={itemsPerPage}
+                            onPageChange={setCurrentPage}
+                        />
+                    </div>
+                </div>
             </div>
 
             <OrderDetailsModal
