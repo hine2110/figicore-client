@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Copy, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Copy, CheckCircle2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -14,6 +14,7 @@ import api from "@/services/api";
 import AddressDialog from "@/components/customer/AddressDialog";
 import AddressSelectorDialog from "@/components/customer/AddressSelectorDialog";
 import { TicketPercent } from "lucide-react";
+import { TopUpModal } from "@/components/customer/TopUpModal";
 import { io } from 'socket.io-client';
 
 export default function Checkout() {
@@ -35,7 +36,11 @@ export default function Checkout() {
     const [showAddressSelector, setShowAddressSelector] = useState(false);
     const [showCancelDialog, setShowCancelDialog] = useState(false);
     const [showQRModal, setShowQRModal] = useState(false);
+    const [showTopUpModal, setShowTopUpModal] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
+
+    // Wallet State
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
     // Selected Payment Method (Global for Group)
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('QR_BANK');
@@ -113,6 +118,14 @@ export default function Checkout() {
                 }
             } catch (promoErr) {
                 console.error("Failed to fetch applied promotion details:", promoErr);
+            }
+            // Fetch Wallet Balance
+            try {
+                const walletRes = await api.get('/wallet');
+                setWalletBalance(Number(walletRes.data.balance_available) || 0);
+            } catch (walletErr) {
+                console.warn("Could not fetch wallet", walletErr);
+                setWalletBalance(0);
             }
 
         } catch (error) {
@@ -229,10 +242,19 @@ export default function Checkout() {
 
         setIsProcessing(true);
         try {
-            if (paymentRef) {
-                await api.post('/orders/mock-pay-group', { payment_ref_code: paymentRef });
-            } else if (legacyOrderId) {
-                await api.post(`/orders/${legacyOrderId}/confirm-payment`);
+            if (selectedPaymentMethod === 'WALLET') {
+                if (paymentRef) {
+                    await api.post('/orders/pay-with-wallet', { payment_ref_code: paymentRef });
+                } else if (legacyOrderId) {
+                    // Keep mock compatibility if legacy
+                    await api.post(`/orders/${legacyOrderId}/confirm-payment`);
+                }
+            } else {
+                if (paymentRef) {
+                    await api.post('/orders/mock-pay-group', { payment_ref_code: paymentRef });
+                } else if (legacyOrderId) {
+                    await api.post(`/orders/${legacyOrderId}/confirm-payment`);
+                }
             }
             navigate('/customer/order-success');
         } catch (error: any) {
@@ -417,14 +439,32 @@ export default function Checkout() {
                                 </CardHeader>
                                 <CardContent className="p-6">
                                     <RadioGroup value={selectedPaymentMethod} onValueChange={handlePaymentMethodChange} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Label htmlFor="WALLET" className="cursor-pointer group">
-                                            <div className={`relative p-5 rounded-xl border-2 transition-all ${selectedPaymentMethod === 'WALLET' ? 'border-purple-600 bg-purple-50/30 shadow-sm' : 'border-slate-100 hover:border-slate-200'}`}>
+                                        {/* FIGI WALLET OPTION */}
+                                        <Label htmlFor="WALLET" className={`cursor-pointer group relative`}>
+                                            <div className={`p-5 rounded-xl border-2 transition-all h-full flex flex-col ${selectedPaymentMethod === 'WALLET' ? 'border-purple-600 bg-purple-50/30' : 'border-slate-100 hover:border-slate-200'}`}>
                                                 <div className="flex items-center justify-between mb-3">
-                                                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600"><Wallet className="w-5 h-5" /></div>
-                                                    <RadioGroupItem value="WALLET" id="WALLET" className="text-purple-600" />
+                                                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                                                        <Wallet className="w-5 h-5" />
+                                                    </div>
+                                                    <RadioGroupItem value="WALLET" id="WALLET" className="text-purple-600" disabled={walletBalance !== null && walletBalance < grandTotal} />
                                                 </div>
                                                 <div className="font-bold text-slate-900">FigiWallet</div>
-                                                <div className="text-xs text-slate-500 mt-1">Instant Pay</div>
+                                                <div className="text-xs text-slate-500 mt-1 mb-2">
+                                                    Available: {walletBalance !== null ? formatPrice(walletBalance) : '...'}
+                                                </div>
+                                                {/* CONDITIONAL TOP UP OR WARNING */}
+                                                <div className="mt-auto pt-2 disabled-content-exempt">
+                                                    {walletBalance !== null && walletBalance < grandTotal && (
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="text-xs text-red-500 font-semibold bg-red-50 p-2 rounded-md flex items-center gap-1">
+                                                                <AlertCircle className="w-3.5 h-3.5" /> Insufficient balance
+                                                            </div>
+                                                            <Button type="button" size="sm" variant="outline" className="w-full relative z-10 text-xs text-purple-600 hover:bg-purple-50 hover:text-purple-700 pointer-events-auto" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTopUpModal(true); }}>
+                                                                Top Up Now
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </Label>
                                         <Label htmlFor="QR_BANK" className="cursor-pointer group">
@@ -624,6 +664,15 @@ export default function Checkout() {
                     <AddressDialog open={showAddressForm} onOpenChange={setShowAddressForm} onSelect={handleAddressChange} />
                 </div>
             </div>
+            {/* TOP UP MODAL (Inside Checkout) */}
+            <TopUpModal
+                open={showTopUpModal}
+                onOpenChange={setShowTopUpModal}
+                onSuccess={() => {
+                    fetchOrders(); // Re-fetch wallet balance
+                }}
+            />
+
         </CustomerLayout>
     );
 }
