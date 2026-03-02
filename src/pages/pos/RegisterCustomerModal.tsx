@@ -34,23 +34,11 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
 
-        // Validate full name
-        if (!formData.full_name.trim()) {
-            newErrors.full_name = 'Full name is required';
-        } else if (formData.full_name.trim().length < 2) {
-            newErrors.full_name = 'Must be at least 2 characters';
-        }
-
         // Validate phone
         if (!formData.phone.trim()) {
-            newErrors.phone = 'Phone number is required';
+            newErrors.phone = 'Số điện thoại là bắt buộc';
         } else if (!/^0\d{9}$/.test(formData.phone)) {
-            newErrors.phone = 'Invalid phone number (10 digits starting with 0)';
-        }
-
-        // Validate email (optional)
-        if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = 'Invalid email address';
+            newErrors.phone = 'SĐT không hợp lệ (10 chữ số bắt đầu bằng 0)';
         }
 
         setErrors(newErrors);
@@ -67,12 +55,12 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
         setLoading(true);
         try {
             const response = await registerCustomer({
-                full_name: formData.full_name.trim(),
+                full_name: formData.full_name.trim() || 'Khách POS',
                 phone: formData.phone.trim(),
                 email: formData.email.trim() || undefined
             });
 
-            toast.success('Customer registered successfully!');
+            toast.success('Đăng ký khách hàng thành công!');
 
             // Call success callback with customer data
             onSuccess(response.data);
@@ -82,12 +70,12 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
             setErrors({});
             onClose();
         } catch (error: any) {
-            const message = error.response?.data?.message || 'Registration failed';
+            const message = error.response?.data?.message || 'Đăng ký thất bại';
 
             // Set error on specific field if it's a duplicate error
-            if (message.toLowerCase().includes('phone') || message.includes('điện thoại')) {
+            if (message.includes('phone') || message.includes('điện thoại')) {
                 setErrors({ phone: message });
-            } else if (message.toLowerCase().includes('email')) {
+            } else if (message.includes('email')) {
                 setErrors({ email: message });
             } else {
                 toast.error(message);
@@ -113,28 +101,60 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                         <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
                             <UserPlus className="w-5 h-5" />
                         </div>
-                        New Member
+                        Đăng ký Hội viên
                     </DialogTitle>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                    {/* Phone */}
+                    <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                            Số điện thoại <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                            <Input
+                                id="phone"
+                                placeholder="VD: 0901234567"
+                                value={formData.phone}
+                                onChange={(e) => {
+                                    setFormData({ ...formData, phone: e.target.value });
+                                    if (errors.phone) setErrors({ ...errors, phone: '' });
+                                }}
+                                className={cn(
+                                    "pl-9 h-11 bg-neutral-50 border-neutral-200 focus:bg-white transition-all text-base",
+                                    errors.phone && "border-red-300 focus:ring-red-200"
+                                )}
+                                disabled={loading}
+                                autoFocus
+                            />
+                        </div>
+                        {errors.phone ? (
+                            <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                                <span className="w-1 h-1 bg-red-400 rounded-full"></span> {errors.phone}
+                            </p>
+                        ) : (
+                            <p className="text-[10px] text-neutral-400 italic">Dùng để tích điểm và tra cứu lịch sử mua hàng</p>
+                        )}
+                    </div>
+
                     {/* Full Name */}
                     <div className="space-y-2">
                         <Label htmlFor="full_name" className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                            Full Name <span className="text-red-500">*</span>
+                            Họ và tên <span className="text-neutral-300 font-normal normal-case">(Tùy chọn)</span>
                         </Label>
                         <div className="relative">
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
                             <Input
                                 id="full_name"
-                                placeholder="e.g. Nguyen Van A"
+                                placeholder="VD: Nguyễn Văn A"
                                 value={formData.full_name}
                                 onChange={(e) => {
                                     setFormData({ ...formData, full_name: e.target.value });
                                     if (errors.full_name) setErrors({ ...errors, full_name: '' });
                                 }}
                                 className={cn(
-                                    "pl-9 bg-neutral-50 border-neutral-200 focus:bg-white transition-all",
+                                    "pl-9 h-11 bg-neutral-50 border-neutral-200 focus:bg-white transition-all text-base",
                                     errors.full_name && "border-red-300 focus:ring-red-200"
                                 )}
                                 disabled={loading}
@@ -147,92 +167,31 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                         )}
                     </div>
 
-                    {/* Phone */}
-                    <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                            Phone Number <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
-                            <Input
-                                id="phone"
-                                placeholder="0901234567"
-                                value={formData.phone}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, phone: e.target.value });
-                                    if (errors.phone) setErrors({ ...errors, phone: '' });
-                                }}
-                                className={cn(
-                                    "pl-9 bg-neutral-50 border-neutral-200 focus:bg-white transition-all",
-                                    errors.phone && "border-red-300 focus:ring-red-200"
-                                )}
-                                disabled={loading}
-                            />
-                        </div>
-                        {errors.phone ? (
-                            <p className="text-xs text-red-500 font-medium flex items-center gap-1">
-                                <span className="w-1 h-1 bg-red-400 rounded-full"></span> {errors.phone}
-                            </p>
-                        ) : (
-                            <p className="text-[10px] text-neutral-400">Used for membership tracking</p>
-                        )}
-                    </div>
-
-                    {/* Email */}
-                    <div className="space-y-2">
-                        <Label htmlFor="email" className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                            Email <span className="text-neutral-300 font-normal normal-case">(Optional)</span>
-                        </Label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="name@email.com"
-                                value={formData.email}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, email: e.target.value });
-                                    if (errors.email) setErrors({ ...errors, email: '' });
-                                }}
-                                className={cn(
-                                    "pl-9 bg-neutral-50 border-neutral-200 focus:bg-white transition-all",
-                                    errors.email && "border-red-300 focus:ring-red-200"
-                                )}
-                                disabled={loading}
-                            />
-                        </div>
-                        {errors.email && (
-                            <p className="text-xs text-red-500 font-medium flex items-center gap-1">
-                                <span className="w-1 h-1 bg-red-400 rounded-full"></span> {errors.email}
-                            </p>
-                        )}
-                    </div>
-
                     {/* Buttons */}
-                    <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100 mt-2">
+                    <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 mt-2">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={handleClose}
                             disabled={loading}
-                            className="rounded-xl border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+                            className="rounded-xl border-neutral-200 text-neutral-600 hover:bg-neutral-50 h-11 px-6 font-medium"
                         >
-                            Cancel
+                            Hủy
                         </Button>
                         <Button
                             type="submit"
-                            className="bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl px-5 shadow-lg shadow-neutral-900/20"
+                            className="bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl px-8 h-11 font-bold shadow-lg shadow-neutral-900/20"
                             disabled={loading}
                         >
                             {loading ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Creating...
+                                    Đang tạo...
                                 </>
                             ) : (
                                 <>
-                                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                                    Create Account
+                                    <CheckCircle2 className="w-4 h-4 mr-2 text-green-400" />
+                                    Hoàn tất
                                 </>
                             )}
                         </Button>

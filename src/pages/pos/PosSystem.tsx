@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
 import RegisterCustomerModal from './RegisterCustomerModal';
 import OrderDetailsModal from './OrderDetailsModal';
+import CashPaymentModal from './components/CashPaymentModal';
 import { PosProductCard } from './components/PosProductCard';
 import { PosCartItem as CartItemComponent } from './components/PosCartItem';
 import type { PosOrder } from '@/types/pos.types';
@@ -80,6 +81,7 @@ export default function StaffPOS() {
     // Success Modal State
     const [lastCreatedOrder, setLastCreatedOrder] = useState<PosOrder | null>(null);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+    const [isCashModalOpen, setIsCashModalOpen] = useState(false);
 
 
 
@@ -423,13 +425,18 @@ export default function StaffPOS() {
 
     const finalTotal = cartTotal + taxAmount;
 
-    const handleCheckout = async (paymentMethod: string) => {
+    const handleCheckout = async (paymentMethod: string, cashInfo?: { received: number, change: number }) => {
         if (!hasSession) {
             toast({
                 title: 'No Active Session',
                 description: 'Please open a shift first',
                 variant: 'destructive',
             });
+            return;
+        }
+
+        if (paymentMethod === 'CASH' && !cashInfo) {
+            setIsCashModalOpen(true);
             return;
         }
 
@@ -444,7 +451,7 @@ export default function StaffPOS() {
 
         setCheckoutLoading(true);
         try {
-            const orderData = {
+            const orderData: any = {
                 items: cart.map(item => ({
                     variant_id: item.variant_id,
                     quantity: item.quantity,
@@ -456,6 +463,8 @@ export default function StaffPOS() {
                 vat_company_name: isVatExport ? vatCompanyName : undefined,
                 vat_company_address: isVatExport ? vatCompanyAddress : undefined,
                 vat_invoice_email: isVatExport ? vatInvoiceEmail : undefined,
+                cash_received: cashInfo?.received,
+                cash_change: cashInfo?.change,
             };
 
             const response = await createPosOrder(orderData);
@@ -1073,6 +1082,17 @@ export default function StaffPOS() {
                 order={lastCreatedOrder}
                 open={isReceiptModalOpen}
                 onClose={() => setIsReceiptModalOpen(false)}
+            />
+            <CashPaymentModal
+                open={isCashModalOpen}
+                onClose={() => setIsCashModalOpen(false)}
+                totalAmount={finalTotal}
+                hasCustomer={!!selectedCustomer}
+                onRegisterCustomer={() => setRegisterModalOpen(true)}
+                onConfirm={(received, change) => {
+                    setIsCashModalOpen(false);
+                    handleCheckout('CASH', { received, change });
+                }}
             />
         </div>
     );

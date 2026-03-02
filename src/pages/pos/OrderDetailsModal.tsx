@@ -18,11 +18,10 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import type { PosOrder } from '@/types/pos.types';
 import { cn } from '@/lib/utils';
 
 interface OrderDetailsModalProps {
-    order: PosOrder | null;
+    order: any; // Using any for flexibility with extended fields
     open: boolean;
     onClose: () => void;
     onOrderCancelled?: (orderId: number) => void;
@@ -178,7 +177,7 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                             <span className="w-12 text-center">SL</span>
                             <span className="w-20 text-right">T.Tiền</span>
                         </div>
-                        {order.order_items?.map((item, idx) => (
+                        {order.order_items?.map((item: any, idx: number) => (
                             <div key={idx} className="flex py-0.5 text-[11px]">
                                 <span className="flex-1 leading-none">{(item.product_variants?.products?.name || 'Item').toUpperCase()}</span>
                                 <span className="w-12 text-center">{item.quantity}</span>
@@ -212,6 +211,18 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                             <span>{getPaymentMethodLabel(order.payment_method_code)}</span>
                             <span>{Number(order.total_amount).toLocaleString()}</span>
                         </div>
+                        {order.payment_method_code === 'CASH' && order.cash_received && (
+                            <>
+                                <div className="flex justify-between">
+                                    <span>Khách đưa</span>
+                                    <span>{Number(order.cash_received).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Tiền trả lại</span>
+                                    <span>{Number(order.cash_change || 0).toLocaleString()}</span>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div className="text-center mt-6 space-y-1 text-[11px] font-bold">
@@ -368,7 +379,7 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                                     </TableHeader>
                                     <TableBody>
                                         {order.order_items && order.order_items.length > 0 ? (
-                                            order.order_items.map((item, index) => (
+                                            order.order_items.map((item: any, index: number) => (
                                                 <TableRow key={item.order_item_id || index} className="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors">
                                                     <TableCell className="pl-6 py-3">
                                                         <div className="font-medium text-neutral-900 text-sm">
@@ -432,6 +443,19 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                                         {Number(order.total_amount).toLocaleString('vi-VN')}₫
                                     </span>
                                 </div>
+
+                                {order.payment_method_code === 'CASH' && order.cash_received && (
+                                    <div className="mt-4 pt-4 border-t border-neutral-100 space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-neutral-500 font-medium">Cash Received</span>
+                                            <span className="font-bold text-neutral-900">{Number(order.cash_received).toLocaleString('vi-VN')}₫</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-neutral-500 font-medium">Change Given</span>
+                                            <span className="font-bold text-amber-600">{Number(order.cash_change || 0).toLocaleString('vi-VN')}₫</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
