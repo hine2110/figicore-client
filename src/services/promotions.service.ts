@@ -37,6 +37,16 @@ export const PromotionsService = {
         return response.data;
     },
 
+    update: async (id: number, data: Partial<CreatePromotionDto>) => {
+        const response = await api.patch<Promotion>(`/product-promotions/${id}`, data);
+        return response.data;
+    },
+
+    getById: async (id: number) => {
+        const response = await api.get<Promotion>(`/product-promotions/${id}`);
+        return response.data;
+    },
+
     apply: async (id: number, productIds: number[]) => {
         const response = await api.post(`/product-promotions/${id}/apply`, { product_ids: productIds });
         return response.data;

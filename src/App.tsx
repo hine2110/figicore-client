@@ -33,6 +33,9 @@ import CustomerFeedback from "@/pages/manager/CustomerFeedback";
 // import StationConfirmPage from "@/pages/manager/StationConfirmPage";
 import PromotionListPage from "@/pages/manager/promotions/PromotionListPage";
 import PromotionCreatePage from "@/pages/manager/promotions/PromotionCreatePage";
+import PromotionEditPage from "@/pages/manager/promotions/PromotionEditPage";
+import VoucherListPage from "@/pages/manager/vouchers/VoucherListPage";
+import VoucherCreatePage from "@/pages/manager/vouchers/VoucherCreatePage";
 // import StaffDashboard from "@/pages/staff/StaffDashboard"; // Deprecated
 
 // Customer Pages
@@ -146,9 +149,11 @@ export default function App() {
                             <Route path="shifts" element={<ShiftManagement />} />
                             <Route path="feedback" element={<CustomerFeedback />} />
                             <Route path="profile" element={<ProfilePage />} />
-                            {/* <Route path="Station-confirm" element={<StationConfirmPage />} /> */}
                             <Route path="promotions" element={<PromotionListPage />} />
                             <Route path="promotions/new" element={<PromotionCreatePage />} />
+                            <Route path="promotions/:id/edit" element={<PromotionEditPage />} />
+                            <Route path="vouchers" element={<VoucherListPage />} />
+                            <Route path="vouchers/new" element={<VoucherCreatePage />} />
                         </Route>
                     </Route>
 

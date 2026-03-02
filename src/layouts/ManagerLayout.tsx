@@ -12,7 +12,8 @@ import {
     Menu,
     X,
     Percent,
-    Bell
+    Bell,
+    TicketPercent
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
@@ -58,6 +59,7 @@ export default function ManagerLayout() {
         { name: 'Inventory Overview', path: '/manager/inventory', icon: PackageSearch },
         { name: 'Campaigns', path: '/manager/campaigns', icon: Megaphone },
         { name: 'Promotions', path: '/manager/promotions', icon: Percent },
+        { name: 'Vouchers', path: '/manager/vouchers', icon: TicketPercent },
         { name: 'Return Approvals', path: '/manager/returns', icon: RotateCcw },
         { name: 'Shift Schedule', path: '/manager/shifts', icon: CalendarClock },
         { name: 'Feedback', path: '/manager/feedback', icon: MessageSquare },
