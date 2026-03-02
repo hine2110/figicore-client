@@ -10,8 +10,11 @@ import {
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '@/store/useCartStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import { io } from 'socket.io-client';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -31,11 +34,31 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
     const navigate = useNavigate();
     const { items, fetchCart } = useCartStore(); // Use Cart Store
     const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
+    const { user } = useAuthStore();
+    const { toast } = useToast();
 
     // Initial Cart Fetch
     useEffect(() => {
         fetchCart();
     }, [fetchCart]);
+
+    // Listen for Real-time Notifications
+    useEffect(() => {
+        if (!user?.user_id) return;
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const socket = io(`${baseUrl}/events`);
+
+        socket.on(`customer:notify:${user.user_id}`, (data: { title: string, content: string }) => {
+            toast({
+                title: data.title,
+                description: data.content,
+                duration: 10000, // 10 seconds to read
+                className: data.title.includes('WARNING') ? 'bg-red-50 border-red-500 text-red-900 border-l-4 shadow-xl' : 'bg-green-50 border-green-500 text-green-900 border-l-4 shadow-xl'
+            });
+        });
+
+        return () => { socket.disconnect(); };
+    }, [user?.user_id, toast]);
 
     const navItems = [
         { id: 'home', label: 'Home', icon: Home, path: '/customer/home' },

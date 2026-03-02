@@ -82,16 +82,6 @@ export default function ReturnApprovals() {
         setIsReviewModalOpen(true);
     };
 
-    const handleSimulateDelivery = async (orderCode: string) => {
-        try {
-            await axiosInstance.post('/webhook/ghn/simulate-return', { orderCode });
-            toast({ title: 'Simulated successfully', description: 'The item arrived at the warehouse.', className: 'bg-green-600 text-white border-green-700' });
-            fetchRequests(); // Refresh list to see INSPECTING state
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Simulation Error', description: e.response?.data?.message || 'Failed to simulate return delivery' });
-        }
-    }
-
     // Helper to get parsed image URLs
     const getImages = (urlsStr: string | null) => {
         if (!urlsStr) return [];
@@ -163,7 +153,6 @@ export default function ReturnApprovals() {
                                         onReview={() => openReviewModal(req)}
                                         formatPrice={formatPrice}
                                         getImages={getImages}
-                                        onSimulate={() => handleSimulateDelivery(req.orders.order_code)}
                                     />
                                 ))}
                             </div>
@@ -335,8 +324,7 @@ export default function ReturnApprovals() {
     );
 }
 
-// ----- SUB-COMPONENT: REQUEST CARD -----
-function ReturnRequestCard({ req, onReview, formatPrice, getImages, onSimulate }: any) {
+function ReturnRequestCard({ req, onReview, formatPrice, getImages }: any) {
     const isPending = req.status_code === 'PENDING';
 
     // Calculate total items
@@ -385,12 +373,6 @@ function ReturnRequestCard({ req, onReview, formatPrice, getImages, onSimulate }
                         <Eye className="w-4 h-4 mr-2" />
                         {isPending ? 'Review & Action' : 'View Details'}
                     </Button>
-
-                    {req.status_code === 'SHIPPING_TO_WAREHOUSE' && onSimulate && (
-                        <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 w-full md:w-auto" onClick={onSimulate}>
-                            <Truck className="w-4 h-4 mr-2" /> Simulate Delivery to Warehouse
-                        </Button>
-                    )}
                 </div>
             </div>
         </Card>

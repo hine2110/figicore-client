@@ -1,7 +1,7 @@
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plus, Trash2, Edit } from 'lucide-react';
+import { Plus, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PromotionsService } from '@/services/promotions.service';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -9,14 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
-
 
 export default function PromotionListPage() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
-    const { toast } = useToast();
-    const queryClient = useQueryClient();
     
     // RBAC: Only MANAGER can write
     const canWrite = user?.role_code === 'MANAGER'; 
@@ -27,24 +23,6 @@ export default function PromotionListPage() {
         queryKey: ['promotions'],
         queryFn: PromotionsService.getAll
     });
-
-    const deleteMutation = useMutation({
-        mutationFn: PromotionsService.delete,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['promotions'] });
-            toast({ title: 'Success', description: 'Promotion deleted successfully' });
-        },
-        onError: () => toast({ title: 'Error', description: 'Failed to delete promotion', variant: 'destructive' })
-    });
-
-
-
-    const handleDelete = (id: number) => {
-        if (!canWrite) return;
-        if (confirm('Are you sure you want to delete this promotion?')) {
-            deleteMutation.mutate(id);
-        }
-    };
 
     return (
         <div className="space-y-6">
@@ -106,20 +84,11 @@ export default function PromotionListPage() {
                                             <Button 
                                                 variant="ghost" 
                                                 size="icon" 
+                                                onClick={() => navigate(`/manager/promotions/${promo.promotion_id}/edit`)}
                                                 disabled={!canWrite} // Disable for Admin
                                                 className={!canWrite ? "opacity-50 cursor-not-allowed" : ""}
                                             >
                                                 <Edit className="h-4 w-4" />
-                                            </Button>
-
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                onClick={() => handleDelete(promo.promotion_id)}
-                                                disabled={!canWrite}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     </TableCell>

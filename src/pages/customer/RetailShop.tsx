@@ -30,6 +30,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BlindBoxPromoSection } from '@/components/customer/BlindBoxPromoSection';
+import CollectVoucherBlock from '@/components/CollectVoucherBlock';
 
 export default function RetailShop() {
     const navigate = useNavigate();
@@ -388,6 +389,11 @@ export default function RetailShop() {
 
                 {/* MYSTERY HOOK SECTION */}
                 <BlindBoxPromoSection />
+
+                {/* VOUCHER BLOCK SECTION */}
+                <div className="container mx-auto px-4 max-w-7xl relative z-10 mt-4">
+                    <CollectVoucherBlock />
+                </div>
 
                 {/* --- PRODUCT GRID (Glass Cards) --- */}
                 <div className="container mx-auto px-4 relative z-10 max-w-7xl pt-4">

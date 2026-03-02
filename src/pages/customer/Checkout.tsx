@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Calendar, Copy, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Copy, CheckCircle2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,6 +13,8 @@ import { useToast } from "@/components/ui/use-toast";
 import api from "@/services/api";
 import AddressDialog from "@/components/customer/AddressDialog";
 import AddressSelectorDialog from "@/components/customer/AddressSelectorDialog";
+import { TicketPercent } from "lucide-react";
+import { TopUpModal } from "@/components/customer/TopUpModal";
 import { io } from 'socket.io-client';
 
 export default function Checkout() {
@@ -27,12 +29,18 @@ export default function Checkout() {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [appliedDiscountPromo, setAppliedDiscountPromo] = useState<any>(null);
+    const [appliedShippingPromo, setAppliedShippingPromo] = useState<any>(null);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const [showAddressForm, setShowAddressForm] = useState(false);
     const [showAddressSelector, setShowAddressSelector] = useState(false);
     const [showCancelDialog, setShowCancelDialog] = useState(false);
     const [showQRModal, setShowQRModal] = useState(false);
+    const [showTopUpModal, setShowTopUpModal] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
+
+    // Wallet State
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
     // Selected Payment Method (Global for Group)
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('QR_BANK');
@@ -90,6 +98,34 @@ export default function Checkout() {
                 const now = new Date().getTime();
                 const diff = Math.floor((earliest - now) / 1000);
                 setTimeLeft(diff > 0 ? diff : 0);
+            }
+
+            // Fetch promotion details if promotion_id or shipping_promotion_id exists on any of the orders
+            const discountPromoId = fetchedOrders.find((o: any) => o.promotion_id)?.promotion_id;
+            const shippingPromoId = fetchedOrders.find((o: any) => o.shipping_promotion_id)?.shipping_promotion_id;
+
+            try {
+                const promoPromises = [];
+                if (discountPromoId) {
+                    promoPromises.push(api.get(`/promotions/${discountPromoId}`).then(res => setAppliedDiscountPromo(res.data)));
+                }
+                if (shippingPromoId) {
+                    promoPromises.push(api.get(`/promotions/${shippingPromoId}`).then(res => setAppliedShippingPromo(res.data)));
+                }
+
+                if (promoPromises.length > 0) {
+                    await Promise.all(promoPromises);
+                }
+            } catch (promoErr) {
+                console.error("Failed to fetch applied promotion details:", promoErr);
+            }
+            // Fetch Wallet Balance
+            try {
+                const walletRes = await api.get('/wallet');
+                setWalletBalance(Number(walletRes.data.balance_available) || 0);
+            } catch (walletErr) {
+                console.warn("Could not fetch wallet", walletErr);
+                setWalletBalance(0);
             }
 
         } catch (error) {
@@ -206,10 +242,19 @@ export default function Checkout() {
 
         setIsProcessing(true);
         try {
-            if (paymentRef) {
-                await api.post('/orders/mock-pay-group', { payment_ref_code: paymentRef });
-            } else if (legacyOrderId) {
-                await api.post(`/orders/${legacyOrderId}/confirm-payment`);
+            if (selectedPaymentMethod === 'WALLET') {
+                if (paymentRef) {
+                    await api.post('/orders/pay-with-wallet', { payment_ref_code: paymentRef });
+                } else if (legacyOrderId) {
+                    // Keep mock compatibility if legacy
+                    await api.post(`/orders/${legacyOrderId}/confirm-payment`);
+                }
+            } else {
+                if (paymentRef) {
+                    await api.post('/orders/mock-pay-group', { payment_ref_code: paymentRef });
+                } else if (legacyOrderId) {
+                    await api.post(`/orders/${legacyOrderId}/confirm-payment`);
+                }
             }
             navigate('/customer/order-success');
         } catch (error: any) {
@@ -241,10 +286,39 @@ export default function Checkout() {
     const retailOrders = orders.filter(o => o.status_code === 'PENDING_PAYMENT');
     const preOrders = orders.filter(o => o.status_code === 'WAITING_DEPOSIT');
 
-    const totalAmount = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+    const rawTotalAmount = orders.reduce((sum, o) => sum + Number(o.total_amount), 0); // Note: total_amount in DB is already discounted or full
     const totalShipping = orders.reduce((sum, o) => sum + Number(o.shipping_fee || 0), 0);
-    const totalDiscount = orders.reduce((sum, o) => sum + Number(o.discount_amount || 0), 0);
-    const grandTotal = totalAmount; // total_amount in DB usually implies (sub + fee - discount)
+
+    // Calculate subtotal before any discounts from the order items
+    const subtotal = orders.reduce((sum, o) => {
+        return sum + o.order_items.reduce((itemSum: number, item: any) => itemSum + Number(item.total_price), 0);
+    }, 0);
+
+    let calculatedDiscount = 0;
+    if (appliedDiscountPromo) {
+        if (appliedDiscountPromo.discount_type === 'PERCENTAGE') {
+            calculatedDiscount = (subtotal * (appliedDiscountPromo.discount_value || 0)) / 100;
+        } else {
+            calculatedDiscount = appliedDiscountPromo.discount_value || 0;
+        }
+    }
+
+    let calculatedFreeShip = 0;
+    if (appliedShippingPromo && appliedShippingPromo.discount_type === 'FREE_SHIP') {
+        calculatedFreeShip = totalShipping;
+    }
+
+    // Since total_amount from DB might already include the discount (subtotal + shipping - discount)
+    // or it might just be (subtotal + shipping) and the frontend needs to handle it.
+    // Based on orders.service.ts, total_amount does NOT explicitly subtract the voucher discount there for retail/pre-order deposits yet in this iteration, 
+    // unless we modified it. Assuming it is NOT subtracted in DB total_amount, we subtract it here for the UI.
+    // Wait, the backend logic for full payment vs deposit makes total_amount the exact amount to pay.
+    // Let's rely on the rawTotalAmount as the final payable amount if no voucher is applied dynamically,
+    // OR if the voucher is applied during Order Creation, the backend 'total_amount' is already discounted?
+    // Looking at backend `orders.service.ts` line 384: `total_amount: rtFinalTotal`, it is `rtTotalAmount + customerShippingFee`. It DOES NOT subtract the voucher!
+    // This means we must subtract it dynamically here for the UI and final payment, or fix the backend.
+    // Actually, sending payment to QR uses `grandTotal`. We will subtract `calculatedDiscount` and `calculatedFreeShip` from `rawTotalAmount`.
+    const grandTotal = Math.max(0, rawTotalAmount - calculatedDiscount - calculatedFreeShip);
 
     // Address Info (From first order - assuming uniform address for group)
     const address = orders.length > 0 ? orders[0].addresses : null;
@@ -365,14 +439,32 @@ export default function Checkout() {
                                 </CardHeader>
                                 <CardContent className="p-6">
                                     <RadioGroup value={selectedPaymentMethod} onValueChange={handlePaymentMethodChange} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Label htmlFor="WALLET" className="cursor-pointer group">
-                                            <div className={`relative p-5 rounded-xl border-2 transition-all ${selectedPaymentMethod === 'WALLET' ? 'border-purple-600 bg-purple-50/30 shadow-sm' : 'border-slate-100 hover:border-slate-200'}`}>
+                                        {/* FIGI WALLET OPTION */}
+                                        <Label htmlFor="WALLET" className={`cursor-pointer group relative`}>
+                                            <div className={`p-5 rounded-xl border-2 transition-all h-full flex flex-col ${selectedPaymentMethod === 'WALLET' ? 'border-purple-600 bg-purple-50/30' : 'border-slate-100 hover:border-slate-200'}`}>
                                                 <div className="flex items-center justify-between mb-3">
-                                                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600"><Wallet className="w-5 h-5" /></div>
-                                                    <RadioGroupItem value="WALLET" id="WALLET" className="text-purple-600" />
+                                                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                                                        <Wallet className="w-5 h-5" />
+                                                    </div>
+                                                    <RadioGroupItem value="WALLET" id="WALLET" className="text-purple-600" disabled={walletBalance !== null && walletBalance < grandTotal} />
                                                 </div>
                                                 <div className="font-bold text-slate-900">FigiWallet</div>
-                                                <div className="text-xs text-slate-500 mt-1">Instant Pay</div>
+                                                <div className="text-xs text-slate-500 mt-1 mb-2">
+                                                    Available: {walletBalance !== null ? formatPrice(walletBalance) : '...'}
+                                                </div>
+                                                {/* CONDITIONAL TOP UP OR WARNING */}
+                                                <div className="mt-auto pt-2 disabled-content-exempt">
+                                                    {walletBalance !== null && walletBalance < grandTotal && (
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="text-xs text-red-500 font-semibold bg-red-50 p-2 rounded-md flex items-center gap-1">
+                                                                <AlertCircle className="w-3.5 h-3.5" /> Insufficient balance
+                                                            </div>
+                                                            <Button type="button" size="sm" variant="outline" className="w-full relative z-10 text-xs text-purple-600 hover:bg-purple-50 hover:text-purple-700 pointer-events-auto" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTopUpModal(true); }}>
+                                                                Top Up Now
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </Label>
                                         <Label htmlFor="QR_BANK" className="cursor-pointer group">
@@ -409,17 +501,50 @@ export default function Checkout() {
                                         <div className="space-y-2 text-sm">
                                             <div className="flex justify-between text-slate-600">
                                                 <span>Subtotal (All Shipments)</span>
-                                                <span className="font-medium text-slate-900">{formatPrice(grandTotal - totalShipping)}</span>
+                                                <span className="font-medium text-slate-900">{formatPrice(subtotal)}</span>
                                             </div>
                                             <div className="flex justify-between text-slate-600">
                                                 <span>Total Shipping</span>
                                                 <span className="font-medium text-slate-900">{formatPrice(totalShipping)}</span>
                                             </div>
-                                            {totalDiscount > 0 && (
-                                                <div className="flex justify-between text-green-600">
-                                                    <span>Total Discount</span>
-                                                    <span>-{formatPrice(totalDiscount)}</span>
-                                                </div>
+
+                                            {/* Voucher Details */}
+                                            {(appliedDiscountPromo || appliedShippingPromo) && (
+                                                <>
+                                                    <div className="w-full h-px bg-slate-100 my-2" />
+                                                    
+                                                    {appliedDiscountPromo && (
+                                                        <div className="flex items-start justify-between mb-2">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-orange-600 font-medium flex items-center gap-1.5">
+                                                                    <TicketPercent className="w-4 h-4" /> Shop Discount Applied
+                                                                </span>
+                                                                <span className="text-xs text-slate-500 font-mono mt-0.5 ml-5">
+                                                                    Code: {appliedDiscountPromo.code}
+                                                                </span>
+                                                            </div>
+                                                            <span className="font-bold text-orange-600">
+                                                                -{formatPrice(calculatedDiscount)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {appliedShippingPromo && (
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-emerald-600 font-medium flex items-center gap-1.5">
+                                                                    <TicketPercent className="w-4 h-4" /> Free Shipping Applied
+                                                                </span>
+                                                                <span className="text-xs text-slate-500 font-mono mt-0.5 ml-5">
+                                                                    Code: {appliedShippingPromo.code}
+                                                                </span>
+                                                            </div>
+                                                            <span className="font-bold text-emerald-600">
+                                                                -{formatPrice(calculatedFreeShip)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
                                         <Separator className="bg-slate-100" />
@@ -539,6 +664,15 @@ export default function Checkout() {
                     <AddressDialog open={showAddressForm} onOpenChange={setShowAddressForm} onSelect={handleAddressChange} />
                 </div>
             </div>
+            {/* TOP UP MODAL (Inside Checkout) */}
+            <TopUpModal
+                open={showTopUpModal}
+                onOpenChange={setShowTopUpModal}
+                onSuccess={() => {
+                    fetchOrders(); // Re-fetch wallet balance
+                }}
+            />
+
         </CustomerLayout>
     );
 }

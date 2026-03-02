@@ -20,6 +20,7 @@ import { productsService } from '@/services/products.service';
 import { customersService } from '@/services/customers.service';
 import { calculateFinalPrice } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import CollectVoucherBlock from '@/components/CollectVoucherBlock';
 
 export default function CustomerHome() {
     const navigate = useNavigate();
@@ -304,7 +305,9 @@ export default function CustomerHome() {
                         </div>
 
                         {/* Main Feed */}
-                        <div className="lg:col-span-3 space-y-20">
+                        <div className="lg:col-span-3 space-y-12">
+                            {/* Collect Voucher Block */}
+                            <CollectVoucherBlock />
                             {/* New Arrivals */}
                             <section>
                                 <div className="flex items-center justify-between mb-8">
