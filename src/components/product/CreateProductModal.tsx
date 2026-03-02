@@ -35,7 +35,7 @@ const baseSchema = z.object({
     brand_id: z.coerce.number().min(1, "Brand is required"),
     category_id: z.coerce.number().min(1, "Category is required"),
     series_id: z.coerce.number().optional(),
-    type_code: z.enum(["RETAIL", "BLINDBOX", "PREORDER"]),
+    type_code: z.enum(["RETAIL", "BLINDBOX", "PREORDER", "AUCTION"]),
 });
 
 const mediaItemSchema = z.object({
@@ -104,10 +104,30 @@ const preorderSchema = baseSchema.extend({
         })
 });
 
+const auctionSchema = baseSchema.extend({
+    type_code: z.literal("AUCTION"),
+    variants: z.array(z.object({
+        option_name: z.string().min(1, "Option Name is required"),
+        price: z.coerce.number().min(0, "Price can be 0 for auctions"),
+        sku: z.string().min(1, "SKU is required"),
+
+        media_assets: z.array(mediaItemSchema).optional(),
+        description: z.string().optional(),
+        weight_g: z.coerce.number().min(0).optional(),
+        length_cm: z.coerce.number().min(0).optional(),
+        width_cm: z.coerce.number().min(0).optional(),
+        height_cm: z.coerce.number().min(0).optional(),
+        scale: z.string().optional(),
+        material: z.string().optional(),
+        included_items: z.string().optional(),
+    })).min(1, "At least one variant is required"),
+});
+
 const formSchema = z.discriminatedUnion("type_code", [
     retailSchema,
     blindboxSchema,
-    preorderSchema
+    preorderSchema,
+    auctionSchema
 ]);
 
 type ProductFormValues = z.infer<typeof formSchema>;
@@ -120,6 +140,7 @@ const getTypeGradient = (type: string) => {
         case 'RETAIL': return 'bg-gradient-to-r from-blue-500 to-cyan-500';
         case 'BLINDBOX': return 'bg-gradient-to-r from-purple-500 to-pink-500';
         case 'PREORDER': return 'bg-gradient-to-r from-orange-500 to-amber-500';
+        case 'AUCTION': return 'bg-gradient-to-r from-red-500 to-rose-500';
         default: return 'bg-neutral-500';
     }
 };
@@ -218,6 +239,7 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
     const isRetail = product.type_code === 'RETAIL';
     const isBlindbox = product.type_code === 'BLINDBOX';
     const isPreorder = product.type_code === 'PREORDER';
+    const isAuction = product.type_code === 'AUCTION';
     const bb = product.product_blindboxes?.[0];
     const pre = product.product_variants?.[0]?.product_preorder_configs;
 
@@ -442,7 +464,7 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                     <div>
                         <h3 className="text-sm font-bold border-b pb-2 mb-2">Configuration</h3>
 
-                        {(isRetail || isPreorder) && (
+                        {(isRetail || isPreorder || isAuction) && (
                             <div className="border rounded-md overflow-hidden text-sm shadow-sm">
                                 <Table>
                                     <TableHeader className="bg-neutral-50">
@@ -626,7 +648,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                 type_code: p.type_code,
             };
 
-            if (p.type_code === 'RETAIL') {
+            if (p.type_code === 'RETAIL' || p.type_code === 'AUCTION') {
                 formValues.variants = p.product_variants?.map((v: any) => ({
                     option_name: v.option_name, price: Number(v.price), sku: v.sku, media_assets: v.media_assets || [], description: v.description || "",
                     weight_g: v.weight_g || 200, length_cm: v.length_cm || 10, width_cm: v.width_cm || 10, height_cm: v.height_cm || 10
@@ -797,7 +819,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                 type_code: data.type_code, status_code: 'ACTIVE'
             };
 
-            if (data.type_code === "RETAIL") {
+            if (data.type_code === "RETAIL" || data.type_code === "AUCTION") {
                 payload.variants = data.variants.map((v: any) => ({
                     option_name: v.option_name, price: v.price, sku: v.sku, media_assets: v.media_assets, description: v.description, stock_available: 0,
                     weight_g: v.weight_g, length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm,
@@ -964,6 +986,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                             <SelectItem value="RETAIL">Retail Product</SelectItem>
                                                             <SelectItem value="BLINDBOX">Blind Box Set</SelectItem>
                                                             <SelectItem value="PREORDER">Pre-order Item</SelectItem>
+                                                            <SelectItem value="AUCTION">Auction Item</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                     <FormMessage />
@@ -1028,11 +1051,11 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                     )} />
                                                 )}
 
-                                                {/* RETAIL VARIANTS */}
-                                                {watchedType === "RETAIL" && (
+                                                {/* RETAIL OR AUCTION VARIANTS */}
+                                                {(watchedType === "RETAIL" || watchedType === "AUCTION") && (
                                                     <div className="space-y-5">
                                                         <div className="flex justify-between items-center">
-                                                            <h4 className="font-semibold text-sm">Retail Variants</h4>
+                                                            <h4 className="font-semibold text-sm">{watchedType === "RETAIL" ? "Retail Variants" : "Auction Base Variants"}</h4>
                                                             <Button type="button" size="sm" variant="outline" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add Variant</Button>
                                                         </div>
                                                         <div className="space-y-4">

@@ -50,6 +50,7 @@ import Checkout from "@/pages/customer/Checkout";
 import CustomerWallet from "@/pages/customer/CustomerWallet";
 import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
+import CustomerAuctionRoom from "@/pages/customer/AuctionRoom";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
 import OrderDetail from "@/pages/customer/OrderDetail"; // New Import
 import PreOrderPayment from "@/pages/customer/PreOrderPayment";
@@ -207,6 +208,7 @@ export default function App() {
                             <Route path="wallet" element={<CustomerWallet />} />
                             <Route path="profile" element={<CustomerProfile />} />
                             <Route path="auctions" element={<CustomerAuctions />} />
+                            <Route path="auctions/:id" element={<CustomerAuctionRoom />} />
                         </Route>
                     </Route>
 

@@ -2,6 +2,9 @@ export interface WalletDTO {
     id: string;
     userId: string;
     balance: number;
+    balance_available?: number;
+    balance_locked?: number;
+    loyalty_points?: number;
     currency: string;
     updatedAt: string;
 }
