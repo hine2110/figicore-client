@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { User, Mail, Phone, MapPin, Shield, Bell, Loader2, Trash2, Crown, Package } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Shield, Bell, Loader2, Trash2, Crown, Package, TicketPercent } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authService } from '@/services/auth.service';
 import MembershipTab from '@/components/customer/MembershipTab'; // New Import
 import MyOrdersTab from '@/components/customer/MyOrdersTab'; // New Import
+import MyVouchersTab from '@/components/customer/MyVouchersTab'; // New Import
 import AddressDialog from '@/components/customer/AddressDialog';
 import { addressService, Address } from '@/services/address.service';
 import { useToast } from "@/components/ui/use-toast";
@@ -37,7 +38,7 @@ const RANK_CONFIG: Record<string, { label: string; className: string }> = {
 export default function CustomerProfile() {
     const { toast } = useToast();
     const { user, setUser } = useAuthStore();
-    const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'membership' | 'security' | 'notifications'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'membership' | 'security' | 'notifications' | 'vouchers'>('profile');
 
     // Add Query Param Support
     const location = useLocation();
@@ -46,7 +47,7 @@ export default function CustomerProfile() {
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const tab = params.get('tab');
-        if (tab && ['profile', 'orders', 'membership', 'security', 'notifications'].includes(tab)) {
+        if (tab && ['profile', 'orders', 'membership', 'security', 'notifications', 'vouchers'].includes(tab)) {
             setActiveTab(tab as any);
         }
     }, [location.search]);
@@ -225,6 +226,16 @@ export default function CustomerProfile() {
                                     >
                                         <Package className="w-4 h-4" />
                                         My Orders
+                                    </button>
+                                    <button
+                                        onClick={() => handleTabChange('vouchers')}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'vouchers'
+                                            ? 'bg-neutral-100 text-neutral-900'
+                                            : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                                            }`}
+                                    >
+                                        <TicketPercent className="w-4 h-4" />
+                                        My Vouchers
                                     </button>
                                     <button
                                         onClick={() => handleTabChange('security')}
@@ -440,6 +451,8 @@ export default function CustomerProfile() {
 
 
                                 {activeTab === 'orders' && <MyOrdersTab />}
+
+                                {activeTab === 'vouchers' && <MyVouchersTab />}
 
                                 {activeTab === 'security' && (
                                     <div className="space-y-6 animate-in fade-in duration-300">
