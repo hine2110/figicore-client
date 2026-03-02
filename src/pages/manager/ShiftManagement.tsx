@@ -630,11 +630,7 @@ export default function ShiftManagement() {
                 </DialogContent>
             </Dialog>
 
-            {/* Staff Work Summary Table */}
-            <StaffSummaryTable
-                fromDate={format(currentWeekStart, 'yyyy-MM-dd')}
-                toDate={format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd')}
-            />
+
         </div>
     );
 }
