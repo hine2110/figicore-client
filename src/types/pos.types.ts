@@ -9,6 +9,9 @@ export interface PosSession {
     status_code: string;
     note?: string;
     order_count?: number;
+    cash_revenue_app?: number;
+    total_expenses?: number;
+    cash_breakdown?: any;
 }
 
 // Variant within a product
@@ -64,6 +67,8 @@ export interface CreatePosOrderRequest {
     vat_company_name?: string;
     vat_company_address?: string;
     vat_invoice_email?: string;
+    cash_received?: number;
+    cash_change?: number;
 }
 
 export interface PosOrder {
@@ -77,6 +82,8 @@ export interface PosOrder {
     payment_method_code: string;
     status_code: string;
     created_at: string;
+    cash_received?: number;
+    cash_change?: number;
 
     // VAT Invoice Fields (Mock)
     is_vat_export?: boolean;
