@@ -12,14 +12,19 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { RefreshCcw, PlusCircle, Trash2 } from "lucide-react";
+import { RefreshCcw, PlusCircle, Trash2, Edit2, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { CreateAuctionModal } from "@/components/admin/CreateAuctionModal";
+import { EditAuctionModal } from "@/components/admin/EditAuctionModal";
 
 export default function AuctionManagement() {
     const [auctions, setAuctions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingAuctionId, setEditingAuctionId] = useState<number | null>(null);
     const { toast } = useToast();
+    const navigate = useNavigate();
 
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
@@ -172,9 +177,32 @@ export default function AuctionManagement() {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
+                                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                                onClick={() => navigate(`/admin/auctions/${auction.auction_id}`)}
+                                                title="View Details"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-slate-600 hover:text-slate-700 hover:bg-slate-50 border-slate-200"
+                                                onClick={() => {
+                                                    setEditingAuctionId(auction.auction_id);
+                                                    setIsEditModalOpen(true);
+                                                }}
+                                                disabled={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING'}
+                                                title={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING' ? "Cannot edit an active or completed auction" : "Edit Auction"}
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
                                                 className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                                                 onClick={() => handleDelete(auction.auction_id)}
                                                 disabled={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING'}
+                                                title={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING' ? "Cannot delete an active or completed auction" : "Delete Auction"}
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
@@ -191,6 +219,16 @@ export default function AuctionManagement() {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onSuccess={fetchAuctions}
+            />
+
+            <EditAuctionModal
+                isOpen={isEditModalOpen}
+                onClose={() => {
+                    setIsEditModalOpen(false);
+                    setEditingAuctionId(null);
+                }}
+                onSuccess={fetchAuctions}
+                auctionId={editingAuctionId}
             />
         </div>
     );

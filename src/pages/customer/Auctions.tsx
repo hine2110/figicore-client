@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import CustomerLayout from '@/layouts/CustomerLayout';
-import { Gavel, Clock, Flame, ShieldAlert, AlertCircle, CalendarOff, ArrowRight, CalendarDays, ChevronRight, Loader2, Wallet, Info, FileText } from "lucide-react";
+import { Gavel, Clock, Flame, ShieldAlert, AlertCircle, CalendarOff, ArrowRight, CalendarDays, ChevronRight, Loader2, Wallet, Info, FileText, Archive, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -18,13 +18,16 @@ import {
 export default function CustomerAuctions() {
     const navigate = useNavigate();
     const [auctions, setAuctions] = useState<any[]>([]);
+    const [archiveAuctions, setArchiveAuctions] = useState<any[]>([]);
     const [selectedAuctionId, setSelectedAuctionId] = useState<number | null>(null);
     const [walletBalance, setWalletBalance] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [isJoining, setIsJoining] = useState(false);
     const [showJoinModal, setShowJoinModal] = useState(false);
+    const [joinedRooms, setJoinedRooms] = useState<Record<number, boolean>>({});
     const { toast } = useToast();
+    const [pendingPaymentAuctions, setPendingPaymentAuctions] = useState<any[]>([]);
 
     useEffect(() => {
         const initData = async () => {
@@ -36,9 +39,9 @@ export default function CustomerAuctions() {
 
     const fetchWallet = async () => {
         try {
-            const res = await walletService.getMyWallet();
-            if (res.success && res.data) {
-                setWalletBalance(Number(res.data.balance_available));
+            const res: any = await walletService.getMyWallet();
+            if (res && res.balance_available !== undefined) {
+                setWalletBalance(Number(res.balance_available));
             }
         } catch (error) {
             console.error("Could not fetch wallet", error);
@@ -61,10 +64,45 @@ export default function CustomerAuctions() {
             });
 
             setAuctions(publicAuctions);
+
+            // Vault Archives (COMPLETED)
+            const completedAuctions = data.filter((a: any) => a.status_code === 'COMPLETED');
+            completedAuctions.sort((a: any, b: any) => new Date(b.end_time).getTime() - new Date(a.end_time).getTime());
+            setArchiveAuctions(completedAuctions);
+
             if (publicAuctions.length > 0) {
-                setSelectedAuctionId(publicAuctions[0].auction_id);
+                // Determine spotlight strictly by top sorted result
+                const spotlight = publicAuctions[0];
+                setSelectedAuctionId(spotlight.auction_id);
             }
+
+            // Fetch join status map for public auctions
+            const joinedStatuses: Record<number, boolean> = {};
+            for (const auction of publicAuctions) {
+                try {
+                    const status = await auctionsService.getMyStatus(auction.auction_id);
+                    joinedStatuses[auction.auction_id] = status.is_joined;
+                } catch (e) {
+                    // Ignore, user might not be logged in or other error
+                }
+            }
+            setJoinedRooms(joinedStatuses);
+
+            // [FIX] Tìm các auction AWAITING_PAYMENT mà user đang là WINNER
+            const awaitingAuctions = data.filter((a: any) => a.status_code === 'AWAITING_PAYMENT');
+            const pendingList: any[] = [];
+            for (const a of awaitingAuctions) {
+                try {
+                    const s = await auctionsService.getMyStatus(a.auction_id);
+                    if (s?.participant?.status === 'WINNER') {
+                        pendingList.push(a);
+                    }
+                } catch { /* ignore */ }
+            }
+            setPendingPaymentAuctions(pendingList);
+
         } catch (error) {
+            console.error("Could not fetch auctions", error);
             toast({ title: "Error", description: "Could not load auctions", variant: "destructive" });
         } finally {
             setIsLoading(false);
@@ -183,6 +221,35 @@ export default function CustomerAuctions() {
                         </span>
                     </div>
                 </div>
+
+                {/* [FIX] Pending Payment Banner — hiện khi user đang có phiên chờ thanh toán */}
+                {pendingPaymentAuctions.length > 0 && (
+                    <div className="relative z-20 border-b border-amber-500/30">
+                        {pendingPaymentAuctions.map(a => (
+                            <div key={a.auction_id} className="bg-gradient-to-r from-amber-950/80 to-amber-900/60 backdrop-blur-xl px-4 py-3">
+                                <div className="container mx-auto max-w-[1400px] flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 animate-pulse">
+                                            <Trophy className="w-4 h-4 text-amber-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-mono text-amber-300 uppercase tracking-widest font-bold">🏆 You won! — Pending Payment</p>
+                                            <p className="text-sm text-amber-100/80">
+                                                <strong>{a.product_variants?.products?.name || `Auction #${a.auction_id}`}</strong> — Pay within 24h or lose your deposit.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        onClick={() => navigate(`/customer/auctions/${a.auction_id}`)}
+                                        className="shrink-0 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs px-4 py-2 rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all"
+                                    >
+                                        Check Details →
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 <div className="container mx-auto px-4 max-w-[1400px] pt-12 lg:pt-24 relative z-10">
                     {/* Return to Live Action */}
@@ -339,7 +406,10 @@ export default function CustomerAuctions() {
                                 <div className="space-y-4">
                                     <Button
                                         onClick={(e) => {
-                                            if (spotlightRoom.status_code === 'UPCOMING' ||
+                                            if (joinedRooms[spotlightRoom.auction_id]) {
+                                                // Already joined, go straight to room
+                                                navigate(`/customer/auctions/${spotlightRoom.auction_id}`);
+                                            } else if (spotlightRoom.status_code === 'UPCOMING' ||
                                                 ((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants && spotlightRoom.status_code !== 'COMPLETED')) {
                                                 e.preventDefault();
                                             } else {
@@ -347,11 +417,13 @@ export default function CustomerAuctions() {
                                             }
                                         }}
                                         disabled={
-                                            spotlightRoom.status_code === 'UPCOMING' ||
-                                            (((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants) && spotlightRoom.status_code !== 'COMPLETED')
+                                            !joinedRooms[spotlightRoom.auction_id] && (
+                                                spotlightRoom.status_code === 'UPCOMING' ||
+                                                (((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants) && spotlightRoom.status_code !== 'COMPLETED')
+                                            )
                                         }
                                         size="lg"
-                                        className={`w-full h-20 rounded-[1.5rem] text-xl font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center justify-center gap-4 group relative overflow-hidden ${spotlightRoom.status_code === 'UPCOMING' || ((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants && spotlightRoom.status_code !== 'COMPLETED')
+                                        className={`w-full h-20 rounded-[1.5rem] text-xl font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center justify-center gap-4 group relative overflow-hidden ${!joinedRooms[spotlightRoom.auction_id] && (spotlightRoom.status_code === 'UPCOMING' || ((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants && spotlightRoom.status_code !== 'COMPLETED'))
                                             ? 'bg-white/5 text-neutral-500 cursor-not-allowed border border-white/5'
                                             : 'bg-white text-black hover:bg-neutral-200 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_60px_rgba(255,255,255,0.3)] hover:scale-[1.01]'
                                             }`}
@@ -359,115 +431,109 @@ export default function CustomerAuctions() {
                                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out z-0"></div>
 
                                         <span className="relative z-10 flex items-center gap-4">
-                                            {spotlightRoom.status_code === 'UPCOMING' ? (
-                                                <>Vault Locked <Clock className="w-6 h-6" /></>
+                                            {joinedRooms[spotlightRoom.auction_id] ? (
+                                                <>Enter Room <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" /></>
+                                            ) : spotlightRoom.status_code === 'UPCOMING' ? (
+                                                <>Upcoming <Clock className="w-6 h-6" /></>
                                             ) : (
                                                 <>
-                                                    {((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants) ? 'Vault At Capacity' : 'Access The Vault'} <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                                                    {((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants) ? 'At Capacity' : 'Join Auction'} <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                                                 </>
                                             )}
                                         </span>
                                     </Button>
 
                                     <Dialog open={showJoinModal} onOpenChange={setShowJoinModal}>
-                                        <DialogContent className="bg-white/10 backdrop-blur-[60px] border-white/20 text-white max-w-xl p-0 overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] sm:rounded-[2.5rem]">
-                                            {/* Header */}
-                                            <div className="bg-white/10 px-8 py-8 border-b border-white/20 flex flex-col items-center justify-center text-center relative overflow-hidden backdrop-blur-md">
-                                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/20 blur-[60px] rounded-full pointer-events-none mix-blend-overlay"></div>
-                                                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 blur-[60px] rounded-full pointer-events-none"></div>
+                                        <DialogContent className="bg-[#050505]/90 backdrop-blur-3xl border border-white/10 text-white max-w-[420px] p-0 overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.8)] sm:rounded-[2.5rem] outline-none">
 
-                                                <div className="w-16 h-16 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center mb-5 backdrop-blur-xl shadow-[0_8px_32px_rgba(255,255,255,0.1)]">
-                                                    <Gavel className="w-8 h-8 text-white drop-shadow-md" />
+                                            {/* Top Subtle Gradient Line */}
+                                            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"></div>
+
+                                            <div className="p-8 pb-0 flex flex-col items-center text-center relative z-10">
+                                                <div className="w-16 h-16 rounded-full bg-gradient-to-b from-white/10 to-transparent border border-white/10 flex items-center justify-center mb-6 shadow-inner relative">
+                                                    {/* Inner glow */}
+                                                    <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_10px_rgba(255,255,255,0.1)] pointer-events-none"></div>
+                                                    <Gavel className="w-6 h-6 text-white" strokeWidth={1.5} />
                                                 </div>
-                                                <DialogTitle className="text-3xl font-black mb-2 tracking-tighter drop-shadow-lg">Vault Protocol</DialogTitle>
-                                                <DialogDescription className="text-white/80 text-base max-w-sm mx-auto drop-shadow-md">
-                                                    To grant entry and bidding rights for <strong className="text-white">{mainProduct?.name}</strong>, please complete authorization.
+                                                <DialogTitle className="text-2xl font-semibold tracking-tight text-white mb-2">Authorization Required</DialogTitle>
+                                                <DialogDescription className="text-neutral-400 text-sm leading-relaxed max-w-[280px] mx-auto">
+                                                    To bid on <span className="text-white font-medium">{mainProduct?.name}</span>, a refundable security deposit is required.
                                                 </DialogDescription>
                                             </div>
 
-                                            <div className="p-8 space-y-8 bg-black/20">
-                                                {/* Rules List */}
-                                                <div className="space-y-4">
-                                                    <h4 className="text-[10px] font-mono text-white/70 uppercase tracking-[0.2em] flex items-center gap-2 drop-shadow-md">
-                                                        <FileText className="w-3.5 h-3.5" /> Terms of Entry
-                                                    </h4>
-                                                    <div className="bg-white/10 border border-white/20 p-5 rounded-3xl space-y-4 backdrop-blur-xl shadow-inner text-shadow-sm">
-                                                        <div className="text-sm text-white/90 flex items-start gap-4">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-white mt-1.5 flex-shrink-0 shadow-[0_0_8px_rgba(255,255,255,1)]"></div>
-                                                            <span className="leading-relaxed">Security deposit will be transferred from your <strong className="text-white font-black">FigiWallet</strong> to a locked state.</span>
-                                                        </div>
-                                                        <div className="text-sm text-white/90 flex items-start gap-4">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-white mt-1.5 flex-shrink-0 shadow-[0_0_8px_rgba(255,255,255,1)]"></div>
-                                                            <span className="leading-relaxed">Deposit is <strong className="text-white font-black">100% instantly refunded</strong> if you do not place the winning bid at closure.</span>
-                                                        </div>
-                                                        <div className="text-sm text-white/90 flex items-start gap-4">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-1.5 flex-shrink-0 shadow-[0_0_8px_rgba(244,63,94,1)]"></div>
-                                                            <span className="leading-relaxed">Winning bidders who fail to clear the final payment within 24 hours will <strong className="text-rose-300 font-black">forfeit</strong> their deposit.</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                            <div className="p-8 space-y-8 relative z-10">
+                                                {/* Deposit Overview Card */}
+                                                <div className="bg-white/[0.03] border border-white/[0.08] rounded-3xl p-6 flex flex-col items-center relative overflow-hidden backdrop-blur-md">
+                                                    {/* Glow inside the card */}
+                                                    <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
 
-                                                {/* Financial Overview */}
-                                                <div className="bg-white/10 border border-white/20 rounded-3xl p-6 relative overflow-hidden shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] backdrop-blur-xl">
-                                                    <div className={`absolute top-0 left-0 w-1.5 h-full ${walletBalance >= Number(spotlightRoom.deposit_fee) ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,1)]' : 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,1)]'}`}></div>
-
-                                                    <div className="flex justify-between items-center mb-5">
-                                                        <span className="text-xs font-mono text-white/70 uppercase tracking-widest drop-shadow-md">Calculated Deposit</span>
-                                                        <span className="text-2xl font-black text-white tracking-tighter drop-shadow-lg">{formatPrice(Number(spotlightRoom.deposit_fee))}</span>
+                                                    <span className="text-[10px] uppercase font-mono tracking-[0.2em] text-neutral-500 mb-2">Required Deposit</span>
+                                                    <div className="text-[2.5rem] font-light tracking-tighter text-white mb-6 drop-shadow-sm">
+                                                        {formatPrice(Number(spotlightRoom.deposit_fee))}
                                                     </div>
 
-                                                    <div className="h-px w-full bg-white/20 my-5"></div>
+                                                    <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent mb-6"></div>
 
-                                                    <div className="flex justify-between items-center">
-                                                        <div className="flex items-center gap-3 text-xs font-mono text-white/80 uppercase tracking-widest relative drop-shadow-md">
-                                                            <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,1)]"></span>
-                                                            <Wallet className="w-4 h-4 ml-1" /> FigiWallet
+                                                    <div className="w-full flex justify-between items-center px-1">
+                                                        <div className="flex items-center gap-2 text-xs text-neutral-400 font-medium tracking-wide">
+                                                            <Wallet className="w-3.5 h-3.5" strokeWidth={2} />
+                                                            <span>Available Balance</span>
                                                         </div>
-                                                        <span className={`text-xl font-bold tracking-tight drop-shadow-lg ${walletBalance >= Number(spotlightRoom.deposit_fee) ? 'text-white' : 'text-rose-300'}`}>
+                                                        <span className={`text-sm font-semibold tracking-tight ${walletBalance >= Number(spotlightRoom.deposit_fee) ? 'text-white' : 'text-rose-400'}`}>
                                                             {formatPrice(walletBalance)}
                                                         </span>
                                                     </div>
+                                                </div>
 
-                                                    {walletBalance < Number(spotlightRoom.deposit_fee) && (
-                                                        <div className="mt-5 bg-rose-500/20 border border-rose-500/30 p-4 rounded-2xl flex gap-3 text-rose-200 text-xs leading-relaxed backdrop-blur-md">
-                                                            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                                                            <p>Insufficient balance. Please add funds to your FigiWallet to authorize this transaction.</p>
+                                                {/* Subtle terms */}
+                                                <div className="space-y-3 px-2">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="w-1 h-1 rounded-full bg-neutral-600 mt-2 flex-shrink-0"></div>
+                                                        <p className="text-[13px] text-neutral-400 leading-relaxed">Deposit is <span className="text-neutral-200 font-medium">100% refunded</span> immediately if you do not win the auction.</p>
+                                                    </div>
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="w-1 h-1 rounded-full bg-neutral-600 mt-2 flex-shrink-0"></div>
+                                                        <p className="text-[13px] text-neutral-400 leading-relaxed">Winning bids must be fulfilled within 24 hours to prevent deposit forfeiture.</p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="pt-2 flex flex-col gap-3">
+                                                    {walletBalance >= Number(spotlightRoom.deposit_fee) ? (
+                                                        <Button
+                                                            onClick={handleJoinConfirm}
+                                                            disabled={isJoining}
+                                                            className="w-full bg-white text-black hover:bg-neutral-200 h-14 rounded-2xl font-semibold tracking-wide text-[13px] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                                                        >
+                                                            {isJoining ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</> : 'Authorize & Lock Deposit'}
+                                                        </Button>
+                                                    ) : (
+                                                        <div className="flex flex-col gap-3">
+                                                            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs p-3 rounded-xl flex items-center justify-center gap-2">
+                                                                <Info className="w-3.5 h-3.5" /> Insufficient balance to authorize
+                                                            </div>
+                                                            <Button
+                                                                onClick={() => navigate('/customer/wallet?mode=topup')}
+                                                                className="w-full bg-white text-black hover:bg-neutral-200 h-14 rounded-2xl font-semibold tracking-wide text-[13px] transition-all"
+                                                            >
+                                                                Add Funds to Wallet
+                                                            </Button>
                                                         </div>
                                                     )}
+
+                                                    <Button
+                                                        variant="ghost"
+                                                        onClick={() => setShowJoinModal(false)}
+                                                        className="w-full text-neutral-400 hover:text-white hover:bg-white/5 h-12 rounded-2xl font-medium tracking-wide text-[13px] transition-all"
+                                                    >
+                                                        Cancel
+                                                    </Button>
                                                 </div>
-                                            </div>
-
-                                            {/* Footer Actions */}
-                                            <div className="p-8 bg-black/60 backdrop-blur-xl border-t border-white/5 flex gap-4">
-                                                <Button
-                                                    variant="ghost"
-                                                    onClick={() => setShowJoinModal(false)}
-                                                    className="flex-1 text-neutral-400 hover:text-white hover:bg-white/10 h-14 rounded-xl font-bold tracking-widest uppercase text-[10px] md:text-xs"
-                                                >
-                                                    Abort
-                                                </Button>
-
-                                                {walletBalance >= Number(spotlightRoom.deposit_fee) ? (
-                                                    <Button
-                                                        onClick={handleJoinConfirm}
-                                                        disabled={isJoining}
-                                                        className="flex-[2] bg-white text-black hover:bg-neutral-200 h-14 rounded-xl font-black tracking-[0.15em] uppercase text-xs shadow-[0_0_20px_rgba(255,255,255,0.15)]"
-                                                    >
-                                                        {isJoining ? <><Loader2 className="w-4 h-4 mr-3 animate-spin" /> Authorizing...</> : 'Confirm & Lock'}
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        onClick={() => navigate('/customer/wallet?mode=topup')}
-                                                        className="flex-[2] bg-red-600 text-white hover:bg-red-700 h-14 rounded-xl font-black tracking-[0.15em] uppercase text-xs shadow-[0_0_20px_rgba(220,38,38,0.3)]"
-                                                    >
-                                                        Top Up Wallet
-                                                    </Button>
-                                                )}
                                             </div>
                                         </DialogContent>
                                     </Dialog>
 
-                                    {((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants) && spotlightRoom.status_code !== 'COMPLETED' && (
+                                    {((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants) && spotlightRoom.status_code !== 'COMPLETED' && !joinedRooms[spotlightRoom.auction_id] && (
                                         <p className="text-center text-xs text-red-500 uppercase tracking-widest font-bold flex items-center justify-center gap-2 mt-4 pt-4 border-t border-white/5">
                                             <AlertCircle className="w-4 h-4" /> Capacity Limit Reached
                                         </p>
@@ -532,6 +598,63 @@ export default function CustomerAuctions() {
                                                     <Clock className="w-3.5 h-3.5 text-neutral-500" /> {new Date(room.end_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} Ends
                                                 </p>
                                                 <ChevronRight className="w-5 h-5 text-neutral-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Vault Archives Section */}
+                {archiveAuctions.length > 0 && (
+                    <div className="container mx-auto px-4 max-w-[1400px] pt-16 pb-20 relative z-20">
+                        <div className="flex items-end justify-between mb-8 border-b border-white/10 pb-6">
+                            <div>
+                                <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter mb-2 flex items-center gap-3">
+                                    <Archive className="w-8 h-8 text-neutral-500" /> Vault Archives
+                                </h2>
+                                <p className="text-neutral-500 font-mono text-xs uppercase tracking-widest">Past biddings & Historic wins</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 opacity-70 hover:opacity-100 transition-opacity duration-500">
+                            {archiveAuctions.map((room) => {
+                                const p = room.product_variants;
+                                const prod = p?.products;
+                                const img = p?.media_assets?.[0]?.url || prod?.media_urls?.[0];
+
+                                return (
+                                    <div
+                                        key={room.auction_id}
+                                        onClick={() => navigate(`/customer/auctions/${room.auction_id}`)}
+                                        className="group cursor-pointer rounded-2xl overflow-hidden relative flex flex-col aspect-square bg-neutral-950 border border-white/5 hover:border-white/15 transition-all duration-300 hover:-translate-y-1 grayscale hover:grayscale-0"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-transparent z-10 bottom-0 top-[40%]"></div>
+
+                                        <div className="absolute inset-0 w-full h-full flex items-center justify-center p-8 z-0">
+                                            {img ? (
+                                                <img src={img} alt={prod?.name} className="w-full h-full object-contain filter drop-shadow-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+                                            ) : (
+                                                <Gavel className="w-12 h-12 text-white/5" />
+                                            )}
+                                        </div>
+
+                                        <div className="relative z-20 mt-auto p-5 flex flex-col justify-end">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest border border-neutral-700 px-2 py-0.5 rounded-sm">Ended</span>
+                                            </div>
+
+                                            <h4 className="text-base font-bold text-neutral-300 leading-tight mb-2 line-clamp-2 group-hover:text-white transition-colors">{prod?.name}</h4>
+
+                                            <div className="flex items-center justify-between mt-2 pt-3 border-t border-white/10">
+                                                <p className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
+                                                    {new Date(room.end_time).toLocaleDateString('vi-VN')}
+                                                </p>
+                                                <p className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider flex items-center gap-1">
+                                                    View Details <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                                                </p>
                                             </div>
                                         </div>
                                     </div>

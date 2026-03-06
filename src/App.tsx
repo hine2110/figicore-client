@@ -19,6 +19,7 @@ import ProductManagement from "@/pages/admin/ProductManagement";
 import OrderOversight from "@/pages/admin/OrderOversight";
 import ProfilePage from "@/pages/common/ProfilePage";
 import AuctionManagement from "@/pages/admin/AuctionManagement";
+import AdminAuctionDetail from "@/pages/admin/AdminAuctionDetail";
 import ManualRefund from "@/pages/admin/ManualRefund";
 import SystemSettings from "@/pages/admin/SystemSettings";
 import AuditLogs from "@/pages/admin/AuditLogs";
@@ -131,6 +132,7 @@ export default function App() {
                             <Route path="products" element={<ProductManagement />} />
                             <Route path="orders" element={<OrderOversight />} />
                             <Route path="auctions" element={<AuctionManagement />} />
+                            <Route path="auctions/:id" element={<AdminAuctionDetail />} />
                             <Route path="refunds" element={<ManualRefund />} />
                             <Route path="settings" element={<SystemSettings />} />
                             <Route path="logs" element={<AuditLogs />} />
