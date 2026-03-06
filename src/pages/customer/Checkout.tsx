@@ -45,6 +45,9 @@ export default function Checkout() {
     // Selected Payment Method (Global for Group)
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('QR_BANK');
 
+    // Detect if this is an Auction order group
+    const isAuctionOrder = orders.length > 0 && orders[0]?.order_code?.startsWith('AUC-');
+
     // Generate VietQR URL dynamically based on current orders
     const qrUrl = useMemo(() => {
         if (orders.length === 0) return '';
@@ -59,7 +62,6 @@ export default function Checkout() {
         return `https://img.vietqr.io/image/${bankName}-${accountNo}-compact2.jpg?amount=${amount}&addInfo=${encodeURIComponent(content)}&accountName=FIGICORE`;
     }, [orders, paymentRef]);
 
-    // 1. Helper: Format Currency
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     // 3. Fetch Orders Data
@@ -70,11 +72,16 @@ export default function Checkout() {
         }
         try {
             let fetchedOrders = [];
-            if (paymentRef) {
+            const isLegacyAuction = location.state?.legacyAuctionFlag;
+
+            if (isLegacyAuction) {
+                const res = await api.get(`/orders/by-code/${legacyOrderId}`);
+                fetchedOrders = res.data;
+            } else if (paymentRef) {
                 const res = await api.get(`/orders/by-ref/${paymentRef}`);
                 fetchedOrders = res.data;
             } else {
-                // Legacy Fallback
+                // Legacy Fallback ID
                 const res = await api.get(`/orders/${legacyOrderId}`);
                 fetchedOrders = [res.data];
             }
@@ -234,6 +241,17 @@ export default function Checkout() {
             return;
         }
 
+        // --- NEW: Bypass Validation ---
+        if (!address || !address.address_id) {
+            toast({
+                variant: 'destructive',
+                title: 'Missing Shipping Information',
+                description: 'Please select a delivery address to complete your order.'
+            });
+            setShowAddressSelector(true);
+            return;
+        }
+
         if (selectedPaymentMethod === 'QR_BANK') {
             setShowQRModal(true);
             // TODO: Start polling or socket listener here
@@ -272,8 +290,12 @@ export default function Checkout() {
         setIsProcessing(true);
         try {
             await Promise.all(orders.map(o => api.post(`/orders/${o.order_id}/cancel`)));
-            toast({ title: "Order Cancelled", description: "Items returned to cart/stock." });
-            navigate('/customer/retail');
+            toast({ 
+                title: isAuctionOrder ? "Auction Forfeited" : "Order Cancelled", 
+                description: isAuctionOrder ? "Tiền cọc của bạn đã bị tịch thu theo quy định" : "Items returned to cart/stock." 
+            });
+            // Navigate to auctions list if this was an auction order, else go to retail
+            navigate(isAuctionOrder ? '/customer/auctions' : '/customer/retail');
         } catch (e) {
             toast({ variant: "destructive", title: "Error", description: "Failed to cancel orders." });
         } finally {
@@ -512,7 +534,7 @@ export default function Checkout() {
                                             {(appliedDiscountPromo || appliedShippingPromo) && (
                                                 <>
                                                     <div className="w-full h-px bg-slate-100 my-2" />
-                                                    
+
                                                     {appliedDiscountPromo && (
                                                         <div className="flex items-start justify-between mb-2">
                                                             <div className="flex flex-col">
@@ -651,7 +673,9 @@ export default function Checkout() {
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                             <div className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full mx-4">
                                 <h3 className="text-lg font-bold">Cancel Checkout?</h3>
-                                <p className="text-slate-500 text-sm mb-6">This will cancel all created orders and release stock.</p>
+                                <p className="text-slate-500 text-sm mb-6">
+                                    {isAuctionOrder ? "Tiền cọc của bạn đã bị tịch thu theo quy định" : "This will cancel all created orders and release stock."}
+                                </p>
                                 <div className="flex gap-3 justify-end">
                                     <Button variant="outline" onClick={() => setShowCancelDialog(false)}>No</Button>
                                     <Button variant="destructive" onClick={handleCancelGroup}>Yes, Cancel</Button>

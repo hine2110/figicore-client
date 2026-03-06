@@ -19,6 +19,7 @@ import ProductManagement from "@/pages/admin/ProductManagement";
 import OrderOversight from "@/pages/admin/OrderOversight";
 import ProfilePage from "@/pages/common/ProfilePage";
 import AuctionManagement from "@/pages/admin/AuctionManagement";
+import AdminAuctionDetail from "@/pages/admin/AdminAuctionDetail";
 import ManualRefund from "@/pages/admin/ManualRefund";
 import SystemSettings from "@/pages/admin/SystemSettings";
 import AuditLogs from "@/pages/admin/AuditLogs";
@@ -29,6 +30,7 @@ import GlobalInventory from "@/pages/manager/GlobalInventory";
 import MarketingCampaigns from "@/pages/manager/MarketingCampaigns";
 import ReturnApprovals from "@/pages/manager/ReturnApprovals";
 import ShiftManagement from "@/pages/manager/ShiftManagement";
+import ManagerTimesheets from "@/pages/manager/ManagerTimesheets";
 import CustomerFeedback from "@/pages/manager/CustomerFeedback";
 // import StationConfirmPage from "@/pages/manager/StationConfirmPage";
 import PromotionListPage from "@/pages/manager/promotions/PromotionListPage";
@@ -129,6 +131,7 @@ export default function App() {
                             <Route path="products" element={<ProductManagement />} />
                             <Route path="orders" element={<OrderOversight />} />
                             <Route path="auctions" element={<AuctionManagement />} />
+                            <Route path="auctions/:id" element={<AdminAuctionDetail />} />
                             <Route path="refunds" element={<ManualRefund />} />
                             <Route path="settings" element={<SystemSettings />} />
                             <Route path="logs" element={<AuditLogs />} />
@@ -148,6 +151,7 @@ export default function App() {
                             <Route path="campaigns" element={<MarketingCampaigns />} />
                             <Route path="returns" element={<ReturnApprovals />} />
                             <Route path="shifts" element={<ShiftManagement />} />
+                            <Route path="timesheets" element={<ManagerTimesheets />} />
                             <Route path="feedback" element={<CustomerFeedback />} />
                             <Route path="profile" element={<ProfilePage />} />
                             <Route path="promotions" element={<PromotionListPage />} />
