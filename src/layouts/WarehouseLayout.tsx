@@ -141,7 +141,7 @@ export default function WarehouseLayout() {
                     </div>
 
                     {/* User Info */}
-                    <div className="p-4 border-b border-neutral-800">
+                    <Link to="/warehouse/profile" className="p-4 border-b border-neutral-800 flex items-center justify-between hover:bg-neutral-800 transition-colors group cursor-pointer block">
                         <div className="flex items-center gap-3">
                             <Avatar>
                                 <AvatarImage src={user?.avatar_url || undefined} />
@@ -154,7 +154,8 @@ export default function WarehouseLayout() {
                                 <p className="text-xs text-neutral-500 capitalize">{user?.role_code}</p>
                             </div>
                         </div>
-                    </div>
+                        <ChevronRight className="w-4 h-4 text-neutral-500 group-hover:text-white transition-colors" />
+                    </Link>
 
                     {/* Navigation */}
                     <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
@@ -212,15 +213,6 @@ export default function WarehouseLayout() {
 
                     {/* Footer Actions */}
                     <div className="p-4 border-t border-neutral-800 space-y-1">
-                        <Link to="/warehouse/profile">
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start text-neutral-400 hover:text-white hover:bg-neutral-800"
-                            >
-                                <Box className="w-5 h-5 mr-3" />
-                                My Profile
-                            </Button>
-                        </Link>
                         <Button
                             variant="ghost"
                             className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-400/10"

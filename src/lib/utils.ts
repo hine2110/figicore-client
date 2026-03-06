@@ -6,8 +6,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const calculateFinalPrice = (originalPrice: number, promo: any) => {
-    // 1. Check if promo exists and is active
+    // 1. Check if promo exists, is active, AND within valid date range
     if (!promo || !promo.is_active) return originalPrice;
+
+    const now = new Date();
+    if (promo.start_date && new Date(promo.start_date) > now) return originalPrice;
+    if (promo.end_date && new Date(promo.end_date) < now) return originalPrice;
 
     // 2. Check Price Range Rules
     // Use Number() to ensure we handle potentially string/decimal values from API

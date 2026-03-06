@@ -120,8 +120,6 @@ export default function CustomerTab() {
                                                 <DropdownMenuItem onClick={() => setSelectedId(cust.user_id)}>
                                                     View Profile
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem>Edit Details</DropdownMenuItem>
-                                                <DropdownMenuSeparator />
                                                 <DropdownMenuSeparator />
 
                                                 {/* Active/Inactive Toggle */}
