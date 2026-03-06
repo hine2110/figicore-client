@@ -93,6 +93,16 @@ export const createPosOrder = async (orderData: CreatePosOrderRequest): Promise<
     return response.data;
 };
 
+// Create QR pending order (PENDING_PAYMENT, waits for SePay webhook)
+export const createPosQrOrder = async (orderData: CreatePosOrderRequest): Promise<{
+    success: boolean;
+    message: string;
+    data: PosOrder & { payment_ref_code: string };
+}> => {
+    const response = await axiosInstance.post(`${API_BASE}/orders/create-qr`, orderData);
+    return response.data;
+};
+
 // Real-time Order Sync
 export const getActiveOrder = async (): Promise<PosOrder | null> => {
     const response = await axiosInstance.get(`${API_BASE}/orders/active`);
@@ -130,6 +140,15 @@ export const getOrders = async (params: {
     const response = await axiosInstance.get(`${API_BASE}/orders`, {
         params
     });
+    return response.data;
+};
+
+export const getOrderById = async (orderId: number): Promise<{
+    success: boolean;
+    message: string;
+    data: PosOrder;
+}> => {
+    const response = await axiosInstance.get(`${API_BASE}/orders/${orderId}`);
     return response.data;
 };
 

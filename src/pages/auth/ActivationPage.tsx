@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, UploadCloud, CheckCircle } from "lucide-react";
+import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,8 +18,10 @@ export default function ActivationPage() {
     const [tempPassword, setTempPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [avatarUrl, setAvatarUrl] = useState<string>("");
 
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [showTemp, setShowTemp] = useState(false);
     const [showNew, setShowNew] = useState(false);
 
@@ -32,6 +35,34 @@ export default function ActivationPage() {
             navigate("/guest/login");
         }
     }, [token, navigate, toast]);
+
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
+        const file = acceptedFiles[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            // using the public upload endpoint
+            const res = await api.post("/upload", formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
+            setAvatarUrl(res.data.url);
+            toast({ title: "Avatar Uploaded", description: "Your profile picture is ready." });
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: "Upload Failed", description: "Failed to upload avatar.", variant: "destructive" });
+        } finally {
+            setUploading(false);
+        }
+    }, [toast]);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: { "image/*": [] },
+        maxFiles: 1
+    });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -51,7 +82,8 @@ export default function ActivationPage() {
             await api.post("/auth/activate", {
                 token,
                 tempPassword,
-                newPassword
+                newPassword,
+                avatarUrl: avatarUrl || undefined
             });
 
             toast({
@@ -76,9 +108,9 @@ export default function ActivationPage() {
         <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">
             <Card className="w-full max-w-md shadow-lg">
                 <CardHeader className="space-y-1">
-                    <CardTitle className="text-2xl font-bold text-center">Activate Account</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-center">Setup Your Profile</CardTitle>
                     <CardDescription className="text-center">
-                        Enter your temporary password from email and set a new password.
+                        Enter your temporary password, set a new password, and upload an avatar.
                     </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleSubmit}>
@@ -140,9 +172,43 @@ export default function ActivationPage() {
                                 required
                             />
                         </div>
+
+                        <div className="space-y-2">
+                            <Label>Avatar Photo (Optional)</Label>
+                            <div
+                                {...getRootProps()}
+                                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
+                                ${isDragActive ? 'border-primary bg-primary/5' : 'border-neutral-200 hover:border-primary/50'}`}
+                            >
+                                <input {...getInputProps()} />
+                                {uploading ? (
+                                    <div className="flex flex-col items-center">
+                                        <Loader2 className="h-8 w-8 animate-spin text-neutral-400 mb-2" />
+                                        <p className="text-sm text-neutral-500">Uploading...</p>
+                                    </div>
+                                ) : avatarUrl ? (
+                                    <div className="flex flex-col items-center">
+                                        <div className="relative mb-2">
+                                            <img src={avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover border" />
+                                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full">
+                                                <CheckCircle className="h-5 w-5 text-green-500" />
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-neutral-500">Click to change avatar</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center">
+                                        <UploadCloud className="h-8 w-8 text-neutral-400 mb-2" />
+                                        <p className="text-sm text-neutral-600">Drag & drop your photo</p>
+                                        <p className="text-xs text-neutral-400 mt-1">or click to browse</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
                     </CardContent>
                     <CardFooter>
-                        <Button className="w-full bg-black hover:bg-neutral-800" type="submit" disabled={loading}>
+                        <Button className="w-full bg-black hover:bg-neutral-800" type="submit" disabled={loading || uploading}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Activate Account
                         </Button>

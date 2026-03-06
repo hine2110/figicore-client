@@ -60,7 +60,7 @@ export default function PromotionEditPage() {
     useEffect(() => {
         if (user?.role_code !== 'MANAGER') {
             toast({ title: "Access Denied", description: "Only managers can edit promotions.", variant: "destructive" });
-            navigate('/manager/promotions');
+            navigate('/manager/vouchers?tab=promotions');
         }
     }, [user, navigate, toast]);
 
@@ -109,8 +109,8 @@ export default function PromotionEditPage() {
                 name: values.name,
                 type_code: values.type_code,
                 value: values.value,
-                start_date: values.start_date,
-                end_date: values.end_date,
+                start_date: new Date(values.start_date).toISOString(),
+                end_date: new Date(values.end_date).toISOString(),
                 min_apply_price: values.min_price,
                 max_apply_price: values.max_price !== undefined ? values.max_price : null as any,
             });
@@ -126,10 +126,9 @@ export default function PromotionEditPage() {
 
             toast({ title: "Success", description: "Promotion updated successfully!" });
             
-            // Navigate
             queryClient.invalidateQueries({ queryKey: ['promotions'] });
             queryClient.invalidateQueries({ queryKey: ['promotion', id] });
-            navigate('/manager/promotions');
+            navigate('/manager/vouchers?tab=promotions');
 
         } catch (error) {
             console.error(error);
@@ -147,7 +146,7 @@ export default function PromotionEditPage() {
         <div className="max-w-2xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Edit Promotion</h2>
-                <Button variant="outline" onClick={() => navigate('/manager/promotions')}>Cancel</Button>
+                <Button variant="outline" onClick={() => navigate('/manager/vouchers?tab=promotions')}>Cancel</Button>
             </div>
 
             <Card>
