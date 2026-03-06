@@ -13,7 +13,14 @@ import {
 } from "@/components/ui/select";
 import { axiosInstance } from '@/lib/axiosInstance';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, startOfDay } from 'date-fns';
+import FaceCheckInModal from '@/components/FaceCheckInModal';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.tz.setDefault('Asia/Ho_Chi_Minh');
 
 interface Timesheet {
     timesheet_id: number;
@@ -44,7 +51,6 @@ interface ScheduleSummary {
     total_hours: number;
 }
 
-import FaceCheckInModal from '@/components/FaceCheckInModal';
 
 export default function WarehouseSchedule() {
     const navigate = useNavigate();
@@ -88,23 +94,38 @@ export default function WarehouseSchedule() {
         return () => clearInterval(timer);
     }, [timeOffset]);
 
-    const isCheckInWindowOpen = (expectedStart: string | null, expectedEnd: string | null): boolean => {
-        if (!expectedStart || !expectedEnd || !currentTime) return false;
+    const getAbsoluteTime = (dateStr: string, timeStr: string) => {
+        if (!dateStr || !timeStr) return null;
 
-        const start = new Date(expectedStart);
-        const end = new Date(expectedEnd);
+        // Lấy phần ngày (YYYY-MM-DD)
+        const datePart = dayjs(dateStr).tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD');
 
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+        // Lấy phần giờ. Xử lý linh hoạt cả trường hợp giờ trả về là "13:00:00" hoặc ISO String
+        let timePart = '';
+        if (timeStr.includes('T')) {
+            timePart = dayjs(timeStr).tz('Asia/Ho_Chi_Minh').format('HH:mm:ss');
+        } else {
+            timePart = timeStr;
+        }
+
+        return dayjs.tz(`${datePart} ${timePart}`, 'YYYY-MM-DD HH:mm:ss', 'Asia/Ho_Chi_Minh').toDate();
+    };
+
+    const isCheckInWindowOpen = (date: string, expectedStart: string | null, expectedEnd: string | null): boolean => {
+        if (!date || !expectedStart || !expectedEnd || !currentTime) return false;
+
+        const start = getAbsoluteTime(date, expectedStart);
+        const end = getAbsoluteTime(date, expectedEnd);
+
+        if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) return false;
 
         const now = currentTime;
 
-        // Window: 15 minutes before start
-        const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
-
-        // Window closes: 15 minutes AFTER end
+        // Yêu cầu của bạn: CHỈ chặn khi check-in > end + 15 phút.
+        // Không chặn việc check-in sớm.
         const windowEnd = new Date(end.getTime() + 15 * 60 * 1000);
 
-        return now >= windowStart && now <= windowEnd;
+        return now <= windowEnd;
     };
 
     const handleCheckInClick = (type: 'in' | 'out') => {
@@ -201,9 +222,13 @@ export default function WarehouseSchedule() {
         return match ? match[1] : '--:--';
     };
 
-    const renderCountdown = (shiftStart: string) => {
-        if (!currentTime) return null;
-        const start = new Date(shiftStart);
+    const renderCountdown = (date: string, shiftStart: string) => {
+        if (!currentTime || !date) return null;
+
+        const start = getAbsoluteTime(date, shiftStart);
+        if (!start) return null;
+
+        // Giả sử bạn vẫn muốn đếm ngược nếu sớm hơn 15 phút
         const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
 
         if (currentTime < windowStart) {
@@ -212,7 +237,7 @@ export default function WarehouseSchedule() {
             const seconds = Math.floor((diff % 60000) / 1000);
             return (
                 <span className="text-xs text-orange-600 font-mono ml-2">
-                    Open in {minutes}:{seconds.toString().padStart(2, '0')}
+                    Mở trong {minutes}:{seconds.toString().padStart(2, '0')}
                 </span>
             );
         }
@@ -221,14 +246,16 @@ export default function WarehouseSchedule() {
 
     // Find Active Shift for "Quick Action" Button
     const activeShift = schedules.find(s => {
-        const isToday = typeof s.date === 'string' && s.date.startsWith(format(new Date(), 'yyyy-MM-dd'));
+        // Đồng chuẩn ngày theo Calendar
+        const todayStr = dayjs().tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD');
+        const isToday = typeof s.date === 'string' && s.date.startsWith(todayStr);
         if (!isToday) return false;
 
         const timesheet = s.timesheets && s.timesheets.length > 0 ? s.timesheets[0] : null;
         if (timesheet?.check_out_at) return false;
 
         if (!timesheet?.check_in_at) {
-            return s.expected_start ? isCheckInWindowOpen(s.expected_start, s.expected_end) : false;
+            return s.expected_start ? isCheckInWindowOpen(s.date, s.expected_start, s.expected_end) : false;
         }
         return true;
     });
@@ -331,8 +358,8 @@ export default function WarehouseSchedule() {
                                             checkInState = 'out';
                                         }
 
-                                        const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.expected_start, shift.expected_end) : false;
-                                        const countdown = shift.expected_start ? renderCountdown(shift.expected_start) : null;
+                                        const canCheckIn = shift.expected_start ? isCheckInWindowOpen(shift.date, shift.expected_start, shift.expected_end) : false;
+                                        const countdown = shift.expected_start ? renderCountdown(shift.date, shift.expected_start) : null;
 
                                         return (
                                             <div key={shift.schedule_id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-neutral-50 transition-colors">
@@ -367,7 +394,7 @@ export default function WarehouseSchedule() {
                                                     <div className="flex items-center gap-2 text-neutral-600">
                                                         <Clock className="w-4 h-4" />
                                                         {getTimeFromIso(shift.expected_start)} - {getTimeFromIso(shift.expected_end)}
-                                                        {countdown}
+
                                                     </div>
                                                     {shift.expected_end && shift.expected_start && shift.expected_end < shift.expected_start && (
                                                         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 gap-1">

@@ -87,8 +87,8 @@ export default function PromotionCreatePage() {
                 name: values.name,
                 type_code: values.type_code,
                 value: values.value,
-                start_date: values.start_date,
-                end_date: values.end_date,
+                start_date: new Date(values.start_date).toISOString(),
+                end_date: new Date(values.end_date).toISOString(),
                 min_apply_price: values.min_price,
                 // Default to 10 years limit or similar if max_price is not provided and backend needs it, 
                 // but the backend handles `undefined` nicely for unlimited.

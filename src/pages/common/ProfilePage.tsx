@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import api from "@/services/api";
 
 // Schema for Personal Information
 const personalSchema = z.object({
@@ -19,6 +20,15 @@ const personalSchema = z.object({
     phone: z.string().min(10, "Phone is required"),
     address: z.string().optional(),
     avatar_url: z.string().url("Invalid URL").optional().or(z.literal('')),
+});
+
+const passwordSchema = z.object({
+    oldPassword: z.string().min(1, "Old password is required"),
+    newPassword: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
 });
 
 export default function ProfilePage() {
@@ -37,6 +47,15 @@ export default function ProfilePage() {
             phone: "",
             address: "",
             avatar_url: "",
+        },
+    });
+
+    const passwordForm = useForm<z.infer<typeof passwordSchema>>({
+        resolver: zodResolver(passwordSchema),
+        defaultValues: {
+            oldPassword: "",
+            newPassword: "",
+            confirmPassword: "",
         },
     });
 
@@ -132,6 +151,26 @@ export default function ProfilePage() {
                 variant: "destructive",
                 title: "Error",
                 description: error.response?.data?.message || "Failed to update profile",
+            });
+        }
+    };
+
+    const onPasswordSubmit = async (values: z.infer<typeof passwordSchema>) => {
+        try {
+            await api.post("/auth/update-password", {
+                oldPassword: values.oldPassword,
+                newPassword: values.newPassword,
+            });
+            toast({
+                title: "Success",
+                description: "Password updated successfully",
+            });
+            passwordForm.reset();
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: error.response?.data?.message || "Failed to update password",
             });
         }
     };
@@ -341,18 +380,53 @@ export default function ProfilePage() {
                                     <CardDescription>Manage your password and security questions.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">New Password</label>
-                                            <Input type="password" placeholder="••••••••" disabled />
-                                            <p className="text-xs text-muted-foreground">Change password feature is coming soon.</p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Confirm Password</label>
-                                            <Input type="password" placeholder="••••••••" disabled />
-                                        </div>
-                                       <Button disabled>Update Password</Button>
-                                    </div>
+                                    <Form {...passwordForm}>
+                                        <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                                            <FormField
+                                                control={passwordForm.control}
+                                                name="oldPassword"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Old Password</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="password" placeholder="••••••••" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={passwordForm.control}
+                                                name="newPassword"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>New Password</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="password" placeholder="Min. 6 characters" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={passwordForm.control}
+                                                name="confirmPassword"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Confirm Password</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="password" placeholder="Re-enter new password" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <Button type="submit" disabled={passwordForm.formState.isSubmitting}>
+                                                {passwordForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Update Password
+                                            </Button>
+                                        </form>
+                                    </Form>
                                 </CardContent>
                             </Card>
                         </TabsContent>

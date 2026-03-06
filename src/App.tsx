@@ -29,6 +29,7 @@ import GlobalInventory from "@/pages/manager/GlobalInventory";
 import MarketingCampaigns from "@/pages/manager/MarketingCampaigns";
 import ReturnApprovals from "@/pages/manager/ReturnApprovals";
 import ShiftManagement from "@/pages/manager/ShiftManagement";
+import ManagerTimesheets from "@/pages/manager/ManagerTimesheets";
 import CustomerFeedback from "@/pages/manager/CustomerFeedback";
 // import StationConfirmPage from "@/pages/manager/StationConfirmPage";
 import PromotionListPage from "@/pages/manager/promotions/PromotionListPage";
@@ -36,6 +37,7 @@ import PromotionCreatePage from "@/pages/manager/promotions/PromotionCreatePage"
 import PromotionEditPage from "@/pages/manager/promotions/PromotionEditPage";
 import VoucherListPage from "@/pages/manager/vouchers/VoucherListPage";
 import VoucherCreatePage from "@/pages/manager/vouchers/VoucherCreatePage";
+import VoucherEditPage from "@/pages/manager/vouchers/VoucherEditPage";
 // import StaffDashboard from "@/pages/staff/StaffDashboard"; // Deprecated
 
 // Customer Pages
@@ -148,6 +150,7 @@ export default function App() {
                             <Route path="campaigns" element={<MarketingCampaigns />} />
                             <Route path="returns" element={<ReturnApprovals />} />
                             <Route path="shifts" element={<ShiftManagement />} />
+                            <Route path="timesheets" element={<ManagerTimesheets />} />
                             <Route path="feedback" element={<CustomerFeedback />} />
                             <Route path="profile" element={<ProfilePage />} />
                             <Route path="promotions" element={<PromotionListPage />} />
@@ -155,6 +158,7 @@ export default function App() {
                             <Route path="promotions/:id/edit" element={<PromotionEditPage />} />
                             <Route path="vouchers" element={<VoucherListPage />} />
                             <Route path="vouchers/new" element={<VoucherCreatePage />} />
+                            <Route path="vouchers/:id/edit" element={<VoucherEditPage />} />
                         </Route>
                     </Route>
 

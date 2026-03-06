@@ -11,19 +11,25 @@ import {
     LogOut,
     Menu,
     X,
-    Percent,
-    Bell,
-    TicketPercent
+    ChevronDown,
+    ChevronRight,
+    TicketPercent,
+    Bell
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { io } from "socket.io-client";
-import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+type SubNavItem = { name: string; path: string };
+type NavItem =
+    | { name: string; path: string; icon: React.FC<{ className?: string }>; children?: never }
+    | { name: string; icon: React.FC<{ className?: string }>; children: SubNavItem[]; path?: never };
 
 export default function ManagerLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({ "Attendance & Shifts": true });
     const location = useLocation();
     const { user, logout } = useAuthStore();
     const { toast } = useToast();
@@ -52,20 +58,33 @@ export default function ManagerLayout() {
         return () => { socket.disconnect(); };
     }, [user, toast]);
 
-    const navItems = [
+    const navItems: NavItem[] = [
         { name: 'Dashboard', path: '/manager/dashboard', icon: LayoutDashboard },
         { name: 'Team Management', path: '/manager/team', icon: Users },
         { name: 'Sales & Reports', path: '/manager/reports', icon: BarChart3 },
         { name: 'Inventory Overview', path: '/manager/inventory', icon: PackageSearch },
         { name: 'Campaigns', path: '/manager/campaigns', icon: Megaphone },
-        { name: 'Promotions', path: '/manager/promotions', icon: Percent },
-        { name: 'Vouchers', path: '/manager/vouchers', icon: TicketPercent },
+        { name: 'Promotions & Vouchers', path: '/manager/vouchers', icon: TicketPercent },
         { name: 'Return Approvals', path: '/manager/returns', icon: RotateCcw },
-        { name: 'Shift Schedule', path: '/manager/shifts', icon: CalendarClock },
+        {
+            name: 'Attendance & Shifts',
+            icon: CalendarClock,
+            children: [
+                { name: 'Schedules', path: '/manager/shifts' },
+                { name: 'Timesheets', path: '/manager/timesheets' },
+            ],
+        },
         { name: 'Feedback', path: '/manager/feedback', icon: MessageSquare },
     ];
 
     const isActive = (path: string) => location.pathname === path;
+
+    const isParentActive = (children: SubNavItem[]) =>
+        children.some((child) => location.pathname === child.path);
+
+    const toggleMenu = (name: string) => {
+        setOpenMenus((prev) => ({ ...prev, [name]: !prev[name] }));
+    };
 
     return (
         <div className="flex min-h-screen bg-neutral-50">
@@ -80,7 +99,7 @@ export default function ManagerLayout() {
             {/* Sidebar */}
             <aside className={`
             fixed lg:static inset-y-0 left-0 z-40 w-64 bg-neutral-900 text-neutral-300 transition-transform duration-300 ease-in-out
-            ${isSidebarOpen ? 'tranneutral-x-0' : '-tranneutral-x-full lg:tranneutral-x-0'}
+            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
                 <div className="h-full flex flex-col">
                     {/* Brand */}
@@ -89,30 +108,77 @@ export default function ManagerLayout() {
                         <span className="font-bold text-lg text-white">FigiManager</span>
                     </div>
 
-                    {/* User Info */}
+                    {/* User Info & Profile Link */}
                     <div className="p-4 border-b border-neutral-800">
-                        <div className="flex items-center gap-3">
+                        <Link to="/manager/profile" onClick={() => setIsSidebarOpen(false)} className="group flex items-center gap-3 w-full p-2 -m-2 rounded-lg hover:bg-neutral-800 transition-colors">
                             <Avatar>
                                 <AvatarImage src={user?.avatar_url || ''} />
                                 <AvatarFallback className="bg-indigo-600 text-white">
                                     {user?.full_name?.charAt(0)}
                                 </AvatarFallback>
                             </Avatar>
-                            <div className="overflow-hidden">
-                                <p className="text-sm font-medium text-white truncate">{user?.full_name}</p>
+                            <div className="overflow-hidden flex-1 text-left">
+                                <p className="text-sm font-medium text-white truncate group-hover:text-indigo-400 transition-colors">{user?.full_name}</p>
                                 <p className="text-xs text-neutral-500 capitalize">{user?.role_code?.replace('_', ' ').toLowerCase()}</p>
                             </div>
-                        </div>
+                            <ChevronRight className="w-4 h-4 text-neutral-500 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
                     </div>
 
                     {/* Navigation */}
                     <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
                         {navItems.map((item) => {
                             const Icon = item.icon;
+
+                            // --- Parent item with sub-menu ---
+                            if (item.children) {
+                                const isExpanded = openMenus[item.name] ?? false;
+                                const parentActive = isParentActive(item.children);
+                                return (
+                                    <div key={item.name}>
+                                        {/* Accordion Toggle Button */}
+                                        <button
+                                            onClick={() => toggleMenu(item.name)}
+                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${parentActive
+                                                ? 'text-white bg-neutral-800'
+                                                : 'hover:bg-neutral-800 hover:text-white'
+                                                }`}
+                                        >
+                                            <Icon className="w-5 h-5 flex-shrink-0" />
+                                            <span className="flex-1 text-left">{item.name}</span>
+                                            {isExpanded
+                                                ? <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                                                : <ChevronRight className="w-4 h-4 flex-shrink-0" />}
+                                        </button>
+
+                                        {/* Sub-items */}
+                                        {isExpanded && (
+                                            <div className="mt-1 ml-4 pl-3 border-l border-neutral-700 space-y-1">
+                                                {item.children.map((child) => (
+                                                    <Link
+                                                        key={child.path}
+                                                        to={child.path}
+                                                        onClick={() => setIsSidebarOpen(false)}
+                                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(child.path)
+                                                            ? 'bg-indigo-600 text-white'
+                                                            : 'hover:bg-neutral-800 hover:text-white text-neutral-400'
+                                                            }`}
+                                                    >
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                                                        {child.name}
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }
+
+                            // --- Flat item ---
                             return (
                                 <Link
                                     key={item.path}
-                                    to={item.path}
+                                    to={item.path!}
                                     onClick={() => setIsSidebarOpen(false)}
                                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(item.path)
                                         ? 'bg-indigo-600 text-white'
@@ -122,21 +188,12 @@ export default function ManagerLayout() {
                                     <Icon className="w-5 h-5" />
                                     {item.name}
                                 </Link>
-                            )
+                            );
                         })}
                     </nav>
 
                     {/* Footer Actions */}
-                    <div className="p-4 border-t border-neutral-800 space-y-1">
-                        <Link to="/manager/profile">
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start text-neutral-400 hover:text-white hover:bg-neutral-800"
-                            >
-                                <Users className="w-5 h-5 mr-3" />
-                                My Profile
-                            </Button>
-                        </Link>
+                    <div className="p-4 border-t border-neutral-800">
                         <Button
                             variant="ghost"
                             className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-400/10"

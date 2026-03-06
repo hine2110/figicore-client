@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 
 import { VouchersService } from '@/services/vouchers.service';
@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const formatNumberStr = (val: string | number | undefined) => {
     if (val === undefined || val === null || val === '') return '';
@@ -55,6 +56,8 @@ const parseNumberStr = (val: string) => {
     return numericStr ? Number(numericStr) : undefined;
 };
 
+// Simplified form schema for editing. Usually type and code/name shouldn't be heavily edited or we adjust validation.
+// For vouchers, type is usually already set, but we use the same schema.
 const formSchema = z.object({
     discount_type: z.enum(['PRODUCT_PERCENTAGE', 'RANK_PERCENTAGE', 'FREE_SHIP']),
     name: z.string().optional(),
@@ -103,7 +106,8 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function VoucherCreatePage() {
+export default function VoucherEditPage() {
+    const { id } = useParams<{ id: string }>();
     const { user } = useAuthStore();
     const navigate = useNavigate();
     const { toast } = useToast();
@@ -115,10 +119,29 @@ export default function VoucherCreatePage() {
         }
     }, [user, navigate]);
 
+    const [searchParams] = useSearchParams();
+    const type = searchParams.get('type') || 'voucher'; // 'promotion' or 'voucher'
+
+    // Fetch existing data
+    const { data: voucherData, isLoading: isLoadingVoucher, isError: isErrorVoucher } = useQuery({
+        queryKey: ['voucher', id],
+        queryFn: () => VouchersService.getById(Number(id)),
+        enabled: !!id && type === 'voucher'
+    });
+
+    const { data: promoData, isLoading: isLoadingPromo, isError: isErrorPromo } = useQuery({
+        queryKey: ['promotion', id],
+        queryFn: () => PromotionsService.getById(Number(id)),
+        enabled: !!id && type === 'promotion'
+    });
+
+    const isLoading = type === 'voucher' ? isLoadingVoucher : isLoadingPromo;
+    const isError = type === 'voucher' ? isErrorVoucher : isErrorPromo;
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema) as any,
         defaultValues: {
-            discount_type: "PRODUCT_PERCENTAGE",
+            discount_type: "RANK_PERCENTAGE",
             name: "",
             code: "",
             discount_value: 0,
@@ -133,18 +156,59 @@ export default function VoucherCreatePage() {
         },
     });
 
+    // Populate form when data loads
+    useEffect(() => {
+        if (type === 'voucher' && voucherData) {
+            let dtype = voucherData.discount_type;
+            if (dtype === 'PERCENTAGE' && voucherData.code) {
+                dtype = 'RANK_PERCENTAGE'; // Code-based percentage is order voucher
+            } else if (dtype === 'PERCENTAGE' && !voucherData.code) {
+                dtype = 'PRODUCT_PERCENTAGE';
+            }
+
+            form.reset({
+                discount_type: dtype as any,
+                name: voucherData.name || "",
+                code: voucherData.code || "",
+                discount_value: voucherData.discount_value || 0,
+                start_date: voucherData.start_date ? voucherData.start_date.substring(0, 16) : "",
+                end_date: voucherData.end_date ? voucherData.end_date.substring(0, 16) : "",
+                min_order_value: voucherData.min_order_value || 0,
+                apply_rank_code: voucherData.apply_rank_code || "ALL",
+                max_quantity: voucherData.max_quantity || undefined,
+                is_public: voucherData.is_public ?? true,
+                min_price: 0,
+                max_price: undefined,
+            });
+        } else if (type === 'promotion' && promoData) {
+            form.reset({
+                discount_type: 'PRODUCT_PERCENTAGE',
+                name: promoData.name || "",
+                code: "",
+                discount_value: Number(promoData.value) || 0,
+                start_date: promoData.start_date ? promoData.start_date.substring(0, 16) : "",
+                end_date: promoData.end_date ? promoData.end_date.substring(0, 16) : "",
+                min_order_value: 0,
+                apply_rank_code: "ALL",
+                max_quantity: undefined,
+                is_public: true,
+                min_price: Number(promoData.min_apply_price) || 0,
+                max_price: promoData.max_apply_price ? Number(promoData.max_apply_price) : undefined,
+            });
+        }
+    }, [voucherData, promoData, form, type]);
+
     const watchType = form.watch('discount_type');
     const isPromo = watchType === 'PRODUCT_PERCENTAGE';
 
     const onSubmit: SubmitHandler<FormValues> = async (values) => {
         try {
             if (isPromo) {
-                // Auto-generate name if not provided
+                // If converted to or edited as a product promotion (usually shouldn't cross-convert but handle just in case)
                 let finalName = values.name;
                 if (!finalName || finalName.trim() === '') {
                     const startDateObj = new Date(values.start_date);
                     
-                    // Lấy ra chuỗi ngày tháng ở định dạng MM/DD (VD: "08/03") để dò trong từ điển
                     const dateMonthKey = format(startDateObj, 'dd/MM');
                     const holidayName = VIETNAMESE_HOLIDAYS[dateMonthKey];
 
@@ -155,7 +219,7 @@ export default function VoucherCreatePage() {
                     }
                 }
 
-                const newPromo = await PromotionsService.create({
+                await PromotionsService.update(Number(id), {
                     name: finalName,
                     type_code: 'PERCENTAGE',
                     value: values.discount_value!,
@@ -165,18 +229,10 @@ export default function VoucherCreatePage() {
                     max_apply_price: values.max_price,
                 });
 
-                if (values.min_price !== undefined) {
-                    toast({ title: "Processing...", description: "System is scanning and applying automatically..." });
-                    const maxP = values.max_price !== undefined ? values.max_price : Number.MAX_SAFE_INTEGER;
-                    const result = await PromotionsService.applyByPriceRange(newPromo.promotion_id, {
-                        minPrice: values.min_price,
-                        maxPrice: maxP
-                    });
-                    toast({ title: "Success!", description: `Created and applied to ${result.count} products.` });
-                } else {
-                    toast({ title: "Success", description: "Product Promotion created!" });
-                }
+                toast({ title: "Success", description: "Product Promotion updated!" });
                 queryClient.invalidateQueries({ queryKey: ['promotions'] });
+                queryClient.invalidateQueries({ queryKey: ['promotion', id] });
+                queryClient.invalidateQueries({ queryKey: ['voucher', id] });
                 navigate('/manager/vouchers?tab=promotions');
             } else {
                 let finalCode = values.code?.toUpperCase();
@@ -202,23 +258,38 @@ export default function VoucherCreatePage() {
                     end_date: new Date(values.end_date).toISOString(),
                 };
 
-                await VouchersService.create(payload);
-                toast({ title: "Success", description: "Voucher created successfully." });
+                await VouchersService.update(Number(id), payload);
+                toast({ title: "Success", description: "Voucher updated successfully." });
                 queryClient.invalidateQueries({ queryKey: ['vouchers'] });
-                navigate('/manager/vouchers');
+                queryClient.invalidateQueries({ queryKey: ['voucher', id] });
+                queryClient.invalidateQueries({ queryKey: ['promotions'] });
+                navigate('/manager/vouchers?tab=vouchers');
             }
         } catch (error: any) {
             console.error(error);
-            toast({ variant: "destructive", title: "Error", description: error?.response?.data?.message || "Failed to create." });
+            toast({ variant: "destructive", title: "Error", description: error?.response?.data?.message || "Failed to update." });
         }
     };
 
     if (user?.role_code !== 'MANAGER' && user?.role_code !== 'SUPER_ADMIN') return null;
 
+    if (isLoading) {
+        return (
+            <div className="max-w-3xl mx-auto space-y-6">
+                <Skeleton className="h-10 w-1/3" />
+                <Skeleton className="h-[400px] w-full" />
+            </div>
+        );
+    }
+
+    if (isError) {
+        return <div className="text-center text-red-500 py-10">Failed to load voucher data.</div>;
+    }
+
     return (
         <div className="max-w-3xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold tracking-tight">Create New Campaign</h2>
+                <h2 className="text-3xl font-bold tracking-tight">Edit Campaign</h2>
                 <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
             </div>
 
@@ -230,16 +301,16 @@ export default function VoucherCreatePage() {
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                             
-                            {/* MASTER SWITCH: DISCOUNT TYPE */}
+                            {/* MASTER SWITCH: DISCOUNT TYPE (Disabled for Edit usually to prevent complex type switching, but allowed here for flexibility if needed, or we disable it) */}
                             <FormField
                                 control={form.control}
                                 name="discount_type"
                                 render={({ field }) => (
                                     <FormItem className="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">
-                                        <FormLabel className="text-indigo-900 font-semibold">Select Campaign Type</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormLabel className="text-indigo-900 font-semibold">Campaign Type</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value} disabled>
                                             <FormControl>
-                                                <SelectTrigger className="bg-white border-indigo-200">
+                                                <SelectTrigger className="bg-white border-indigo-200 opacity-70">
                                                     <SelectValue placeholder="Select type" />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -249,6 +320,7 @@ export default function VoucherCreatePage() {
                                                 <SelectItem value="FREE_SHIP">Free Shipping Voucher</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                        <FormDescription>Type cannot be changed after creation. Please create a new one instead.</FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -354,12 +426,12 @@ export default function VoucherCreatePage() {
                                 />
                             </div>
 
-                            {/* SECTION: PRODUCT PROMOTION FIELDS */}
+                            {/* SECTION: PRODUCT PROMOTION FIELDS (Readonly mostly, but allowed to change limits if we want) */}
                             {isPromo && (
                                 <div className="space-y-4 border rounded-lg p-5 bg-slate-50">
                                     <h3 className="font-semibold text-lg">Application Range</h3>
                                     <p className="text-sm text-slate-500">
-                                        System automatically scans and applies the promotion to all products in this price range.
+                                        Price range limits for applying this promotion.
                                     </p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <FormField
@@ -376,7 +448,6 @@ export default function VoucherCreatePage() {
                                                             onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
                                                         />
                                                     </FormControl>
-                                                    <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
@@ -389,13 +460,11 @@ export default function VoucherCreatePage() {
                                                     <FormControl>
                                                         <Input 
                                                             type="text" 
-                                                            placeholder="Leave blank for no limit" 
+                                                            placeholder="No limit" 
                                                             value={formatNumberStr(field.value)}
                                                             onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
                                                         />
                                                     </FormControl>
-                                                    <FormDescription>Leave blank for no limit</FormDescription>
-                                                    <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
@@ -415,7 +484,7 @@ export default function VoucherCreatePage() {
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Customer Rank Required</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <Select onValueChange={field.onChange} value={field.value || "ALL"}>
                                                         <FormControl>
                                                             <SelectTrigger>
                                                                 <SelectValue placeholder="Any Rank" />
@@ -441,7 +510,15 @@ export default function VoucherCreatePage() {
                                                 <FormItem>
                                                     <FormLabel>Maximum Collection Limit</FormLabel>
                                                     <FormControl>
-                                                        <Input type="number" placeholder="Leave blank for unlimited" {...field} />
+                                                        <Input 
+                                                            type="number" 
+                                                            placeholder="Leave blank for unlimited" 
+                                                            value={field.value === undefined || field.value === null ? "" : field.value}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                field.onChange(val === "" ? undefined : Number(val));
+                                                            }}
+                                                        />
                                                     </FormControl>
                                                     <FormDescription>Total max claims allowed</FormDescription>
                                                     <FormMessage />
@@ -473,7 +550,7 @@ export default function VoucherCreatePage() {
 
                             <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 font-semibold h-12" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                                {isPromo ? "Create Product Promotion" : "Create Voucher"}
+                                Update Campaign
                             </Button>
                         </form>
                     </Form>
