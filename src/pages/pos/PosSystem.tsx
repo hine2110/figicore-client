@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
-import { searchProducts, createPosOrder, getCurrentSession, searchCustomer, getCategories, syncActiveOrder, getActiveOrder } from '@/services/posService';
+import { searchProducts, createPosOrder, createPosQrOrder, getCurrentSession, searchCustomer, getCategories, syncActiveOrder, getActiveOrder, cancelOrder, getOrderById } from '@/services/posService';
 import { productsService } from '@/services/products.service';
 import type { PosProduct, PosCartItem, PosProductVariant } from '@/types/pos.types';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import RegisterCustomerModal from './RegisterCustomerModal';
 import OrderDetailsModal from './OrderDetailsModal';
 import CashPaymentModal from './components/CashPaymentModal';
+import QRPaymentModal from './components/QRPaymentModal';
 import { PosProductCard } from './components/PosProductCard';
 import { PosCartItem as CartItemComponent } from './components/PosCartItem';
 import type { PosOrder } from '@/types/pos.types';
@@ -83,7 +84,9 @@ export default function StaffPOS() {
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [isCashModalOpen, setIsCashModalOpen] = useState(false);
 
-
+    // QR Payment Modal State
+    const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+    const [pendingQrOrder, setPendingQrOrder] = useState<{ orderId: number; paymentRef: string; amount: number } | null>(null);
 
     const { toast } = useToast();
     const navigate = useNavigate();
@@ -437,6 +440,42 @@ export default function StaffPOS() {
 
         if (paymentMethod === 'CASH' && !cashInfo) {
             setIsCashModalOpen(true);
+            return;
+        }
+
+        if (paymentMethod === 'QR_BANK') {
+            if (cart.length === 0) {
+                toast({ title: 'Empty Cart', description: 'Please add items to cart', variant: 'destructive' });
+                return;
+            }
+            setCheckoutLoading(true);
+            try {
+                const orderData: any = {
+                    items: cart.map(item => ({ variant_id: item.variant_id, quantity: item.quantity })),
+                    payment_method_code: 'VIETQR',
+                    user_id: selectedCustomer?.user_id || undefined,
+                    is_vat_export: isVatExport,
+                    vat_tax_number: isVatExport ? vatTaxNumber : undefined,
+                    vat_company_name: isVatExport ? vatCompanyName : undefined,
+                    vat_company_address: isVatExport ? vatCompanyAddress : undefined,
+                    vat_invoice_email: isVatExport ? vatInvoiceEmail : undefined,
+                };
+                const response = await createPosQrOrder(orderData);
+                setPendingQrOrder({
+                    orderId: response.data.order_id,
+                    paymentRef: response.data.payment_ref_code,
+                    amount: finalTotal,
+                });
+                setIsQrModalOpen(true);
+            } catch (error: any) {
+                toast({
+                    title: 'Lỗi tạo đơn QR',
+                    description: error.response?.data?.message || 'Không thể tạo đơn hàng QR.',
+                    variant: 'destructive',
+                });
+            } finally {
+                setCheckoutLoading(false);
+            }
             return;
         }
 
@@ -1094,6 +1133,39 @@ export default function StaffPOS() {
                     handleCheckout('CASH', { received, change });
                 }}
             />
+            {pendingQrOrder && (
+                <QRPaymentModal
+                    open={isQrModalOpen}
+                    onClose={() => setIsQrModalOpen(false)}
+                    totalAmount={pendingQrOrder.amount}
+                    orderId={pendingQrOrder.orderId}
+                    paymentRef={pendingQrOrder.paymentRef}
+                    onSuccess={async () => {
+                        setIsQrModalOpen(false);
+
+                        // Fetch the updated order to show receipt
+                        if (pendingQrOrder?.orderId) {
+                            try {
+                                const response = await getOrderById(pendingQrOrder.orderId);
+                                if (response.success && response.data) {
+                                    setLastCreatedOrder(response.data);
+                                    setIsReceiptModalOpen(true);
+                                }
+                            } catch (error) {
+                                console.error("Lỗi khi tải order để in hóa đơn", error);
+                            }
+                        }
+
+                        setPendingQrOrder(null);
+                        setCart([]);
+                        setSelectedCustomer(null);
+                        localStorage.removeItem('pos_cart');
+                        localStorage.removeItem('pos_selected_customer');
+                        loadProducts();
+                        toast({ title: '🎉 Thanh toán QR thành công!', description: 'Đơn hàng đã hoàn tất.' });
+                    }}
+                />
+            )}
         </div>
     );
 }
