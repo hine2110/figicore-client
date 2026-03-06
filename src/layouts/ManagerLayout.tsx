@@ -14,6 +14,8 @@ import {
     Percent,
     ChevronDown,
     ChevronRight,
+    TicketPercent,
+    Bell,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
