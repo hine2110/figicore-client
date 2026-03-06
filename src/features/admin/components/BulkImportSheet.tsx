@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { X, FileSpreadsheet, AlertCircle, CheckCircle, FileArchive } from 'lucide-react';
+import { X, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -49,12 +49,7 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
         setFile(selectedFile);
         setReport(null);
 
-        // Check if ZIP and skip parsing
-        if (selectedFile.name.endsWith('.zip') || selectedFile.type.includes('zip') || selectedFile.type.includes('compressed')) {
-            setPreviewData([]);
-            return;
-        }
-
+        // We now only accept Excel, no ZIP checks needed.
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -86,33 +81,19 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
         onDrop,
         accept: {
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-            'application/vnd.ms-excel': ['.xls'],
-            'application/zip': ['.zip'],
-            'application/x-zip-compressed': ['.zip']
+            'application/vnd.ms-excel': ['.xls']
         },
         maxFiles: 1
     });
-
-    const isZip = file?.name.endsWith('.zip');
 
     const handleUpload = async () => {
         if (!file) return;
         setIsLoading(true);
 
         try {
-            let res;
-            if (isZip) {
-                // ZIP: Direct Upload
-                const formData = new FormData();
-                formData.append('file', file);
-                res = await api.post('/users/import-zip', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
-            } else {
-                // EXCEL: Regular JSON Import
-                if (previewData.length === 0) return;
-                res = await api.post('/employees/import', previewData);
-            }
+            // EXCEL: Regular JSON Import
+            if (previewData.length === 0) return;
+            const res = await api.post('/employees/import', previewData);
 
             setReport(res.data);
             
@@ -144,9 +125,9 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
                 <SheetHeader>
                     <SheetTitle>Bulk Import Employees</SheetTitle>
                     <SheetDescription>
-                        Upload Excel (.xlsx) or ZIP file (Excel + Images).
+                        Upload Excel (.xlsx) file.
                         <br />
-                        Columns: Tên, Số điện thoại, Email, Role, Lương, Avatar File (ZIP only).
+                        Columns: Tên, Số điện thoại, Email, Chức vụ (Role), Lương (Salary).
                     </SheetDescription>
                 </SheetHeader>
 
@@ -164,9 +145,9 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
                             <div className="flex flex-col items-center gap-2">
                                 <FileSpreadsheet className="h-10 w-10 text-neutral-400" />
                                 <p className="text-sm font-medium text-neutral-600">
-                                    {isDragActive ? "Drop file here" : "Drag & drop Excel or ZIP file"}
+                                    {isDragActive ? "Drop file here" : "Drag & drop Excel file"}
                                 </p>
-                                <p className="text-xs text-neutral-400">.xlsx, .xls, .zip</p>
+                                <p className="text-xs text-neutral-400">.xlsx, .xls</p>
                             </div>
                         </div>
                     )}
@@ -176,12 +157,12 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
                         <div className="space-y-4">
                             <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                                 <div className="flex items-center gap-3">
-                                    <div className={`h-8 w-8 rounded flex items-center justify-center ${isZip ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
-                                        {isZip ? <FileArchive className="h-5 w-5" /> : <FileSpreadsheet className="h-5 w-5" />}
+                                    <div className="h-8 w-8 rounded flex items-center justify-center bg-green-100 text-green-600">
+                                        <FileSpreadsheet className="h-5 w-5" />
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium text-neutral-900">{file.name}</p>
-                                        <p className="text-xs text-neutral-500">{(file.size / 1024).toFixed(1)} KB • {isZip ? 'ZIP Archive' : `${previewData.length} rows`}</p>
+                                        <p className="text-xs text-neutral-500">{(file.size / 1024).toFixed(1)} KB • {previewData.length} rows</p>
                                     </div>
                                 </div>
                                 <Button variant="ghost" size="icon" onClick={() => { setFile(null); setPreviewData([]); }}>
@@ -189,9 +170,7 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
                                 </Button>
                             </div>
 
-                            {/* Show Table ONLY if NOT ZIP */}
-                            {!isZip && (
-                                <ScrollArea className="h-[300px] rounded-md border text-sm">
+                            <ScrollArea className="h-[300px] rounded-md border text-sm">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
@@ -213,19 +192,8 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
                                         </TableBody>
                                     </Table>
                                 </ScrollArea>
-                            )}
 
-                            {isZip && (
-                                <div className="p-4 bg-blue-50 text-blue-700 rounded-md border border-blue-200 flex gap-3 text-sm">
-                                    <AlertCircle className="w-5 h-5 shrink-0" />
-                                    <div>
-                                        <p className="font-semibold">Ready to upload ZIP archive</p>
-                                        <p>The system will extract the Excel file and map avatar images automatically. Please ensure "Avatar File" column matches filenames exactly.</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="flex justify-end gap-3">
+                            <div className="flex justify-end gap-3 mt-4">
                                 <Button variant="outline" onClick={() => { setFile(null); setPreviewData([]); }}>Cancel</Button>
                                 <Button onClick={handleUpload} disabled={isLoading}>
                                     {isLoading ? "Importing..." : "Run Import"}

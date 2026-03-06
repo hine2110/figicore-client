@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import BulkCreateUserSheet from "@/features/admin/components/BulkCreateUserSheet";
 import BulkImportSheet from "@/features/admin/components/BulkImportSheet";
-import { UserPlus, MoreHorizontal, Search, Phone, FileSpreadsheet } from "lucide-react";
+import { MoreHorizontal, Search, Phone, FileSpreadsheet } from "lucide-react";
 import { employeesService, Employee } from "@/services/employees.service";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -83,9 +83,6 @@ export default function EmployeeTab() {
             <div className="flex justify-end items-center gap-2">
                 <Button variant="outline" onClick={() => setIsImportSheetOpen(true)}>
                     <FileSpreadsheet className="w-4 h-4 mr-2" /> Import Excel
-                </Button>
-                <Button className="bg-neutral-900" onClick={() => setIsBulkOpen(true)}>
-                    <UserPlus className="w-4 h-4 mr-2" /> Add Employee
                 </Button>
             </div>
 
@@ -192,25 +189,9 @@ export default function EmployeeTab() {
                                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedId(employee.user_id); }}>
                                                     View Profile
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                                                    Edit Details
-                                                </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 {['SUPER_ADMIN', 'ADMIN'].includes(useAuthStore.getState().user?.role_code || '') && (
                                                     <>
-                                                        {/* Deactivate / Activate */}
-                                                        {employee.users.status_code !== 'BANNED' && (
-                                                            <DropdownMenuItem 
-                                                                className={employee.users.status_code === 'ACTIVE' ? "text-orange-600" : "text-green-600"}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setStatusConfirm({ id: employee.user_id, status: employee.users.status_code });
-                                                                }}
-                                                            >
-                                                                {employee.users.status_code === 'ACTIVE' ? 'Deactivate User' : 'Activate User'}
-                                                            </DropdownMenuItem>
-                                                        )}
-
                                                         {/* Ban */}
                                                         {employee.users.status_code !== 'BANNED' && (
                                                             <DropdownMenuItem 
