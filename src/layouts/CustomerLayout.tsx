@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { io } from 'socket.io-client';
+import { AIChatBox } from '@/components/customer/AIChatBox';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -188,6 +189,7 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
             </main>
 
             {/* Footer */}
+            <AIChatBox />
             <footer className="bg-gray-50 border-t border-gray-200 mt-16">
                 <div className="container mx-auto px-4 py-12">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">

@@ -5,9 +5,10 @@ import {
     LogIn,
     UserPlus
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import AuthModal from '@/components/guest/AuthModal';
 
 interface GuestLayoutProps {
     children: React.ReactNode;
@@ -16,7 +17,10 @@ interface GuestLayoutProps {
 
 export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const navItems = [
         { id: 'home', label: 'Home', icon: Home, path: '/guest/home' },
@@ -24,8 +28,39 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
         { id: 'about', label: 'About', path: '/guest/about' },
     ];
 
+    // Auto-open modal based on query params
+    useEffect(() => {
+        const authParam = searchParams.get('auth');
+        if (authParam === 'login') {
+            setAuthMode('login');
+            setIsAuthModalOpen(true);
+            // Clean up param without refreshing
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('auth');
+            setSearchParams(newParams, { replace: true });
+        } else if (authParam === 'register') {
+            setAuthMode('register');
+            setIsAuthModalOpen(true);
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('auth');
+            setSearchParams(newParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
+
     const handleNavClick = (path: string) => {
         navigate(path);
+        setMobileMenuOpen(false);
+    };
+
+    const openLogin = () => {
+        setAuthMode('login');
+        setIsAuthModalOpen(true);
+        setMobileMenuOpen(false);
+    };
+
+    const openRegister = () => {
+        setAuthMode('register');
+        setIsAuthModalOpen(true);
         setMobileMenuOpen(false);
     };
 
@@ -65,14 +100,14 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                                     variant="ghost"
                                     size="sm"
                                     className="text-gray-600 hover:text-gray-900 font-bold"
-                                    onClick={() => navigate('/guest/login')}
+                                    onClick={openLogin}
                                 >
                                     Sign In
                                 </Button>
                                 <Button
                                     size="sm"
                                     className="bg-gray-900 text-white hover:bg-black transition-colors px-5 font-bold"
-                                    onClick={() => navigate('/guest/register')}
+                                    onClick={openRegister}
                                 >
                                     Register
                                 </Button>
@@ -113,14 +148,14 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                                 <div className="mt-4 px-4 grid grid-cols-2 gap-3">
                                     <Button
                                         variant="outline"
-                                        onClick={() => handleNavClick('/guest/login')}
+                                        onClick={openLogin}
                                         className="w-full justify-center"
                                     >
                                         <LogIn className="w-4 h-4 mr-2" /> Sign In
                                     </Button>
                                     <Button
                                         className="w-full justify-center bg-gray-900 text-white"
-                                        onClick={() => handleNavClick('/guest/register')}
+                                        onClick={openRegister}
                                     >
                                         <UserPlus className="w-4 h-4 mr-2" /> Register
                                     </Button>
@@ -186,6 +221,13 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                     </div>
                 </div>
             </footer>
+
+            {/* Auth Modal */}
+            <AuthModal
+                isOpen={isAuthModalOpen}
+                initialMode={authMode}
+                onClose={() => setIsAuthModalOpen(false)}
+            />
         </div>
     );
 }

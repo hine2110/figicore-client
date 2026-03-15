@@ -318,10 +318,10 @@ export function GuestHome() {
                         Join <span className="text-neutral-900 font-medium">FigiCore</span> to access exclusive <strong>Blind Box</strong> collections, earn loyalty points, and participate in member-only auctions.
                     </p>
                     <div className="flex flex-col sm:flex-row justify-center gap-6">
-                        <Button size="lg" className="bg-neutral-900 text-white hover:bg-black rounded-none px-12 h-16 text-lg tracking-wide uppercase" onClick={() => navigate('/guest/register')}>
+                        <Button size="lg" className="bg-neutral-900 text-white hover:bg-black rounded-none px-12 h-16 text-lg tracking-wide uppercase" onClick={() => navigate('/guest/home?auth=register')}>
                             Become a Member
                         </Button>
-                        <Button size="lg" variant="outline" className="border-neutral-300 text-neutral-900 hover:bg-neutral-200 rounded-none px-12 h-16 text-lg tracking-wide uppercase" onClick={() => navigate('/guest/login')}>
+                        <Button size="lg" variant="outline" className="border-neutral-300 text-neutral-900 hover:bg-neutral-200 rounded-none px-12 h-16 text-lg tracking-wide uppercase" onClick={() => navigate('/guest/home?auth=login')}>
                             Sign In
                         </Button>
                     </div>
