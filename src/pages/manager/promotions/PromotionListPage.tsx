@@ -1,6 +1,5 @@
 
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import { Plus, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PromotionsService } from '@/services/promotions.service';
@@ -68,15 +67,15 @@ export default function PromotionListPage() {
                                             ? `${Number(promo.value)}%` 
                                             : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(promo.value))}
                                     </TableCell>
-                                    <TableCell className="text-sm">
-                                        {format(new Date(promo.start_date), 'dd/MM/yyyy')} - {format(new Date(promo.end_date), 'dd/MM/yyyy')}
+                                    <TableCell className="text-sm text-orange-700">
+                                        ⚡ {promo.start_time} – {promo.end_time}
                                     </TableCell>
                                     <TableCell>
                                         {promo.is_active 
                                             ? <Badge className="bg-green-500">Active</Badge> 
                                             : <Badge variant="secondary">Inactive</Badge>}
                                     </TableCell>
-                                    <TableCell>{promo._count?.products || 0}</TableCell>
+                                    <TableCell>{promo._count?.product_variants || 0}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
 

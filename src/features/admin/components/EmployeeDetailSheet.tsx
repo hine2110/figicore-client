@@ -6,23 +6,18 @@ import { Employee, employeesService } from "@/services/employees.service";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
-import { Button } from "@/components/ui/button";
-import ConfirmStatusDialog from "./ConfirmStatusDialog";
-import { userService } from "@/services/user.service";
-import { useAuthStore } from "@/store/useAuthStore";
 
 interface EmployeeDetailSheetProps {
     employeeId: number | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onUpdateSuccess: () => void;
+    onUpdateSuccess?: () => void;
 }
 
-export default function EmployeeDetailSheet({ employeeId, open, onOpenChange, onUpdateSuccess }: EmployeeDetailSheetProps) {
+export default function EmployeeDetailSheet({ employeeId, open, onOpenChange }: EmployeeDetailSheetProps) {
     const { toast } = useToast();
     const [employee, setEmployee] = useState<Employee | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [statusConfirm, setStatusConfirm] = useState<{ status: string } | null>(null);
 
     useEffect(() => {
         if (open && employeeId) {
@@ -163,47 +158,12 @@ export default function EmployeeDetailSheet({ employeeId, open, onOpenChange, on
                             </div>
                         </div>
 
-                        <div className="pt-6 border-t border-neutral-100 flex justify-end">
-                            {/* Only ADMIN/SUPER_ADMIN can ban/unban */}
-                            {['SUPER_ADMIN', 'ADMIN'].includes(useAuthStore.getState().user?.role_code || '') && (
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant={employee.users.status_code === 'ACTIVE' ? "destructive" : "default"}
-                                        className={employee.users.status_code === 'ACTIVE' ? "" : "bg-green-600 hover:bg-green-700"}
-                                        onClick={() => setStatusConfirm({ status: employee.users.status_code })}
-                                    >
-                                        {employee.users.status_code === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
+                        {/* Account activation/deactivation buttons have been removed as per user request */}
                     </div>
                 ) : (
                     <div className="text-center py-10 text-neutral-500">Employee not found.</div>
                 )}
             </SheetContent>
-            
-            {employee && statusConfirm && (
-                <ConfirmStatusDialog
-                    open={!!statusConfirm}
-                    onOpenChange={(open) => !open && setStatusConfirm(null)}
-                    currentStatus={statusConfirm.status}
-                    onConfirm={async () => {
-                        try {
-                            if (employeeId) {
-                                await userService.updateStatus(employeeId, statusConfirm.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE');
-                                toast({ title: "Success", description: "User status updated successfully." });
-                                onUpdateSuccess(); 
-                                fetchEmployeeDetails(employeeId); // Also refresh local sheet data to show new status!
-                            }
-                        } catch (error) {
-                            toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
-                        } finally {
-                            setStatusConfirm(null);
-                        }
-                    }}
-                />
-            )}
         </Sheet>
     );
 }

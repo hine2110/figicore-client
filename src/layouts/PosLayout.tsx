@@ -7,11 +7,11 @@ import {
     ScanBarcode,
     Users,
     Banknote,
-    User,
     CalendarDays, // Icon cho Work Schedule
     ChevronDown,
     ChevronRight,
-    ReceiptText
+    ReceiptText,
+    User
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -87,8 +87,8 @@ export default function PosLayout() {
                 <span className="font-bold text-lg text-white tracking-tight">FigiPOS</span>
             </div>
 
-            {/* 2. User Info (Code gốc của bạn có đoạn này) */}
-            <div className="p-4 border-b border-neutral-800">
+            {/* 2. User Info */}
+            <Link to="/pos/profile" className="p-4 border-b border-neutral-800 flex items-center justify-between hover:bg-neutral-900 transition-colors group cursor-pointer block">
                 <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9 border border-neutral-700">
                         <AvatarImage src={user?.avatar_url || undefined} />
@@ -101,7 +101,8 @@ export default function PosLayout() {
                         <p className="text-xs text-neutral-500 capitalize">{user?.role_code}</p>
                     </div>
                 </div>
-            </div>
+                <ChevronRight className="w-4 h-4 text-neutral-500 group-hover:text-white transition-colors" />
+            </Link>
 
             {/* 3. Navigation Links */}
             <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">

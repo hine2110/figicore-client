@@ -54,8 +54,17 @@ export default function Cart() {
 
         for (const uv of myVouchers) {
             const promo = uv.promotions;
-            // Check condition
-            if (!promo.min_order_value || totalAmount >= promo.min_order_value) {
+            const now = new Date();
+            const startDate = promo.start_date ? new Date(promo.start_date) : null;
+            const endDate = promo.end_date ? new Date(promo.end_date) : null;
+
+            // Check if voucher is within valid dates
+            const isStarted = !startDate || startDate <= now;
+            const isNotExpired = !endDate || endDate > now;
+            const isDateValid = isStarted && isNotExpired;
+
+            // Check condition AND date validity
+            if (isDateValid && (!promo.min_order_value || totalAmount >= promo.min_order_value)) {
                 if (promo.discount_type === 'FREE_SHIP') {
                     if (DEFAULT_SHIPPING_FEE > maxFreeShipAmount) {
                         maxFreeShipAmount = DEFAULT_SHIPPING_FEE;
@@ -535,8 +544,17 @@ export default function Cart() {
                                                                             return 0;
                                                                         })
                                                                         .map(mv => {
-                                                                        const isAvailableForThisOrder = !mv.promotions.min_order_value || totalAmount >= mv.promotions.min_order_value;
+                                                                        const now = new Date();
+                                                                        const startDate = mv.promotions.start_date ? new Date(mv.promotions.start_date) : null;
+                                                                        const endDate = mv.promotions.end_date ? new Date(mv.promotions.end_date) : null;
+                                                                        
+                                                                        const isStarted = !startDate || startDate <= now;
+                                                                        const isNotExpired = !endDate || endDate > now;
+                                                                        
+                                                                        const meetsMinOrder = !mv.promotions.min_order_value || totalAmount >= mv.promotions.min_order_value;
+                                                                        const isAvailableForThisOrder = meetsMinOrder && isStarted && isNotExpired;
                                                                         const isSelected = selectedDiscountCode === mv.promotions.code;
+                                                                        
                                                                         return (
                                                                             <div 
                                                                                 key={mv.id} 
@@ -561,13 +579,20 @@ export default function Cart() {
                                                                                     <div className="text-xs text-slate-400 mt-1">
                                                                                         {mv.promotions.min_order_value ? `Min order: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'No minimum condition'}
                                                                                     </div>
+                                                                                    {(!isStarted || !isNotExpired) && (
+                                                                                         <div className="text-xs text-red-500 font-medium mt-1">
+                                                                                            {!isNotExpired ? 'Expired' : `Available from ${startDate?.toLocaleDateString()}`}
+                                                                                         </div>
+                                                                                    )}
                                                                                 </div>
                                                                                 <div className="shrink-0">
                                                                                     {isSelected && (
                                                                                         <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
                                                                                     )}
                                                                                     {!isAvailableForThisOrder && (
-                                                                                        <span className="text-xs font-bold text-red-400">Not Eligible</span>
+                                                                                        <span className="text-xs font-bold text-red-400">
+                                                                                            {!meetsMinOrder ? 'Not Eligible' : (!isNotExpired ? 'Expired' : 'Upcoming')}
+                                                                                        </span>
                                                                                     )}
                                                                                 </div>
                                                                             </div>
@@ -591,8 +616,17 @@ export default function Cart() {
                                                                             return 0;
                                                                         })
                                                                         .map(mv => {
-                                                                        const isAvailableForThisOrder = !mv.promotions.min_order_value || totalAmount >= mv.promotions.min_order_value;
+                                                                        const now = new Date();
+                                                                        const startDate = mv.promotions.start_date ? new Date(mv.promotions.start_date) : null;
+                                                                        const endDate = mv.promotions.end_date ? new Date(mv.promotions.end_date) : null;
+                                                                        
+                                                                        const isStarted = !startDate || startDate <= now;
+                                                                        const isNotExpired = !endDate || endDate > now;
+                                                                        
+                                                                        const meetsMinOrder = !mv.promotions.min_order_value || totalAmount >= mv.promotions.min_order_value;
+                                                                        const isAvailableForThisOrder = meetsMinOrder && isStarted && isNotExpired;
                                                                         const isSelected = selectedFreeShipCode === mv.promotions.code;
+                                                                        
                                                                         return (
                                                                             <div 
                                                                                 key={mv.id} 
@@ -615,13 +649,20 @@ export default function Cart() {
                                                                                     <div className="text-xs text-slate-400 mt-1">
                                                                                         {mv.promotions.min_order_value ? `Min order: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'No minimum condition'}
                                                                                     </div>
+                                                                                    {(!isStarted || !isNotExpired) && (
+                                                                                         <div className="text-xs text-red-500 font-medium mt-1">
+                                                                                            {!isNotExpired ? 'Expired' : `Available from ${startDate?.toLocaleDateString()}`}
+                                                                                         </div>
+                                                                                    )}
                                                                                 </div>
                                                                                 <div className="shrink-0">
                                                                                     {isSelected && (
                                                                                         <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
                                                                                     )}
                                                                                     {!isAvailableForThisOrder && (
-                                                                                        <span className="text-xs font-bold text-red-400">Not Eligible</span>
+                                                                                        <span className="text-xs font-bold text-red-400">
+                                                                                            {!meetsMinOrder ? 'Not Eligible' : (!isNotExpired ? 'Expired' : 'Upcoming')}
+                                                                                        </span>
                                                                                     )}
                                                                                 </div>
                                                                             </div>

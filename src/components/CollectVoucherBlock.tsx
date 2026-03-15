@@ -33,7 +33,25 @@ export default function CollectVoucherBlock() {
     });
 
     if (!isAuthenticated || isLoading) return null;
-    if (!vouchers || vouchers.length === 0) return null;
+    if (!vouchers || vouchers.length === 0) {
+        return (
+            <div className="my-8">
+                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <TicketPercent className="w-5 h-5 text-orange-500" />
+                    Available Vouchers
+                </h3>
+                <Card className="border-dashed bg-slate-50">
+                    <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+                        <TicketPercent className="w-12 h-12 text-slate-300 mb-4" />
+                        <h4 className="text-lg font-medium text-slate-700">No Vouchers Available</h4>
+                        <p className="text-sm text-slate-500 mt-1 max-w-md">
+                            You have collected all available vouchers, or there are no new promotions at the moment. Please check back later!
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="my-8">
