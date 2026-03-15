@@ -111,6 +111,8 @@ export default function AdminDashboard() {
                 </Card>
             </div>
 
+            {/* Removed AI Insights block */}
+
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2 shadow-sm">

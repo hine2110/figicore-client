@@ -68,13 +68,15 @@ export default function VoucherListPage() {
 
     const getPromoStatusObj = (p: any) => {
         const now = new Date();
-        const startDate = p.start_date ? new Date(p.start_date) : new Date();
-        const endDate = p.end_date ? new Date(p.end_date) : null;
+        const h = String(now.getHours()).padStart(2, '0');
+        const mi = String(now.getMinutes()).padStart(2, '0');
+        const currentTime = `${h}:${mi}`;
 
         if (!p.is_active) return 'INACTIVE';
-        if (endDate && now > endDate) return 'EXPIRED';
-        if (startDate > now) return 'COMING_SOON';
-        return 'ACTIVE';
+        // Check if we're inside the daily time window
+        const inWindow = p.start_time && p.end_time && currentTime >= p.start_time && currentTime <= p.end_time;
+        if (inWindow) return 'ACTIVE';
+        return 'SCHEDULED';
     };
 
     const filteredVouchers = vouchers?.filter(v => {
@@ -308,7 +310,6 @@ export default function VoucherListPage() {
                                             <SelectItem value="ACTIVE">Active</SelectItem>
                                             <SelectItem value="COMING_SOON">Coming Soon</SelectItem>
                                             <SelectItem value="EXPIRED">Expired</SelectItem>
-                                            <SelectItem value="INACTIVE">Inactive</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -323,7 +324,7 @@ export default function VoucherListPage() {
                                             <TableHead>Value</TableHead>
                                             <TableHead>Duration</TableHead>
                                             <TableHead>Status</TableHead>
-                                            <TableHead>Products Applied</TableHead>
+                                            <TableHead>Variants Applied</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -355,23 +356,25 @@ export default function VoucherListPage() {
                                                             : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(promo.value))}
                                                     </TableCell>
                                                     <TableCell className="text-sm">
-                                                        {promo.start_date && promo.end_date ? (
-                                                            <>
-                                                                <div>{format(new Date(promo.start_date), 'dd/MM/yyyy HH:mm')}</div>
-                                                                <div className="text-slate-500">to {format(new Date(promo.end_date), 'dd/MM/yyyy HH:mm')}</div>
-                                                            </>
+                                                        {promo.start_time && promo.end_time ? (
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="font-semibold text-orange-700">⚡ {promo.start_time} – {promo.end_time}</span>
+                                                                {promo.is_recurring
+                                                                    ? <Badge className="w-fit text-[10px] bg-orange-100 text-orange-700 border-orange-300">🔁 Daily</Badge>
+                                                                    : <Badge className="w-fit text-[10px] bg-slate-100 text-slate-600 border-slate-300">One-time</Badge>
+                                                                }
+                                                            </div>
                                                         ) : '-'}
                                                     </TableCell>
                                                     <TableCell>
                                                         {(() => {
                                                             const status = getPromoStatusObj(promo);
                                                             if (status === 'INACTIVE') return <Badge variant="secondary">Inactive</Badge>;
-                                                            if (status === 'EXPIRED') return <Badge variant="secondary" className="bg-slate-200 text-slate-600 hover:bg-slate-300">Expired</Badge>;
-                                                            if (status === 'COMING_SOON') return <Badge className="bg-blue-500 text-white hover:bg-blue-600">Coming Soon</Badge>;
-                                                            return <Badge className="bg-green-500 hover:bg-green-600">Active</Badge>;
+                                                            if (status === 'SCHEDULED') return <Badge className="bg-blue-500 text-white hover:bg-blue-600">Scheduled</Badge>;
+                                                            return <Badge className="bg-green-500 hover:bg-green-600">Active Now</Badge>;
                                                         })()}
                                                     </TableCell>
-                                                    <TableCell>{promo._count?.products || 0}</TableCell>
+                                                    <TableCell>{promo._count?.product_variants || 0}</TableCell>
                                                     <TableCell className="text-right">
                                                         <Button 
                                                             variant="ghost" 

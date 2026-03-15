@@ -16,6 +16,7 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AccountManagement from "@/pages/admin/AccountManagement";
 import ProfileApproval from "@/pages/admin/ProfileApproval";
 import ProductManagement from "@/pages/admin/ProductManagement";
+import AdminProductDetail from "@/pages/admin/AdminProductDetail";
 import OrderOversight from "@/pages/admin/OrderOversight";
 import ProfilePage from "@/pages/common/ProfilePage";
 import AuctionManagement from "@/pages/admin/AuctionManagement";
@@ -130,6 +131,7 @@ export default function App() {
 
                             <Route path="approvals" element={<ProfileApproval />} />
                             <Route path="products" element={<ProductManagement />} />
+                            <Route path="products/:id" element={<AdminProductDetail />} />
                             <Route path="orders" element={<OrderOversight />} />
                             <Route path="auctions" element={<AuctionManagement />} />
                             <Route path="auctions/:id" element={<AdminAuctionDetail />} />

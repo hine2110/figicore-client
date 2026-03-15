@@ -41,13 +41,12 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string; 
     'off': { bg: 'bg-neutral-100', text: 'text-neutral-700', border: 'border-neutral-200', label: 'Off' },
 };
 
-export function StatusBadge({ status, size = 'md', className }: StatusBadgeProps) {
+export function StatusBadge({ status, className }: StatusBadgeProps) {
     const config = STATUS_CONFIG[status.toLowerCase()] || STATUS_CONFIG['inactive'];
 
     return (
         <Badge
             variant="outline"
-            size={size}
             className={cn(
                 config.bg,
                 config.text,

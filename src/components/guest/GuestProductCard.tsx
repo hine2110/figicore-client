@@ -13,6 +13,7 @@ interface ProductCardProps {
         rating: number;
         reviews: number;
         isNew?: boolean;
+        product_variants?: any[]; // variants including final_price, is_on_sale
     };
 }
 
@@ -25,6 +26,24 @@ export default function GuestProductCard({ product }: ProductCardProps) {
         // Simulate auth check redirect
         navigate('/guest/login');
     };
+
+    // Logic calculation to be robust using variants
+    let minVariantPrice = product.price;
+    let minFinalPrice = product.price;
+    let hasDiscount = false;
+
+    if (product.product_variants && product.product_variants.length > 0) {
+        const minVariant = product.product_variants.reduce((min: any, v: any) => {
+            if (v.final_price !== undefined) {
+                return (v.final_price < (min.final_price !== undefined ? min.final_price : min.price)) ? v : min;
+            }
+            return min;
+        }, product.product_variants[0]);
+        
+        minVariantPrice = Number(minVariant.price) || product.price;
+        minFinalPrice = Number(minVariant.final_price) || minVariantPrice;
+        hasDiscount = minVariant.is_on_sale || false;
+    }
 
     return (
         <Link to={`/guest/product/${product.id}`} className="group relative block overflow-hidden rounded-xl bg-white border border-gray-100 hover:border-blue-100 hover:shadow-lg transition-all duration-300">
@@ -39,7 +58,7 @@ export default function GuestProductCard({ product }: ProductCardProps) {
                         New
                     </span>
                 )}
-                {product.originalPrice && (
+                {hasDiscount && (
                     <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
                         Sale
                     </span>
@@ -71,9 +90,9 @@ export default function GuestProductCard({ product }: ProductCardProps) {
                 </div>
 
                 <div className="mt-3 flex items-center gap-2">
-                    <span className="text-lg font-bold text-neutral-900">${product.price.toFixed(2)}</span>
-                    {product.originalPrice && (
-                        <span className="text-sm text-neutral-400 line-through">${product.originalPrice.toFixed(2)}</span>
+                    <span className="text-lg font-bold text-neutral-900">${hasDiscount ? minFinalPrice.toFixed(2) : minVariantPrice.toFixed(2)}</span>
+                    {hasDiscount && (
+                        <span className="text-sm text-neutral-400 line-through">${minVariantPrice.toFixed(2)}</span>
                     )}
                 </div>
             </div>
