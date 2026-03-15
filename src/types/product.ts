@@ -51,6 +51,9 @@ export interface ProductVariant {
     product_preorder_configs?: ProductPreorderConfig;
     scale?: string;
     material?: string;
+    final_price?: string | number;
+    is_on_sale?: boolean;
+    discount_percentage?: number;
 }
 
 export interface ProductBlindbox {

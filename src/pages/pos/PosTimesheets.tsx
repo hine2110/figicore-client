@@ -12,8 +12,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Loader2, CalendarClock, Banknote, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, CalendarClock, Banknote, Clock, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
+
+import TimesheetCorrectionModal from "@/components/TimesheetCorrectionModal";
+
 
 export default function PosTimesheets() {
     const location = useLocation();
@@ -21,6 +24,16 @@ export default function PosTimesheets() {
     const [data, setData] = useState<MyHistoryResponse | null>(null);
     const [currentDate, setCurrentDate] = useState(new Date());
     const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
+
+    const [correctionModalOpen, setCorrectionModalOpen] = useState(false);
+    const [selectedTimesheetId, setSelectedTimesheetId] = useState<number | null>(null);
+    const [selectedShiftInfo, setSelectedShiftInfo] = useState<string>("");
+
+    const handleOpenCorrection = (timesheetId: number, dateStr: string, shiftName: string) => {
+        setSelectedTimesheetId(timesheetId);
+        setSelectedShiftInfo(`${formatDate(dateStr)} - ${shiftName}`);
+        setCorrectionModalOpen(true);
+    };
 
     useEffect(() => {
         if (location.state?.targetDate) {
@@ -173,6 +186,7 @@ export default function PosTimesheets() {
                                         <TableHead>Check Out</TableHead>
                                         <TableHead className="text-right">Real Hours</TableHead>
                                         <TableHead className="text-right">Status</TableHead>
+                                        <TableHead className="text-right">Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -213,11 +227,32 @@ export default function PosTimesheets() {
                                                         </Badge>
                                                     )}
                                                 </TableCell>
+                                                <TableCell className="text-right">
+                                                    {/* Điều kiện: Có ID & Khác PRESENT & (Đã checkout HOẶC Trạng thái là MISSING) */}
+                                                    {log.timesheet_id && log.status !== 'PRESENT' && (log.check_out_at !== null || log.status === 'MISSING') ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100 h-8 text-xs"
+                                                            onClick={() => handleOpenCorrection(log.timesheet_id as number, log.date, log.shift_name)}
+                                                        >
+                                                            <AlertTriangle className="w-3 h-3 mr-1" /> Báo lỗi
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-xs text-neutral-400 italic"></span>
+                                                    )}
+                                                </TableCell>
                                             </TableRow>
                                         );
                                     })}
                                 </TableBody>
                             </Table>
+                            <TimesheetCorrectionModal
+                                open={correctionModalOpen}
+                                onOpenChange={setCorrectionModalOpen}
+                                timesheetId={selectedTimesheetId}
+                                shiftInfo={selectedShiftInfo}
+                            />
                         </div>
                     ))}
                 </CardContent>

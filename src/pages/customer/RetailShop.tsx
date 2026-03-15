@@ -1,5 +1,6 @@
 import CustomerLayout from '@/layouts/CustomerLayout';
 import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 
 import {
     Package,
@@ -9,9 +10,12 @@ import {
     ShoppingCart,
     Eye,
     Search,
-    ArrowUpDown
+    ArrowUpDown,
+    Camera,
+    Sparkles,
+    X
 } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { productsService } from '@/services/products.service';
 import { cn } from '@/lib/utils';
@@ -31,9 +35,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { BlindBoxPromoSection } from '@/components/customer/BlindBoxPromoSection';
 import CollectVoucherBlock from '@/components/CollectVoucherBlock';
+import { ImageUploadModal } from '@/components/customer/ImageUploadModal';
 
 export default function RetailShop() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Data States
@@ -41,6 +47,9 @@ export default function RetailShop() {
     const [loading, setLoading] = useState(true);
     const [brands, setBrands] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [isVisualSearch, setIsVisualSearch] = useState(false);
+    const [isExactMatch, setIsExactMatch] = useState(true);
 
     // Filter States
     const [searchText, setSearchText] = useState(searchParams.get('search') || '');
@@ -79,6 +88,8 @@ export default function RetailShop() {
 
     // Sync Filters to URL (Debounced)
     useEffect(() => {
+        if (isVisualSearch) return;
+
         const timeout = setTimeout(() => {
             const params = new URLSearchParams(searchParams);
 
@@ -94,18 +105,26 @@ export default function RetailShop() {
             if (sortBy !== 'created_at_desc') params.set('sort', sortBy);
             else params.delete('sort');
 
-            // Removed type_code handling from params since it's hardcoded for this page
-
             setSearchParams(params, { replace: true });
         }, 600);
         return () => clearTimeout(timeout);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchText, priceRange, sortBy]);
+    }, [searchText, priceRange, sortBy, isVisualSearch]);
 
     // Fetch Products
     useEffect(() => {
         const fetchProducts = async () => {
+            // Check if we have visual search results from navigation state
+            if (location.state?.isVisualSearch && location.state?.visualSearchData) {
+                setLoading(true);
+                setProducts(location.state.visualSearchData);
+                setIsVisualSearch(true);
+                setIsExactMatch(location.state.isExactMatch ?? true); // Update isExactMatch from location state
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
+            setIsVisualSearch(false);
             try {
                 const params: any = {
                     limit: 1000,
@@ -117,6 +136,7 @@ export default function RetailShop() {
                     type_code: selectedType, // Hardcoded
                     min_price: searchParams.get('min_price') ? Number(searchParams.get('min_price')) : undefined,
                     max_price: searchParams.get('max_price') ? Number(searchParams.get('max_price')) : undefined,
+                    color: searchParams.get('color') || undefined,
                 };
 
                 const res = await productsService.getProducts(params);
@@ -130,7 +150,7 @@ export default function RetailShop() {
         };
 
         fetchProducts();
-    }, [searchParams]);
+    }, [searchParams, location.state]);
 
     // Update Filter Helper
     const updateFilter = (key: string, value: string) => {
@@ -279,8 +299,15 @@ export default function RetailShop() {
                                         placeholder="Search collection..."
                                         value={searchText}
                                         onChange={(e) => setSearchText(e.target.value)}
-                                        className="w-full h-11 pl-11 pr-4 rounded-2xl bg-slate-100/50 border-0 focus:ring-2 focus:ring-blue-500/20 text-sm transition-all hover:bg-white/80 focus:bg-white"
+                                        className="w-full h-11 pl-11 pr-12 rounded-2xl bg-slate-100/50 border-0 focus:ring-2 focus:ring-blue-500/20 text-sm transition-all hover:bg-white/80 focus:bg-white"
                                     />
+                                    <button 
+                                        onClick={() => setIsImageModalOpen(true)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-200/50 text-slate-400 hover:text-indigo-500 transition-all"
+                                        title="Tìm kiếm bằng hình ảnh"
+                                    >
+                                        <Camera className="w-4 h-4" />
+                                    </button>
                                 </div>
 
                                 {/* Filters Trigger */}
@@ -397,6 +424,44 @@ export default function RetailShop() {
 
                 {/* --- PRODUCT GRID (Glass Cards) --- */}
                 <div className="container mx-auto px-4 relative z-10 max-w-7xl pt-4">
+                    {isVisualSearch && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-8 p-6 rounded-[2rem] bg-indigo-600 shadow-[0_20px_40px_rgba(79,70,229,0.15)] flex flex-col md:flex-row items-center justify-between gap-4 border border-indigo-400/20"
+                        >
+                            <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-white">
+                    <h3 className="text-lg font-bold leading-tight">
+                      {isExactMatch ? 'Kết quả tìm kiếm bằng hình ảnh' : 'Gợi ý sản phẩm tương tự'}
+                    </h3>
+                    <p className="text-sm text-indigo-100 opacity-90">
+                      {isExactMatch 
+                        ? 'Dựa trên hình ảnh bạn đã tải lên hệ thống'
+                        : 'Chúng tôi không tìm thấy mẫu chính xác, nhưng đây là những sản phẩm cùng dòng/hãng'
+                      }
+                    </p>
+                  </div>
+                </div>
+                            </div>
+                            <Button 
+                                onClick={() => {
+                                    navigate(location.pathname, { replace: true, state: {} });
+                                    setIsVisualSearch(false);
+                                }}
+                                variant="ghost" 
+                                className="h-11 px-6 rounded-xl bg-white/10 hover:bg-white/20 text-white border-0 transition-all font-medium"
+                            >
+                                <X className="w-4 h-4 mr-2" />
+                                Thoát chế độ tìm kiếm
+                            </Button>
+                        </motion.div>
+                    )}
+
                     {loading ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                             {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
@@ -572,6 +637,10 @@ export default function RetailShop() {
                     )}
                 </div>
             </div>
+            <ImageUploadModal 
+                isOpen={isImageModalOpen} 
+                onClose={() => setIsImageModalOpen(false)} 
+            />
         </CustomerLayout>
     );
 }

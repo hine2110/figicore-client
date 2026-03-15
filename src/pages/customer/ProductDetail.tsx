@@ -16,7 +16,7 @@ import {
 import { productsService } from '@/services/products.service';
 import { Separator } from '@/components/ui/separator';
 import { Product, ProductVariant } from '@/types/product';
-import { cn, calculateFinalPrice } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useCartStore } from '@/store/useCartStore';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -196,23 +196,17 @@ export default function ProductDetail() {
 
 
     if (product.type_code === 'RETAIL') {
-        let price = 0;
-        if (selectedVariant) {
-            price = Number(selectedVariant.price);
-        } else if (product.product_variants?.[0]) {
-            price = Number(product.product_variants[0].price);
-        }
+        const activeVariant = selectedVariant || product.product_variants?.[0];
+        const price = Number(activeVariant?.price || 0);
+        const finalPrice = activeVariant?.final_price !== undefined ? Number(activeVariant.final_price) : price;
+        const hasDiscount = activeVariant?.is_on_sale;
 
-        const promoDetails = product.product_promotions;
-        const finalPrice = calculateFinalPrice(price, promoDetails);
-        const hasDiscount = finalPrice < price;
-
-        if (hasDiscount) {
+        if (hasDiscount && finalPrice < price) {
             displayPrice = (
                 <div className="flex items-baseline gap-2">
                     <span className="text-red-600">{formatPrice(finalPrice)}</span>
                     <Badge variant="destructive" className="ml-2 text-sm">
-                        {promoDetails?.type_code === 'PERCENTAGE' ? `-${Number(promoDetails.value)}%` : 'SALE'}
+                        {activeVariant?.discount_percentage ? `-${activeVariant.discount_percentage}%` : 'SALE'}
                     </Badge>
                 </div>
             );

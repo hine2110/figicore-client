@@ -24,6 +24,10 @@ export default function ActivationPage() {
     const [uploading, setUploading] = useState(false);
     const [showTemp, setShowTemp] = useState(false);
     const [showNew, setShowNew] = useState(false);
+    
+    // Real-time validation states
+    const [passwordError, setPasswordError] = useState("");
+    const [confirmError, setConfirmError] = useState("");
 
     useEffect(() => {
         if (!token) {
@@ -67,14 +71,19 @@ export default function ActivationPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (newPassword.length < 6) {
-            toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" });
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            setPasswordError("Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.");
             return;
+        } else {
+            setPasswordError("");
         }
 
         if (newPassword !== confirmPassword) {
-            toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
+            setConfirmError("Passwords do not match.");
             return;
+        } else {
+            setConfirmError("");
         }
 
         setLoading(true);
@@ -145,9 +154,23 @@ export default function ActivationPage() {
                                     id="new-pass"
                                     type={showNew ? "text" : "password"}
                                     value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    placeholder="Min. 6 characters"
+                                    onChange={(e) => {
+                                        setNewPassword(e.target.value);
+                                        const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+                                        if (e.target.value && !regex.test(e.target.value)) {
+                                            setPasswordError("Needs 8+ chars, uppercase, lowercase, number, & special char.");
+                                        } else {
+                                            setPasswordError("");
+                                        }
+                                        if (confirmPassword && e.target.value !== confirmPassword) {
+                                            setConfirmError("Passwords do not match.");
+                                        } else if (confirmPassword) {
+                                            setConfirmError("");
+                                        }
+                                    }}
+                                    placeholder="Min. 8 chars, 1 uppercase, 1 number, 1 special char"
                                     required
+                                    className={passwordError ? "border-red-500 focus-visible:ring-red-500" : ""}
                                 />
                                 <Button
                                     type="button"
@@ -159,6 +182,7 @@ export default function ActivationPage() {
                                     {showNew ? <EyeOff className="h-4 w-4 text-neutral-500" /> : <Eye className="h-4 w-4 text-neutral-500" />}
                                 </Button>
                             </div>
+                            {passwordError && <p className="text-xs text-red-500 mt-1">{passwordError}</p>}
                         </div>
 
                         <div className="space-y-2">
@@ -167,10 +191,19 @@ export default function ActivationPage() {
                                 id="confirm-pass"
                                 type="password"
                                 value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                onChange={(e) => {
+                                    setConfirmPassword(e.target.value);
+                                    if (e.target.value && e.target.value !== newPassword) {
+                                        setConfirmError("Passwords do not match.");
+                                    } else {
+                                        setConfirmError("");
+                                    }
+                                }}
                                 placeholder="Re-enter new password"
                                 required
+                                className={confirmError ? "border-red-500 focus-visible:ring-red-500" : ""}
                             />
+                            {confirmError && <p className="text-xs text-red-500 mt-1">{confirmError}</p>}
                         </div>
 
                         <div className="space-y-2">

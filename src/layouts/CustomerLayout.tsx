@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { io } from 'socket.io-client';
 import { NotificationBell } from './CustomerLayout/components/NotificationBell';
+import { AIChatBox } from '@/components/customer/AIChatBox';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -123,7 +124,7 @@ export default function CustomerLayout({ children, activePage = 'home', hideFoot
                                         Wallet
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator className={darkNav ? 'bg-white/5' : ''} />
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                         onClick={() => {
                                             import('@/store/useAuthStore').then(({ useAuthStore }) => {
                                                 useAuthStore.getState().logout();
@@ -177,50 +178,52 @@ export default function CustomerLayout({ children, activePage = 'home', hideFoot
             </main>
 
             {/* Footer */}
+            <AIChatBox />
             {!hideFooter && (
                 <footer className="bg-gray-50 border-t border-gray-200 mt-16">
-                <div className="container mx-auto px-4 py-12">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                        <div>
-                            <div className="font-semibold text-lg mb-4">FigiCore</div>
-                            <p className="text-sm text-gray-600">
-                                Your trusted platform for collectible figures, art toys, and exclusive merchandise.
-                            </p>
+                    <div className="container mx-auto px-4 py-12">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                            <div>
+                                <div className="font-semibold text-lg mb-4">FigiCore</div>
+                                <p className="text-sm text-gray-600">
+                                    Your trusted platform for collectible figures, art toys, and exclusive merchandise.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className="font-medium mb-4">Shop</h3>
+                                <ul className="space-y-2 text-sm text-gray-600">
+                                    <li>All Products</li>
+                                    <li>Blind Box</li>
+                                    <li>Pre-Orders</li>
+                                    <li>Auctions</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 className="font-medium mb-4">Support</h3>
+                                <ul className="space-y-2 text-sm text-gray-600">
+                                    <li>Help Center</li>
+                                    <li>Shipping Info</li>
+                                    <li>Returns</li>
+                                    <li>Contact Us</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 className="font-medium mb-4">Account</h3>
+                                <ul className="space-y-2 text-sm text-gray-600">
+                                    <li onClick={() => navigate('/customer/orders')} className="cursor-pointer">My Orders</li>
+                                    <li onClick={() => navigate('/customer/cart')} className="cursor-pointer">Wishlist</li>
+                                    <li onClick={() => navigate('/customer/wallet')} className="cursor-pointer">Wallet</li>
+                                    <li>Settings</li>
+                                </ul>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="font-medium mb-4">Shop</h3>
-                            <ul className="space-y-2 text-sm text-gray-600">
-                                <li>All Products</li>
-                                <li>Blind Box</li>
-                                <li>Pre-Orders</li>
-                                <li>Auctions</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 className="font-medium mb-4">Support</h3>
-                            <ul className="space-y-2 text-sm text-gray-600">
-                                <li>Help Center</li>
-                                <li>Shipping Info</li>
-                                <li>Returns</li>
-                                <li>Contact Us</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 className="font-medium mb-4">Account</h3>
-                            <ul className="space-y-2 text-sm text-gray-600">
-                                <li onClick={() => navigate('/customer/orders')} className="cursor-pointer">My Orders</li>
-                                <li onClick={() => navigate('/customer/cart')} className="cursor-pointer">Wishlist</li>
-                                <li onClick={() => navigate('/customer/wallet')} className="cursor-pointer">Wallet</li>
-                                <li>Settings</li>
-                            </ul>
+                        <div className="border-t border-gray-200 mt-8 pt-8 text-center text-sm text-gray-600">
+                            © 2026 FigiCore. All rights reserved.
                         </div>
                     </div>
-                    <div className="border-t border-gray-200 mt-8 pt-8 text-center text-sm text-gray-600">
-                        © 2026 FigiCore. All rights reserved.
-                    </div>
-                </div>
-            </footer>
+                </footer>
             )}
         </div>
     );
 }
+
