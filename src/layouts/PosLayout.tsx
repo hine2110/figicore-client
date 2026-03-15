@@ -9,7 +9,9 @@ import {
     Banknote,
     CalendarDays, // Icon cho Work Schedule
     ChevronDown,
-    ChevronRight
+    ChevronRight,
+    ReceiptText,
+    User
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +65,13 @@ export default function PosLayout() {
             description: 'Open/Close Shift'
         },
         // Work Schedule được xử lý riêng bên dưới
+        {
+            name: 'My Profile',
+            path: '/pos/profile',
+            icon: User,
+            description: 'Account Settings'
+        },
+        { name: 'My Payroll', path: '/pos/my-payroll', icon: ReceiptText, description: 'Salary & Payslips' },
     ];
 
     const isActive = (path: string) => location.pathname === path;
@@ -159,6 +168,7 @@ export default function PosLayout() {
                         >
                             My Timesheets
                         </Link>
+
                     </CollapsibleContent>
                 </Collapsible>
             </nav>

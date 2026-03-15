@@ -17,6 +17,8 @@ import FaceCheckInModal from '@/components/FaceCheckInModal';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import LeaveRequestModal from '@/components/LeaveRequestModal';
+import { CalendarDays } from 'lucide-react';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -59,6 +61,7 @@ export default function WarehouseSchedule() {
     const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
     const [summary, setSummary] = useState<ScheduleSummary | null>(null);
     const [loading, setLoading] = useState(false);
+    const [leaveModalOpen, setLeaveModalOpen] = useState(false);
 
     // Check-in State
     const [isStation, setIsStation] = useState(false);
@@ -121,13 +124,15 @@ export default function WarehouseSchedule() {
 
         const now = currentTime;
 
-        // Yêu cầu của bạn: CHỈ chặn khi check-in > end + 15 phút.
-        // Không chặn việc check-in sớm.
+        // Giới hạn mở: Trước giờ bắt đầu ca 15 phút
+        const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
+
+        // Giới hạn đóng: Sau giờ kết thúc ca 15 phút
         const windowEnd = new Date(end.getTime() + 15 * 60 * 1000);
 
-        return now <= windowEnd;
+        // Nút bấm chỉ được kích hoạt (true) khi thời gian hiện tại nằm giữa 2 mốc này
+        return now >= windowStart && now <= windowEnd;
     };
-
     const handleCheckInClick = (type: 'in' | 'out') => {
         setActiveCheckInType(type);
         setCheckInModalOpen(true);
@@ -218,10 +223,19 @@ export default function WarehouseSchedule() {
 
     const getTimeFromIso = (isoString?: string | null) => {
         if (!isoString) return '--:--';
-        const match = isoString.match(/T?(\d{2}:\d{2})/);
-        return match ? match[1] : '--:--';
-    };
+        try {
+            // Đọc chuỗi ISO và tự động cộng múi giờ địa phương (GMT+7)
+            const dateObj = new Date(isoString);
 
+            const hours = String(dateObj.getHours()).padStart(2, '0');
+            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+
+            return `${hours}:${minutes}`;
+        } catch (e) {
+            console.error("Invalid ISO format", e);
+            return '--:--';
+        }
+    };
     const renderCountdown = (date: string, shiftStart: string) => {
         if (!currentTime || !date) return null;
 
@@ -302,6 +316,14 @@ export default function WarehouseSchedule() {
                     <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight className="w-4 h-4" /></Button>
                     <Button variant="outline" className="ml-2 gap-2" onClick={fetchSchedules}>
                         <Filter className="w-4 h-4" /> Refresh
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100"
+                        onClick={() => setLeaveModalOpen(true)}
+                    >
+                        <CalendarDays className="w-4 h-4 mr-2" />
+                        Leave Request
                     </Button>
                 </div>
             </div>
@@ -463,6 +485,9 @@ export default function WarehouseSchedule() {
                 checkInType={activeCheckInType}
                 onSuccess={handleCheckInSuccess}
             />
+            <LeaveRequestModal
+                open={leaveModalOpen}
+                onOpenChange={setLeaveModalOpen} />
         </div>
     );
 }
