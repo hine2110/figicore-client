@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Users, History, Gavel, Clock, RefreshCcw, AlertTriangle, Send, UserX, RotateCcw } from "lucide-react";
+import { ArrowLeft, Users, History, Gavel, Clock, RefreshCcw, AlertTriangle, Send, UserX, RotateCcw, Video } from "lucide-react";
 import { format } from "date-fns";
 import { io, Socket } from "socket.io-client";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -180,15 +180,26 @@ export default function AdminAuctionDetail() {
                 </div>
                 <div className="flex items-center gap-3">
                     {isLive && (
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={handleForceEnd}
-                            disabled={isForceEnding}
-                            className="bg-rose-600 hover:bg-rose-700 shadow-[0_0_15px_rgba(225,29,72,0.4)]"
-                        >
-                            {isForceEnding ? 'TERMINATING...' : 'FORCE END AUCTION'}
-                        </Button>
+                        <>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/admin/auctions/${id}/live`)}
+                                className="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] font-bold tracking-widest uppercase transition-all flex items-center gap-2"
+                            >
+                                <Video className="w-4 h-4" />
+                                START LIVESTREAM
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={handleForceEnd}
+                                disabled={isForceEnding}
+                                className="bg-rose-600 hover:bg-rose-700 shadow-[0_0_15px_rgba(225,29,72,0.4)]"
+                            >
+                                {isForceEnding ? 'TERMINATING...' : 'FORCE END AUCTION'}
+                            </Button>
+                        </>
                     )}
                     {auction.status_code === 'COMPLETED' && auction.auction_participants?.some((p: any) => p.status === 'WINNER') && (
                         <>

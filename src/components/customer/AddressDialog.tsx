@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { addressService, Province, District, Ward, Address } from '@/services/address.service';
 import { Loader2 } from 'lucide-react';
 import { User } from '@/types/auth.types';
 import { useToast } from "@/components/ui/use-toast";
+import { SearchableSelect } from '@/components/common/SearchableSelect';
 
 export interface AddressDialogProps {
     open: boolean;
@@ -241,71 +241,45 @@ export default function AddressDialog({ open, onOpenChange, onSuccess, onSelect,
                             <Input
                                 required placeholder="e.g. 0987654321"
                                 value={formData.recipient_phone}
-                                onChange={e => setFormData({ ...formData, recipient_phone: e.target.value })}
+                                onChange={e => setFormData({ ...formData, recipient_phone: e.target.value.replace(/[^0-9]/g, '') })}
+                                maxLength={11}
                             />
                         </div>
                     </div>
 
                     <div className="space-y-2">
                         <Label>Province / City</Label>
-                        <Select
-                            value={formData.province_id ? String(formData.province_id) : undefined}
-                            onValueChange={handleProvinceChange}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Province" />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
-                                {provinces.map(p => (
-                                    <SelectItem key={p.ProvinceID} value={String(p.ProvinceID)}>
-                                        {p.ProvinceName}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                            options={provinces.map(p => ({ value: p.ProvinceID, label: p.ProvinceName }))}
+                            value={formData.province_id}
+                            onChange={handleProvinceChange}
+                            placeholder="Search Province..."
+                        />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label>District</Label>
-                            <Select
-                                value={formData.district_id ? String(formData.district_id) : undefined}
-                                onValueChange={handleDistrictChange}
+                            <SearchableSelect
+                                options={districts.map(d => ({ value: d.DistrictID, label: d.DistrictName }))}
+                                value={formData.district_id}
+                                onChange={handleDistrictChange}
+                                placeholder="Search District..."
                                 disabled={!formData.province_id || loading}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select District" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[300px]">
-                                    {districts.map(d => (
-                                        <SelectItem key={d.DistrictID} value={String(d.DistrictID)}>
-                                            {d.DistrictName}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label>Ward</Label>
-                            <Select
-                                value={formData.ward_code || undefined}
-                                onValueChange={(val) => {
+                            <SearchableSelect
+                                options={wards.map(w => ({ value: w.WardCode, label: w.WardName }))}
+                                value={formData.ward_code}
+                                onChange={(val) => {
                                     const ward = wards.find(w => w.WardCode === val);
                                     setFormData({ ...formData, ward_code: val, ward_name: ward?.WardName || '' });
                                 }}
+                                placeholder="Search Ward..."
                                 disabled={!formData.district_id || loading}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Ward" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[300px]">
-                                    {wards.map(w => (
-                                        <SelectItem key={w.WardCode} value={w.WardCode}>
-                                            {w.WardName}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            />
                         </div>
                     </div>
 

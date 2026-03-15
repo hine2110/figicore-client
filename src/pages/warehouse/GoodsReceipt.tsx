@@ -20,7 +20,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+// @ts-ignore
+import Barcode from 'react-barcode';
+import { SmartCreatableSelect } from "@/components/common/SmartCreatableSelect";
 import { InboundHistory } from "./InboundHistory";
+
+const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
 interface ReceiptItem {
     variant_id: number;
@@ -29,6 +35,28 @@ interface ReceiptItem {
     quantity_good: number;
     quantity_defect: number;
 }
+
+const StrictNumericInput = ({ value, onChange, className, placeholder }: { value: any, onChange: (val: string) => void, className?: string, placeholder?: string }) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value.replace(/[^0-9]/g, '');
+        onChange(val);
+    };
+
+    return (
+        <Input
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={value ?? ""}
+            onChange={handleChange}
+            className={className}
+            placeholder={placeholder}
+            onKeyDown={(e) => {
+                if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+            }}
+        />
+    );
+};
 
 export default function GoodsReceipt() {
     const { toast } = useToast();
@@ -40,6 +68,9 @@ export default function GoodsReceipt() {
     const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([]);
     const [note, setNote] = useState("");
     const [loading, setLoading] = useState(false);
+    const [scannerMode, setScannerMode] = useState(false); // NEW: Scanner Mode
+    const [autoPrint, setAutoPrint] = useState(false);     // NEW: Auto Print Toggle
+    const [scannerInput, setScannerInput] = useState("");  // NEW: Dedicated Scanner Input
 
     // Quick Create Modal State
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -69,7 +100,14 @@ export default function GoodsReceipt() {
                 }
 
                 const res = await productsService.getProducts(payload);
-                setSearchResults(Array.isArray(res) ? res : (res as any).data || []);
+                const allProducts = Array.isArray(res) ? res : (res as any).data || [];
+                
+                // FILTER: Only RETAIL and PREORDER
+                const filtered = allProducts.filter((p: any) => 
+                    p.type_code === 'RETAIL' || p.type_code === 'PREORDER'
+                );
+                
+                setSearchResults(filtered);
             } catch (err) {
                 console.error(err);
             }
@@ -141,6 +179,43 @@ export default function GoodsReceipt() {
         }
     };
 
+    // NEW: Handle Scanner Scan
+    const handleScannerSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const sku = scannerInput.trim().toUpperCase();
+        if (!sku) return;
+
+        const itemIndex = receiptItems.findIndex(i => i.sku.toUpperCase() === sku);
+        if (itemIndex > -1) {
+            const newItems = [...receiptItems];
+            newItems[itemIndex].quantity_good += 1;
+            setReceiptItems(newItems);
+            toast({ title: "Product Found", description: `+1 added to ${newItems[itemIndex].option_name}`, className: "bg-green-600 text-white" });
+        } else {
+            toast({ title: "SKU Not Found", description: `SKU ${sku} does not exist in this product.`, variant: "destructive" });
+        }
+        setScannerInput("");
+    };
+
+    // NEW: Handle Brand Creation
+    const handleCreateBrand = async (name: string) => {
+        try {
+            const res = await optionsService.createBrand(name);
+            const newBrand = (res as any).data || res;
+            if (newBrand && newBrand.brand_id) {
+                // Update local brands list so it shows in main filters too
+                setBrands(prev => [...prev, newBrand]);
+                toast({ title: "Brand Created", description: `"${name}" has been added.`, className: "bg-green-600 text-white" });
+                return newBrand.brand_id;
+            }
+            return null;
+        } catch (error) {
+            console.error("Brand creation failed:", error);
+            toast({ title: "Creation Failed", description: "Could not create new brand.", variant: "destructive" });
+            return null;
+        }
+    };
+
     const handleCommit = async () => {
         const validItems = receiptItems.filter(i => i.quantity_good > 0 || i.quantity_defect > 0);
         if (validItems.length === 0) {
@@ -159,6 +234,21 @@ export default function GoodsReceipt() {
                 }))
             });
             toast({ title: "Import Successful", description: "Inventory has been updated successfully.", className: "bg-green-600 text-white" });
+            
+            // Handle Auto Print if enabled
+            if (autoPrint) {
+                // Wait for DOM to update with the items in print area
+                setTimeout(() => {
+                    const printContent = document.getElementById('barcode-print-area');
+                    if (printContent && printContent.innerHTML.trim() !== "") {
+                        window.print();
+                    } else {
+                        toast({ title: "No Labels", description: "No items with quantity to print labels for.", variant: "destructive" });
+                    }
+                }, 500);
+            }
+
+            // setSelectedProduct(null); - Keep these if needed, or remove the line if unused
             setSelectedProduct(null);
             setReceiptItems([]);
             setNote("");
@@ -175,6 +265,78 @@ export default function GoodsReceipt() {
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] p-6 lg:p-10 font-sans text-neutral-900 transition-all">
+            <style>{`
+                @media print {
+                    body * { visibility: hidden; }
+                    #barcode-print-area, #barcode-print-area * { visibility: visible; }
+                    #barcode-print-area {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        display: flex !important;
+                        flex-wrap: wrap;
+                        align-content: flex-start;
+                        padding: 0;
+                    }
+                    .sticker {
+                        page-break-inside: avoid;
+                        width: 50mm; 
+                        height: 30mm;
+                        border: 1px dashed #ddd;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 2mm 1mm;
+                        box-sizing: border-box;
+                        margin: 0;
+                        overflow: hidden;
+                    }
+                    .sticker svg {
+                        max-width: 100% !important;
+                        height: auto !important;
+                        max-height: 18mm !important;
+                        width: auto !important;
+                    }
+                    @page { margin: 0; size: auto; }
+                }
+            `}</style>
+
+            <div id="barcode-print-area" className="hidden">
+                {receiptItems.filter(i => i.quantity_good > 0).flatMap((item: any) => {
+                    return Array(item.quantity_good).fill(0).map((_, idx) => (
+                        <div key={`${item.variant_id}-${idx}`} className="sticker">
+                            <div className="text-[9px] font-bold uppercase truncate w-full text-center leading-none">
+                                {selectedProduct?.name?.substring(0, 20)}
+                            </div>
+                            <div className="text-[8px] text-neutral-500 truncate w-full text-center leading-none mb-1">
+                                {item.option_name}
+                            </div>
+                            <div className="w-full flex justify-center items-center flex-1">
+                                <Barcode
+                                    value={item.sku || "UNKNOWN"}
+                                    format="CODE128"
+                                    width={1.2}
+                                    height={40}
+                                    displayValue={false}
+                                    margin={0}
+                                    background="transparent"
+                                />
+                            </div>
+                            <div className="w-full flex justify-between items-end mt-1 px-1">
+                                <span className="text-[7px] font-mono text-neutral-600 leading-none truncate max-w-[60%]">
+                                    {item.sku}
+                                </span>
+                                <span className="text-[10px] font-bold leading-none">
+                                    {formatPrice(0)} {/* Actual price not available in ReceiptItem yet, might need to add it */}
+                                </span>
+                            </div>
+                        </div>
+                    ));
+                })}
+            </div>
+
             <div className="max-w-7xl mx-auto space-y-8">
 
                 <Tabs defaultValue="create" className="space-y-8">
@@ -324,7 +486,19 @@ export default function GoodsReceipt() {
                                 <Card className="rounded-3xl border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] overflow-hidden bg-white flex-1 flex flex-col h-[600px]">
                                     {/* Card Header */}
                                     <div className="px-6 py-5 border-b border-neutral-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                                        <h3 className="text-lg font-semibold text-neutral-900">Receiving Matrix</h3>
+                                        <div className="flex items-center gap-4">
+                                            <h3 className="text-lg font-semibold text-neutral-900">Receiving Matrix</h3>
+                                            <div className="flex items-center gap-2 bg-neutral-100 p-1 rounded-xl">
+                                                <Button 
+                                                    variant={scannerMode ? "secondary" : "ghost"} 
+                                                    size="sm" 
+                                                    className={cn("h-8 rounded-lg text-[10px] font-bold uppercase tracking-wider", scannerMode && "bg-blue-600 text-white hover:bg-blue-700")}
+                                                    onClick={() => setScannerMode(!scannerMode)}
+                                                >
+                                                    Scanner: {scannerMode ? "ON" : "OFF"}
+                                                </Button>
+                                            </div>
+                                        </div>
                                         <div className="bg-neutral-100 rounded-full px-4 py-1.5 flex items-center gap-2">
                                             <span className="text-xs uppercase font-bold text-neutral-400 tracking-wider">Total Units</span>
                                             <span className="text-sm font-bold text-neutral-900 tabular-nums">
@@ -332,6 +506,27 @@ export default function GoodsReceipt() {
                                             </span>
                                         </div>
                                     </div>
+
+                                    {/* Scanner Toolbar */}
+                                    {scannerMode && selectedProduct && (
+                                        <div className="px-6 py-3 bg-blue-50/50 border-b border-blue-100 animate-in slide-in-from-top-2 duration-300">
+                                            <form onSubmit={handleScannerSubmit} className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                                    <Search className="w-4 h-4 text-blue-600" />
+                                                </div>
+                                                <Input 
+                                                    placeholder="Scan SKU here..." 
+                                                    value={scannerInput}
+                                                    onChange={e => setScannerInput(e.target.value)}
+                                                    autoFocus
+                                                    className="h-10 border-blue-200 bg-white shadow-sm focus:ring-blue-500 rounded-xl font-mono"
+                                                />
+                                                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-tighter whitespace-nowrap">
+                                                    Press Enter to add +1
+                                                </div>
+                                            </form>
+                                        </div>
+                                    )}
 
                                     {/* Table Container */}
                                     <div className="flex-1 overflow-auto">
@@ -354,26 +549,22 @@ export default function GoodsReceipt() {
                                                                     <span className="font-mono text-[10px] text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded w-fit">{item.sku}</span>
                                                                 </div>
                                                             </TableCell>
-                                                            <TableCell className="py-2">
-                                                                <Input
-                                                                    type="number"
-                                                                    min="0"
+                                                             <TableCell className="py-2">
+                                                                <StrictNumericInput
                                                                     placeholder="0"
                                                                     value={item.quantity_good || ''}
-                                                                    onChange={e => updateItem(item.variant_id, 'quantity_good', e.target.value)}
+                                                                    onChange={val => updateItem(item.variant_id, 'quantity_good', val)}
                                                                     className="h-10 text-center font-semibold text-green-700 bg-neutral-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500/50 transition-all shadow-sm"
                                                                 />
-                                                            </TableCell>
-                                                            <TableCell className="py-2">
-                                                                <Input
-                                                                    type="number"
-                                                                    min="0"
+                                                             </TableCell>
+                                                             <TableCell className="py-2">
+                                                                <StrictNumericInput
                                                                     placeholder="0"
                                                                     value={item.quantity_defect || ''}
-                                                                    onChange={e => updateItem(item.variant_id, 'quantity_defect', e.target.value)}
+                                                                    onChange={val => updateItem(item.variant_id, 'quantity_defect', val)}
                                                                     className="h-10 text-center font-semibold text-red-700 bg-neutral-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all shadow-sm"
                                                                 />
-                                                            </TableCell>
+                                                             </TableCell>
                                                             <TableCell className="pr-6 text-right font-medium text-neutral-600 tabular-nums">
                                                                 {(item.quantity_good || 0) + (item.quantity_defect || 0)}
                                                             </TableCell>
@@ -394,16 +585,23 @@ export default function GoodsReceipt() {
 
                                 {/* Sticky Action Footer - Floating Style */}
                                 <div className="bg-white rounded-3xl p-5 shadow-[0_8px_40px_rgb(0,0,0,0.06)] border border-white/50 flex flex-col md:flex-row gap-4 items-center">
-                                    <div className="relative flex-1 w-full">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <ChevronRight className="h-4 w-4 text-neutral-400" />
+                                    <div className="flex-1 flex items-center gap-6 pr-4">
+                                        <div className="flex items-center gap-2 ml-4">
+                                            <span className="text-[10px] font-bold uppercase text-neutral-400">Auto Print</span>
+                                            <Switch checked={autoPrint} onCheckedChange={setAutoPrint} className="data-[state=checked]:bg-blue-600" />
                                         </div>
-                                        <Input
-                                            placeholder="Add an optional reference note or PO number..."
-                                            className="pl-9 border-transparent bg-neutral-50 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                                            value={note}
-                                            onChange={e => setNote(e.target.value)}
-                                        />
+                                        <div className="h-6 w-px bg-neutral-200" />
+                                        <div className="relative flex-1">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <ChevronRight className="h-4 w-4 text-neutral-400" />
+                                            </div>
+                                            <Input
+                                                placeholder="Add an optional reference note or PO number..."
+                                                className="pl-9 border-transparent bg-neutral-50 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all h-10"
+                                                value={note}
+                                                onChange={e => setNote(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
                                     <Button
                                         size="lg"
@@ -449,14 +647,14 @@ export default function GoodsReceipt() {
 
                             <div className="space-y-2">
                                 <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Brand</label>
-                                <Select onValueChange={setNewBrandId} value={newBrandId}>
-                                    <SelectTrigger className="rounded-xl bg-neutral-50 border-transparent h-11 focus:ring-2 focus:ring-blue-500/20">
-                                        <SelectValue placeholder="Select Brand" />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-neutral-100 shadow-xl">
-                                        {brands.map(b => <SelectItem key={b.brand_id} value={b.brand_id.toString()} className="rounded-lg cursor-pointer">{b.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                <SmartCreatableSelect
+                                    options={brands.map(b => ({ label: b.name, value: b.brand_id }))}
+                                    value={newBrandId ? Number(newBrandId) : undefined}
+                                    onChange={(val) => setNewBrandId(val.toString())}
+                                    onCreate={handleCreateBrand}
+                                    placeholder="Select or create brand..."
+                                    label="Brand"
+                                />
                             </div>
 
                             <div className="space-y-3 pt-2">

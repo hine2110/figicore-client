@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Search, Loader2, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import { Plus, Search, Loader2, ChevronLeft, ChevronRight, SlidersHorizontal, X, ShoppingBag, Gift, Clock, Gavel, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CreateProductModal } from "@/components/product/CreateProductModal";
@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
 
-const ITEMS_PER_PAGE_OPTIONS = [8, 12, 24, 48];
+const ITEMS_PER_PAGE_OPTIONS = [10, 20, 50, 100];
 
 export default function Inventory() {
     const { toast } = useToast();
@@ -22,7 +23,7 @@ export default function Inventory() {
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(12);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
 
     // Filter State
     const [filters, setFilters] = useState({
@@ -101,6 +102,16 @@ export default function Inventory() {
     }, [products, currentPage, itemsPerPage]);
 
     const totalPages = Math.ceil(products.length / itemsPerPage);
+
+    // Grouping logic for the WHOLE list of products (filtered by search/brand/etc)
+    const groupedProducts = useMemo(() => {
+        return {
+            RETAIL: products.filter(p => p.type_code === 'RETAIL'),
+            BLINDBOX: products.filter(p => p.type_code === 'BLINDBOX'),
+            PREORDER: products.filter(p => p.type_code === 'PREORDER'),
+            AUCTION: products.filter(p => p.type_code === 'AUCTION')
+        };
+    }, [products]);
 
     // Handlers
     const handleCreate = () => {
@@ -227,6 +238,7 @@ export default function Inventory() {
                                                     <SelectItem value="RETAIL">Retail</SelectItem>
                                                     <SelectItem value="BLINDBOX">Blindbox</SelectItem>
                                                     <SelectItem value="PREORDER">Preorder</SelectItem>
+                                                    <SelectItem value="AUCTION">Auction</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -247,23 +259,189 @@ export default function Inventory() {
             </header>
 
             {/* 2. SCROLLABLE CONTENT */}
-            <main className="flex-1 overflow-y-auto px-6 pb-6">
+            <main className="flex-1 overflow-y-auto px-6 pb-20">
                 {loading && products.length === 0 ? (
                     <div className="h-full flex items-center justify-center">
                         <Loader2 className="w-8 h-8 animate-spin text-neutral-400" />
                     </div>
                 ) : (
-                    <ProductList
-                        products={displayedProducts}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onView={handleView}
-                    />
+                    <div className="space-y-16 py-8">
+                        {/* BACK BUTTON (Only visible when filtered) */}
+                        {filters.type_code && (
+                            <div className="flex items-center -mb-8">
+                                <Button 
+                                    variant="ghost" 
+                                    onClick={() => setFilters(prev => ({ ...prev, type_code: undefined }))}
+                                    className="text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-full pl-2"
+                                >
+                                    <ChevronLeft className="w-4 h-4 mr-1" /> Back to overview
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* RETAIL SECTION */}
+                        {(!filters.type_code || filters.type_code === 'RETAIL') && groupedProducts.RETAIL.length > 0 && (
+                            <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600 shadow-sm border border-green-100">
+                                            <ShoppingBag className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-neutral-900">Retail Products</h2>
+                                            <p className="text-sm text-neutral-500">Standard inventory items for direct sale.</p>
+                                        </div>
+                                    </div>
+                                    <Badge variant="secondary" className="bg-white border-neutral-200 text-neutral-600 px-3 py-1 rounded-full">
+                                        {groupedProducts.RETAIL.length} Items
+                                    </Badge>
+                                </div>
+                                <ProductList
+                                    products={filters.type_code === 'RETAIL' ? displayedProducts : groupedProducts.RETAIL.slice(0, 10)}
+                                    onEdit={handleEdit}
+                                    onDelete={handleDelete}
+                                    onView={handleView}
+                                />
+                                {groupedProducts.RETAIL.length > 10 && !filters.type_code && (
+                                    <div className="flex justify-center pt-2">
+                                        <Button 
+                                            variant="ghost" 
+                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full"
+                                            onClick={() => setFilters(prev => ({ ...prev, type_code: 'RETAIL' }))}
+                                        >
+                                            View all retail products <ChevronRight className="w-4 h-4 ml-1" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
+                        {/* BLINDBOX SECTION */}
+                        {(!filters.type_code || filters.type_code === 'BLINDBOX') && groupedProducts.BLINDBOX.length > 0 && (
+                            <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
+                                <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm border border-purple-100">
+                                            <Gift className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-neutral-900">Blindbox Collections</h2>
+                                            <p className="text-sm text-neutral-500">Mystery box products with varying tiers and values.</p>
+                                        </div>
+                                    </div>
+                                    <Badge variant="secondary" className="bg-white border-neutral-200 text-neutral-600 px-3 py-1 rounded-full">
+                                        {groupedProducts.BLINDBOX.length} Items
+                                    </Badge>
+                                </div>
+                                <ProductList
+                                    products={filters.type_code === 'BLINDBOX' ? displayedProducts : groupedProducts.BLINDBOX.slice(0, 10)}
+                                    onEdit={handleEdit}
+                                    onDelete={handleDelete}
+                                    onView={handleView}
+                                />
+                                {groupedProducts.BLINDBOX.length > 10 && !filters.type_code && (
+                                    <div className="flex justify-center pt-2">
+                                        <Button 
+                                            variant="ghost" 
+                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full"
+                                            onClick={() => setFilters(prev => ({ ...prev, type_code: 'BLINDBOX' }))}
+                                        >
+                                            View all blindboxes <ChevronRight className="w-4 h-4 ml-1" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
+                        {/* PREORDER SECTION */}
+                        {(!filters.type_code || filters.type_code === 'PREORDER') && groupedProducts.PREORDER.length > 0 && (
+                            <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                                <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 shadow-sm border border-orange-100">
+                                            <Clock className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-neutral-900">Pre-order Items</h2>
+                                            <p className="text-sm text-neutral-500">Upcoming releases and advance bookings.</p>
+                                        </div>
+                                    </div>
+                                    <Badge variant="secondary" className="bg-white border-neutral-200 text-neutral-600 px-3 py-1 rounded-full">
+                                        {groupedProducts.PREORDER.length} Items
+                                    </Badge>
+                                </div>
+                                <ProductList
+                                    products={filters.type_code === 'PREORDER' ? displayedProducts : groupedProducts.PREORDER.slice(0, 10)}
+                                    onEdit={handleEdit}
+                                    onDelete={handleDelete}
+                                    onView={handleView}
+                                />
+                                {groupedProducts.PREORDER.length > 10 && !filters.type_code && (
+                                    <div className="flex justify-center pt-2">
+                                        <Button 
+                                            variant="ghost" 
+                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full"
+                                            onClick={() => setFilters(prev => ({ ...prev, type_code: 'PREORDER' }))}
+                                        >
+                                            View all pre-orders <ChevronRight className="w-4 h-4 ml-1" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
+                        {/* AUCTION SECTION */}
+                        {(!filters.type_code || filters.type_code === 'AUCTION') && groupedProducts.AUCTION.length > 0 && (
+                            <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150">
+                                <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
+                                            <Gavel className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-neutral-900">Auction Items</h2>
+                                            <p className="text-sm text-neutral-500">Dynamic bidding events and unique listings.</p>
+                                        </div>
+                                    </div>
+                                    <Badge variant="secondary" className="bg-white border-neutral-200 text-neutral-600 px-3 py-1 rounded-full">
+                                        {groupedProducts.AUCTION.length} Items
+                                    </Badge>
+                                </div>
+                                <ProductList
+                                    products={filters.type_code === 'AUCTION' ? displayedProducts : groupedProducts.AUCTION.slice(0, 10)}
+                                    onEdit={handleEdit}
+                                    onDelete={handleDelete}
+                                    onView={handleView}
+                                />
+                                {groupedProducts.AUCTION.length > 10 && !filters.type_code && (
+                                    <div className="flex justify-center pt-2">
+                                        <Button 
+                                            variant="ghost" 
+                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full"
+                                            onClick={() => setFilters(prev => ({ ...prev, type_code: 'AUCTION' }))}
+                                        >
+                                            View all auctions <ChevronRight className="w-4 h-4 ml-1" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
+                        {/* TOTAL EMPTY STATE */}
+                        {products.length === 0 && !loading && (
+                            <div className="flex flex-col items-center justify-center py-20 text-neutral-400 bg-white/50 rounded-3xl border border-dashed border-neutral-200">
+                                <Box className="w-16 h-16 mb-4 opacity-10" />
+                                <p className="text-xl font-bold text-neutral-600">No products found</p>
+                                <p className="text-sm">Try adjusting your filters or search terms.</p>
+                            </div>
+                        )}
+                    </div>
                 )}
             </main>
 
-            {/* 3. FIXED PAGINATION FOOTER */}
-            <footer className="shrink-0 bg-white/80 backdrop-blur-md border-t border-neutral-200 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm font-medium text-neutral-600 transition-all">
+            {/* 3. FIXED PAGINATION FOOTER - Only show when a specific category is filtered */}
+            {filters.type_code && totalPages > 1 && (
+                <footer className="shrink-0 bg-white/80 backdrop-blur-md border-t border-neutral-200 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm font-medium text-neutral-600 transition-all animate-in slide-in-from-bottom-2 duration-300">
                 <div className="flex items-center gap-4">
                     <span className="text-neutral-500">
                         Showing <span className="text-neutral-900">{products.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> - <span className="text-neutral-900">{Math.min(currentPage * itemsPerPage, products.length)}</span> of <span className="text-neutral-900">{products.length}</span> items
@@ -306,6 +484,7 @@ export default function Inventory() {
                     </Button>
                 </div>
             </footer>
+            )}
 
             {/* MODAL */}
             <CreateProductModal

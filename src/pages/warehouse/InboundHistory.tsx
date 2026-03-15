@@ -172,7 +172,7 @@ export function InboundHistory() {
                             <Search className="w-4 h-4 text-neutral-400 group-focus-within:text-blue-500 transition-colors" />
                         </div>
                         <Input
-                            placeholder="Search receipt ID, staff name, or notes..."
+                            placeholder="Search receipt ID, staff name, product name, or notes..."
                             className="pl-10 h-11 bg-neutral-100/50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}

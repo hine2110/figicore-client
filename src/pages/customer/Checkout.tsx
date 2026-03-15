@@ -310,6 +310,7 @@ export default function Checkout() {
 
     const rawTotalAmount = orders.reduce((sum, o) => sum + Number(o.total_amount), 0); // Note: total_amount in DB is already discounted or full
     const totalShipping = orders.reduce((sum, o) => sum + Number(o.shipping_fee || 0), 0);
+    const totalDeposit = orders.reduce((sum, o) => sum + Number(o.paid_amount || 0), 0);
 
     // Calculate subtotal before any discounts from the order items
     const subtotal = orders.reduce((sum, o) => {
@@ -529,6 +530,13 @@ export default function Checkout() {
                                                 <span>Total Shipping</span>
                                                 <span className="font-medium text-slate-900">{formatPrice(totalShipping)}</span>
                                             </div>
+
+                                            {totalDeposit > 0 && (
+                                                <div className="flex justify-between text-emerald-600 font-medium">
+                                                    <span>Deposit Deduction</span>
+                                                    <span>-{formatPrice(totalDeposit)}</span>
+                                                </div>
+                                            )}
 
                                             {/* Voucher Details */}
                                             {(appliedDiscountPromo || appliedShippingPromo) && (

@@ -1,6 +1,5 @@
-
 import * as React from "react"
-import { Check, ChevronsUpDown, Plus } from "lucide-react"
+import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -20,16 +19,16 @@ import {
 } from "@/components/ui/popover"
 
 interface SmartCreatableStringSelectProps {
-    options: string[] // List of available strings (suggestions)
+    options: string[]
     value?: string
     onChange: (value: string) => void
+    onCreate?: (name: string) => Promise<string | null>
     placeholder?: string
     label?: string
-    onCreate?: (value: string) => void // Optional callback if external action needed
 }
 
 export function SmartCreatableStringSelect({
-    options = [],
+    options,
     value,
     onChange,
     onCreate,
@@ -38,39 +37,44 @@ export function SmartCreatableStringSelect({
 }: SmartCreatableStringSelectProps) {
     const [open, setOpen] = React.useState(false)
     const [inputValue, setInputValue] = React.useState("")
+    const [creating, setCreating] = React.useState(false)
 
-    // Current value might not be in options list if it was just created
-    // So we display the value directly if it exists
-
-
-    const handleSelect = (selectedValue: string) => {
-        onChange(selectedValue)
-        setOpen(false)
-        setInputValue("")
-    }
-
-    const handleCreate = () => {
-        if (!inputValue.trim()) return
-        const newValue = inputValue.trim()
-
-        onChange(newValue)
+    const handleCreate = async () => {
+        const trimmedInput = inputValue.trim()
+        if (!trimmedInput) return
+        
         if (onCreate) {
-            onCreate(newValue)
+            setCreating(true)
+            try {
+                const newValue = await onCreate(trimmedInput)
+                if (newValue) {
+                    onChange(newValue)
+                    setOpen(false)
+                    setInputValue("")
+                }
+            } catch (error) {
+                console.error("Failed to create item", error)
+            } finally {
+                setCreating(false)
+            }
+        } else {
+            // If no onCreate provided, just use the string directly
+            onChange(trimmedInput)
+            setOpen(false)
+            setInputValue("")
         }
-
-        setOpen(false)
-        setInputValue("")
     }
 
-    // Exact match check to decide if we show "Create" button
+    // Check if current input matches any existing option (case insensitive)
     const exactMatch = options.some(
         (opt) => opt.trim().toLowerCase() === inputValue.trim().toLowerCase()
     )
 
-    // Also check if current value matches input 
-    const isCurrentValueMatch = value?.toLowerCase() === inputValue.trim().toLowerCase()
+    const showCreateOption = inputValue.trim().length > 0 && !exactMatch
 
-    const showCreateOption = inputValue.trim().length > 0 && !exactMatch && !isCurrentValueMatch
+    const filteredOptions = options.filter(opt => 
+        opt.toLowerCase().includes(inputValue.toLowerCase())
+    )
 
     return (
         <Popover open={open} onOpenChange={setOpen} modal={true}>
@@ -81,55 +85,90 @@ export function SmartCreatableStringSelect({
                     aria-expanded={open}
                     className="w-full justify-between font-normal"
                 >
-                    <span className={cn(!value && "text-muted-foreground")}>
-                        {value ? value : placeholder}
-                    </span>
+                    {value || placeholder}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command>
+            <PopoverContent 
+                className="w-[--radix-popover-trigger-width] p-0 z-[9999]" 
+                align="start"
+                onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                onWheel={(e: React.WheelEvent) => e.stopPropagation()}
+                onInteractOutside={(e) => e.preventDefault()}
+            >
+                <Command shouldFilter={false}>
                     <CommandInput
                         placeholder={`Search ${label?.toLowerCase() || "item"}...`}
                         value={inputValue}
                         onValueChange={setInputValue}
+                        autoFocus
                     />
-                    <CommandList>
-                        <CommandEmpty>No results found.</CommandEmpty>
-                        <CommandGroup heading="Suggestions">
-                            {options.map((option) => (
-                                <CommandItem
-                                    key={option}
-                                    value={option}
-                                    onSelect={() => handleSelect(option)}
-                                    className="cursor-pointer"
-                                >
-                                    <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            value === option ? "opacity-100" : "opacity-0"
-                                        )}
-                                    />
-                                    {option}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-
-                        {showCreateOption && (
+                    <CommandList className="max-h-[200px] overflow-y-auto overflow-x-hidden">
+                        {creating ? (
+                            <div className="flex items-center justify-center py-6 text-sm text-neutral-500">
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Creating...
+                            </div>
+                        ) : (
                             <>
-                                <CommandSeparator />
-                                <CommandGroup heading="Create New">
-                                    <CommandItem
-                                        onSelect={handleCreate}
-                                        className="text-blue-600 font-medium cursor-pointer"
-                                        value={`CREATE:${inputValue}`}
-                                    >
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Create "{inputValue}"
-                                    </CommandItem>
-                                </CommandGroup>
+                                {filteredOptions.length === 0 && !showCreateOption && (
+                                    <CommandEmpty>No {label?.toLowerCase()} found.</CommandEmpty>
+                                )}
+
+                                {filteredOptions.length > 0 && (
+                                    <CommandGroup heading="Suggestions">
+                                        {filteredOptions.map((option) => (
+                                            <CommandItem
+                                                key={option}
+                                                value={option}
+                                                onMouseDown={(e: React.MouseEvent) => {
+                                                    // Winning the race against blur/Dialog focus trap
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    onChange(option);
+                                                    setOpen(false);
+                                                    setInputValue("");
+                                                }}
+                                                onSelect={() => {
+                                                    // Keep onSelect for keyboard support if needed, 
+                                                    // but onMouseDown handles the mouse click robustly
+                                                }}
+                                                className="cursor-pointer py-2 px-3 !opacity-100 !pointer-events-auto aria-selected:bg-blue-50 aria-selected:text-blue-900 data-[selected=true]:bg-blue-50"
+                                            >
+                                                <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        value === option ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                />
+                                                {option}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                )}
+
+                                {showCreateOption && (
+                                    <>
+                                        <CommandSeparator />
+                                        <CommandGroup>
+                                            <CommandItem
+                                                onMouseDown={(e: React.MouseEvent) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleCreate();
+                                                }}
+                                                className="text-blue-600 font-medium cursor-pointer !opacity-100 !pointer-events-auto"
+                                                value={`CREATE:${inputValue}`} // Unique value for create item
+                                            >
+                                                <Plus className="mr-2 h-4 w-4" />
+                                                Create "{inputValue}"
+                                            </CommandItem>
+                                        </CommandGroup>
+                                    </>
+                                )}
                             </>
                         )}
+
                     </CommandList>
                 </Command>
             </PopoverContent>

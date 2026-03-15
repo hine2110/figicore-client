@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { io } from 'socket.io-client';
+import { NotificationBell } from './CustomerLayout/components/NotificationBell';
 import { AIChatBox } from '@/components/customer/AIChatBox';
 import {
     DropdownMenu,
@@ -28,9 +29,11 @@ import {
 interface CustomerLayoutProps {
     children: React.ReactNode;
     activePage?: string;
+    hideFooter?: boolean;
+    darkNav?: boolean;
 }
 
-export default function CustomerLayout({ children, activePage = 'home' }: CustomerLayoutProps) {
+export default function CustomerLayout({ children, activePage = 'home', hideFooter = false, darkNav = false }: CustomerLayoutProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
     const { items, fetchCart } = useCartStore(); // Use Cart Store
@@ -42,24 +45,6 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
     useEffect(() => {
         fetchCart();
     }, [fetchCart]);
-
-    // Listen for Real-time Notifications
-    useEffect(() => {
-        if (!user?.user_id) return;
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-        const socket = io(`${baseUrl}/events`);
-
-        socket.on(`customer:notify:${user.user_id}`, (data: { title: string, content: string }) => {
-            toast({
-                title: data.title,
-                description: data.content,
-                duration: 10000, // 10 seconds to read
-                className: data.title.includes('WARNING') ? 'bg-red-50 border-red-500 text-red-900 border-l-4 shadow-xl' : 'bg-green-50 border-green-500 text-green-900 border-l-4 shadow-xl'
-            });
-        });
-
-        return () => { socket.disconnect(); };
-    }, [user?.user_id, toast]);
 
     const navItems = [
         { id: 'home', label: 'Home', icon: Home, path: '/customer/home' },
@@ -75,9 +60,9 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
     };
 
     return (
-        <div className="min-h-screen flex flex-col bg-white">
+        <div className={`min-h-screen flex flex-col ${darkNav ? 'bg-[#0A0A0B]' : 'bg-white'}`}>
             {/* Top Navigation */}
-            <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+            <header className={`sticky top-0 z-50 border-b transition-colors duration-500 ${darkNav ? 'bg-[#0A0A0B]/80 backdrop-blur-md border-white/5 text-white' : 'bg-white border-gray-200'}`}>
                 <div className="container mx-auto px-4">
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center gap-8">
@@ -94,8 +79,8 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                                         key={item.id}
                                         onClick={() => navigate(item.path)}
                                         className={`text-sm font-medium transition-colors ${activePage === item.id
-                                            ? 'text-gray-900'
-                                            : 'text-gray-600 hover:text-gray-900'
+                                            ? (darkNav ? 'text-amber-500' : 'text-gray-900')
+                                            : (darkNav ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')
                                             }`}
                                     >
                                         {item.label}
@@ -105,12 +90,11 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
                         </div>
 
                         <div className="flex items-center gap-4">
-
-
+                            <NotificationBell />
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="relative"
+                                className={`relative ${darkNav ? 'text-gray-300 hover:text-white hover:bg-white/5' : ''}`}
                                 onClick={() => navigate('/customer/cart')}
                             >
                                 <ShoppingCart className="w-5 h-5" />
@@ -123,37 +107,42 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon">
+                                    <Button variant="ghost" size="icon" className={darkNav ? 'text-gray-300 hover:text-white hover:bg-white/5' : ''}>
                                         <User className="w-5 h-5" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => navigate('/customer/profile')}>
+                                <DropdownMenuContent align="end" className={darkNav ? 'bg-zinc-900 border-white/10 text-white' : ''}>
+                                    <DropdownMenuLabel className={darkNav ? 'text-gray-400' : ''}>My Account</DropdownMenuLabel>
+                                    <DropdownMenuSeparator className={darkNav ? 'bg-white/5' : ''} />
+                                    <DropdownMenuItem onClick={() => navigate('/customer/profile')} className={darkNav ? 'focus:bg-white/5 focus:text-white' : ''}>
                                         <User className="w-4 h-4 mr-2" />
                                         Profile
                                     </DropdownMenuItem>
 
-                                    <DropdownMenuItem onClick={() => navigate('/customer/wallet')}>
+                                    <DropdownMenuItem onClick={() => navigate('/customer/wallet')} className={darkNav ? 'focus:bg-white/5 focus:text-white' : ''}>
                                         <Wallet className="w-4 h-4 mr-2" />
                                         Wallet
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => {
-                                        import('@/store/useAuthStore').then(({ useAuthStore }) => {
-                                            useAuthStore.getState().logout();
-                                            useCartStore.getState().clearCart();
-                                            navigate('/guest/login');
-                                        });
-                                    }}>Logout</DropdownMenuItem>
+                                    <DropdownMenuSeparator className={darkNav ? 'bg-white/5' : ''} />
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            import('@/store/useAuthStore').then(({ useAuthStore }) => {
+                                                useAuthStore.getState().logout();
+                                                useCartStore.getState().clearCart();
+                                                navigate('/guest/login');
+                                            });
+                                        }}
+                                        className={darkNav ? 'focus:bg-white/5 focus:text-white text-red-400' : ''}
+                                    >
+                                        Logout
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="md:hidden"
+                                className={`md:hidden ${darkNav ? 'text-gray-300 hover:text-white hover:bg-white/5' : ''}`}
                                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                             >
                                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -163,15 +152,15 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
 
                     {/* Mobile Menu */}
                     {mobileMenuOpen && (
-                        <div className="md:hidden py-4 border-t">
+                        <div className={`md:hidden py-4 border-t ${darkNav ? 'border-white/5' : ''}`}>
                             <nav className="flex flex-col gap-2">
                                 {navItems.map((item) => (
                                     <button
                                         key={item.id}
                                         onClick={() => handleNavClick(item.path)}
                                         className={`text-left px-4 py-2 text-sm font-medium transition-colors ${activePage === item.id
-                                            ? 'text-gray-900 bg-gray-50'
-                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                            ? (darkNav ? 'text-amber-500 bg-white/5' : 'text-gray-900 bg-gray-50')
+                                            : (darkNav ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50')
                                             }`}
                                     >
                                         {item.label}
@@ -190,48 +179,51 @@ export default function CustomerLayout({ children, activePage = 'home' }: Custom
 
             {/* Footer */}
             <AIChatBox />
-            <footer className="bg-gray-50 border-t border-gray-200 mt-16">
-                <div className="container mx-auto px-4 py-12">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                        <div>
-                            <div className="font-semibold text-lg mb-4">FigiCore</div>
-                            <p className="text-sm text-gray-600">
-                                Your trusted platform for collectible figures, art toys, and exclusive merchandise.
-                            </p>
+            {!hideFooter && (
+                <footer className="bg-gray-50 border-t border-gray-200 mt-16">
+                    <div className="container mx-auto px-4 py-12">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                            <div>
+                                <div className="font-semibold text-lg mb-4">FigiCore</div>
+                                <p className="text-sm text-gray-600">
+                                    Your trusted platform for collectible figures, art toys, and exclusive merchandise.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className="font-medium mb-4">Shop</h3>
+                                <ul className="space-y-2 text-sm text-gray-600">
+                                    <li>All Products</li>
+                                    <li>Blind Box</li>
+                                    <li>Pre-Orders</li>
+                                    <li>Auctions</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 className="font-medium mb-4">Support</h3>
+                                <ul className="space-y-2 text-sm text-gray-600">
+                                    <li>Help Center</li>
+                                    <li>Shipping Info</li>
+                                    <li>Returns</li>
+                                    <li>Contact Us</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 className="font-medium mb-4">Account</h3>
+                                <ul className="space-y-2 text-sm text-gray-600">
+                                    <li onClick={() => navigate('/customer/orders')} className="cursor-pointer">My Orders</li>
+                                    <li onClick={() => navigate('/customer/cart')} className="cursor-pointer">Wishlist</li>
+                                    <li onClick={() => navigate('/customer/wallet')} className="cursor-pointer">Wallet</li>
+                                    <li>Settings</li>
+                                </ul>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="font-medium mb-4">Shop</h3>
-                            <ul className="space-y-2 text-sm text-gray-600">
-                                <li>All Products</li>
-                                <li>Blind Box</li>
-                                <li>Pre-Orders</li>
-                                <li>Auctions</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 className="font-medium mb-4">Support</h3>
-                            <ul className="space-y-2 text-sm text-gray-600">
-                                <li>Help Center</li>
-                                <li>Shipping Info</li>
-                                <li>Returns</li>
-                                <li>Contact Us</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 className="font-medium mb-4">Account</h3>
-                            <ul className="space-y-2 text-sm text-gray-600">
-                                <li onClick={() => navigate('/customer/orders')} className="cursor-pointer">My Orders</li>
-                                <li onClick={() => navigate('/customer/cart')} className="cursor-pointer">Wishlist</li>
-                                <li onClick={() => navigate('/customer/wallet')} className="cursor-pointer">Wallet</li>
-                                <li>Settings</li>
-                            </ul>
+                        <div className="border-t border-gray-200 mt-8 pt-8 text-center text-sm text-gray-600">
+                            © 2026 FigiCore. All rights reserved.
                         </div>
                     </div>
-                    <div className="border-t border-gray-200 mt-8 pt-8 text-center text-sm text-gray-600">
-                        © 2026 FigiCore. All rights reserved.
-                    </div>
-                </div>
-            </footer>
+                </footer>
+            )}
         </div>
     );
 }
+
