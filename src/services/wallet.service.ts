@@ -2,11 +2,11 @@ import { axiosInstance } from '@/lib/axiosInstance';
 import { ApiResponse } from '@/types/common.types';
 import { TransactionDTO, WalletDTO } from '@/types/wallet.types';
 
-const BASE = '/wallet';
+const BASE = '/wallets';
 
 export const walletService = {
     getMyWallet: async (): Promise<ApiResponse<WalletDTO>> => {
-        const response = await axiosInstance.get(BASE);
+        const response = await axiosInstance.get(`${BASE}/my-wallet`);
         return response.data;
     },
 

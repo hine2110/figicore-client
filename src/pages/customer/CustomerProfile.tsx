@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { User, Mail, Phone, MapPin, Shield, Bell, Loader2, Trash2, Crown, Package, TicketPercent } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Shield, Bell, Loader2, Trash2, Crown, Package, TicketPercent, Camera } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authService } from '@/services/auth.service';
+import { userService } from '@/services/user.service';
 import MembershipTab from '@/components/customer/MembershipTab'; // New Import
 import MyOrdersTab from '@/components/customer/MyOrdersTab'; // New Import
 import MyVouchersTab from '@/components/customer/MyVouchersTab'; // New Import
@@ -70,7 +71,13 @@ export default function CustomerProfile() {
         phone: user?.phone || '',
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    const hasChanges = user && (
+        formData.full_name !== (user.full_name || '') ||
+        formData.phone !== (user.phone || '')
+    );
 
     // Address Handlers
     const handleEditAddress = (addr: Address) => {
@@ -152,6 +159,7 @@ export default function CustomerProfile() {
     }, [setUser]);
 
     const handleSaveProfile = async () => {
+        if (!hasChanges) return;
         setIsLoading(true);
         setMessage(null);
         try {
@@ -167,7 +175,7 @@ export default function CustomerProfile() {
             toast({
                 title: "Profile Updated",
                 description: "Your profile information has been saved.",
-                duration: 10000,
+                duration: 5000,
             });
         } catch (error: any) {
             console.error('Update profile error:', error);
@@ -176,10 +184,47 @@ export default function CustomerProfile() {
                 variant: "destructive",
                 title: "Update Failed",
                 description: error.response?.data?.message || "Failed to update profile",
-                duration: 10000,
+                duration: 5000,
             });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Size check (e.g., 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            toast({
+                variant: "destructive",
+                title: "File too large",
+                description: "Avatar image must be less than 2MB.",
+            });
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const res = await userService.uploadAvatar(file);
+            if (res.data?.url) {
+                const updatedUser = { ...user, avatar_url: res.data.url };
+                setUser(updatedUser as any);
+                toast({
+                    title: "Avatar Updated",
+                    description: "Your profile picture has been changed.",
+                });
+            }
+        } catch (error: any) {
+            console.error("Avatar upload failed", error);
+            toast({
+                variant: "destructive",
+                title: "Upload Failed",
+                description: error.response?.data?.message || "Could not upload avatar.",
+            });
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -269,12 +314,19 @@ export default function CustomerProfile() {
 
                                         {/* Avatar Section */}
                                         <div className="flex items-center gap-6 mb-8">
-                                            <Avatar className="w-20 h-20 border-2 border-white shadow-sm">
-                                                <AvatarImage src={user?.avatar_url || ""} />
-                                                <AvatarFallback className="bg-blue-100 text-blue-600 text-xl font-medium">
-                                                    {user?.full_name?.charAt(0) || "U"}
-                                                </AvatarFallback>
-                                            </Avatar>
+                                            <div className="relative group">
+                                                <Avatar className="w-20 h-20 border-2 border-white shadow-sm">
+                                                    <AvatarImage src={user?.avatar_url || ""} />
+                                                    <AvatarFallback className="bg-blue-100 text-blue-600 text-xl font-medium">
+                                                        {user?.full_name?.charAt(0) || "U"}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                {isUploading && (
+                                                    <div className="absolute inset-0 bg-black/20 rounded-full flex items-center justify-center">
+                                                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                                                    </div>
+                                                )}
+                                            </div>
                                             <div>
                                                 <h2 className="text-xl font-medium text-neutral-900">{user?.full_name || "User"}</h2>
                                                 <p className="text-neutral-500 capitalize">{user?.role_code?.replace('_', ' ').toLowerCase() || "Customer"}</p>
@@ -290,8 +342,26 @@ export default function CustomerProfile() {
                                                     );
                                                 })()}
                                             </div>
-                                            {/* Disabled for now */}
-                                            <Button variant="outline" className="ml-auto opacity-50 cursor-not-allowed" disabled>Change Avatar</Button>
+                                            <div className="ml-auto">
+                                                <input
+                                                    type="file"
+                                                    id="avatar-upload"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={handleAvatarUpload}
+                                                    disabled={isUploading}
+                                                />
+                                                <Button
+                                                    variant="outline"
+                                                    asChild
+                                                    disabled={isUploading}
+                                                >
+                                                    <label htmlFor="avatar-upload" className="cursor-pointer flex items-center gap-2">
+                                                        {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                                                        Change Avatar
+                                                    </label>
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         {/* Membership Progress - MOVED TO TAB */}
@@ -336,9 +406,10 @@ export default function CustomerProfile() {
                                                     <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${!formData.phone ? 'text-amber-500' : 'text-neutral-400'}`} />
                                                     <Input
                                                         value={formData.phone}
-                                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '') })}
                                                         className={`pl-10 ${!formData.phone ? 'border-amber-300 focus:ring-amber-200' : ''}`}
                                                         placeholder="Enter your phone number"
+                                                        maxLength={11}
                                                     />
                                                 </div>
                                             </div>
@@ -431,7 +502,7 @@ export default function CustomerProfile() {
                                             <Button
                                                 className="bg-neutral-900 text-white hover:bg-neutral-800 min-w-[120px]"
                                                 onClick={handleSaveProfile}
-                                                disabled={isLoading}
+                                                disabled={isLoading || !hasChanges}
                                             >
                                                 {isLoading ? (
                                                     <>

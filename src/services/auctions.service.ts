@@ -39,6 +39,11 @@ class AuctionsService {
         return response.data;
     }
 
+    async extendTime(id: number, seconds: number) {
+        const response = await axiosInstance.patch(`/auctions/${id}/extend-time`, { seconds });
+        return response.data;
+    }
+
     async forfeitWinner(id: number) {
         const response = await axiosInstance.post(`/auctions/${id}/forfeit`);
         return response.data;

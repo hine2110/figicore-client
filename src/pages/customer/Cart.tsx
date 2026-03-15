@@ -426,12 +426,12 @@ export default function Cart() {
                     <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] ambient-glow-purple rounded-full animate-breathe gpu-accelerated blob-optimized" />
                 </div>
 
-                <div className="container mx-auto px-4 relative z-10 max-w-6xl">
+                <div className="container mx-auto px-4 relative z-10 max-w-7xl">
                     <h1 className="text-4xl font-bold text-slate-900 mb-8 tracking-tight font-serif">Your Collection ({items.length})</h1>
 
-                    <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
                         {/* LEFT COLUMN: ITEMS */}
-                        <div className="flex-1 space-y-8">
+                        <div className="lg:col-span-8 space-y-8">
 
                             {/* Select All Header with Alert */}
                             <div className="space-y-4 mb-4">
@@ -482,7 +482,7 @@ export default function Cart() {
                         </div>
 
                         {/* RIGHT COLUMN: SUMMARY */}
-                        <div className="w-full lg:w-[380px]">
+                        <div className="lg:col-span-4">
                             <div className="bg-white/60 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.04)] sticky top-24 gpu-layer">
                                 <h3 className="font-bold text-xl text-slate-900 mb-6 flex items-center gap-2 font-serif">
                                     Finalize Order

@@ -35,6 +35,9 @@ export function ProductList({ products, onEdit, onDelete, onView }: ProductListP
                     // Access nested definition from the first variant
                     const variant = product.product_variants?.[0];
                     displayPrice = variant?.product_preorder_configs?.full_price || variant?.price || 0;
+                } else if (product.type_code === 'AUCTION') {
+                    const variant = product.product_variants?.[0];
+                    displayPrice = variant?.auctions?.[0]?.start_price || variant?.price || 0;
                 }
 
                 // Determine Image
@@ -78,7 +81,8 @@ export function ProductList({ products, onEdit, onDelete, onView }: ProductListP
                                     shadow-sm border-0 font-medium tracking-wide text-[10px] uppercase px-2 py-0.5
                                     ${product.type_code === 'RETAIL' ? "bg-white/90 text-green-700 backdrop-blur-md" :
                                         product.type_code === 'BLINDBOX' ? "bg-white/90 text-purple-700 backdrop-blur-md" :
-                                            "bg-white/90 text-orange-700 backdrop-blur-md"}
+                                            product.type_code === 'PREORDER' ? "bg-white/90 text-orange-700 backdrop-blur-md" :
+                                                "bg-white/90 text-blue-700 backdrop-blur-md"}
                                 `}>
                                     {product.type_code}
                                 </Badge>

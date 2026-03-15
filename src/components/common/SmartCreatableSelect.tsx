@@ -79,16 +79,23 @@ export function SmartCreatableSelect({
                     aria-expanded={open}
                     className="w-full justify-between font-normal"
                 >
-                    {selectedOption ? selectedOption.label : placeholder}
+                    {selectedOption?.label ?? placeholder}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+            <PopoverContent 
+                className="w-[--radix-popover-trigger-width] p-0 z-[9999]" 
+                align="start"
+                onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                onWheel={(e: React.WheelEvent) => e.stopPropagation()}
+                onInteractOutside={(e) => e.preventDefault()}
+            >
                 <Command shouldFilter={false}>
                     <CommandInput
                         placeholder={`Search ${label?.toLowerCase() || "item"}...`}
                         value={inputValue}
                         onValueChange={setInputValue}
+                        autoFocus
                     />
                     <CommandList className="max-h-[200px] overflow-y-auto overflow-x-hidden">
                         {creating ? (
@@ -109,14 +116,15 @@ export function SmartCreatableSelect({
                                             <CommandItem
                                                 key={option.value}
                                                 value={option.label}
-                                                onPointerDown={(e) => e.preventDefault()}
-                                                onSelect={() => {
-                                                    onChange(option.value)
-                                                    setOpen(false)
-                                                    // setInputValue("") // Optional: decided not to clear to keep context if re-opened, or clear it. User request didn't specify. I'll stick to clearing it or simpler:
-                                                    setInputValue("")
+                                                onMouseDown={(e: React.MouseEvent) => {
+                                                    // Winning the race against blur/Dialog focus trap
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    onChange(option.value);
+                                                    setOpen(false);
+                                                    setInputValue("");
                                                 }}
-                                                className="cursor-pointer py-2 px-3 aria-selected:bg-blue-50 aria-selected:text-blue-900 data-[selected=true]:bg-blue-50"
+                                                className="cursor-pointer py-2 px-3 !opacity-100 !pointer-events-auto aria-selected:bg-blue-50 aria-selected:text-blue-900 data-[selected=true]:bg-blue-50"
                                             >
                                                 <Check
                                                     className={cn(
@@ -134,9 +142,12 @@ export function SmartCreatableSelect({
                                         <CommandSeparator />
                                         <CommandGroup>
                                             <CommandItem
-                                                onSelect={handleCreate}
-                                                onPointerDown={(e) => e.preventDefault()}
-                                                className="text-blue-600 font-medium cursor-pointer"
+                                                onMouseDown={(e: React.MouseEvent) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleCreate();
+                                                }}
+                                                className="text-blue-600 font-medium cursor-pointer !opacity-100 !pointer-events-auto"
                                                 value={`CREATE:${inputValue}`} // Unique value for create item
                                             >
                                                 <Plus className="mr-2 h-4 w-4" />
