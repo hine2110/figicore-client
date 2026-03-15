@@ -84,5 +84,10 @@ export const productsService = {
     }): Promise<string> => {
         const response = await axiosInstance.post('/products/gen-description', payload, { timeout: 60000 });
         return response.data.text;
+    },
+
+    visualSearch: async (image: string): Promise<any> => {
+        const response = await axiosInstance.post('/products/visual-search', { image }, { timeout: 60000 });
+        return response.data;
     }
 };
