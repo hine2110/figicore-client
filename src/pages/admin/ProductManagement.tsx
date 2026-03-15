@@ -7,7 +7,10 @@ import { CreateProductModal } from '@/components/product/CreateProductModal';
 import { productsService } from '@/services/products.service';
 
 
+import { useNavigate } from 'react-router-dom';
+
 export default function ProductManagement() {
+    const navigate = useNavigate();
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -108,7 +111,7 @@ export default function ProductManagement() {
                         products={products}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
-                        onView={(product) => handleEdit(product)}
+                        onView={(product) => navigate(`/admin/products/${product.product_id}`)}
                     />
                 )}
             </div>

@@ -14,7 +14,8 @@ import {
     ChevronDown,
     ChevronRight,
     TicketPercent,
-    Bell
+    Bell,
+    DollarSign,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
@@ -22,6 +23,9 @@ import { io } from "socket.io-client";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+
+// --- Types ---
 type SubNavItem = { name: string; path: string };
 type NavItem =
     | { name: string; path: string; icon: React.FC<{ className?: string }>; children?: never }
@@ -72,9 +76,19 @@ export default function ManagerLayout() {
             children: [
                 { name: 'Schedules', path: '/manager/shifts' },
                 { name: 'Timesheets', path: '/manager/timesheets' },
+                { name: 'Leave Request', path: '/manager/leave-approvals' },
+                { name: 'Correction Approvals', path: '/manager/correction-approvals' }
             ],
         },
-        { name: 'Feedback', path: '/manager/feedback', icon: MessageSquare },
+        {
+            name: 'Payroll',
+            icon: DollarSign,
+            children: [
+                { name: 'Salary Configuration', path: '/manager/payroll' },
+                { name: 'Payroll Management', path: '/manager/payroll-management' },
+
+            ],
+        },
     ];
 
     const isActive = (path: string) => location.pathname === path;

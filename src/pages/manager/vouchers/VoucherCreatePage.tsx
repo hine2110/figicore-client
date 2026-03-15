@@ -1,13 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+
 
 import { VouchersService } from '@/services/vouchers.service';
-import { PromotionsService } from '@/services/promotions.service';
+import { PromotionsService, PromotionPreviewResult } from '@/services/promotions.service';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,8 +15,10 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 const formatNumberStr = (val: string | number | undefined) => {
     if (val === undefined || val === null || val === '') return '';
@@ -60,9 +62,16 @@ const formSchema = z.object({
     name: z.string().optional(),
     code: z.string().optional(),
     discount_value: z.coerce.number().min(0, "Value must be positive").optional(),
-    start_date: z.string().min(1, "Required"),
-    end_date: z.string().min(1, "Required"),
-    
+
+    // For Vouchers: full datetime range
+    start_date: z.string().optional(),
+    end_date: z.string().optional(),
+
+    // For Promotions: daily time window (HH:mm)
+    start_time: z.string().optional(),
+    end_time: z.string().optional(),
+    is_recurring: z.boolean().default(false),
+
     // For Vouchers
     min_order_value: z.coerce.number().min(0).optional(),
     apply_rank_code: z.string().optional(),
@@ -73,15 +82,13 @@ const formSchema = z.object({
     min_price: z.number().optional().default(0),
     max_price: z.number().optional(),
 }).superRefine((data, ctx) => {
-    if (data.start_date && data.end_date && new Date(data.start_date) >= new Date(data.end_date)) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "End date must be after start date",
-            path: ["end_date"]
-        });
-    }
-
     if (data.discount_type === 'PRODUCT_PERCENTAGE') {
+        if (!data.start_time || !data.end_time) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Start time is required", path: ["start_time"] });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End time is required", path: ["end_time"] });
+        } else if (data.start_time >= data.end_time) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End time must be after start time", path: ["end_time"] });
+        }
         if (data.name && data.name.length < 2) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Program name must be at least 2 characters if provided", path: ["name"] });
         }
@@ -89,9 +96,20 @@ const formSchema = z.object({
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Discount value required", path: ["discount_value"] });
         }
         if (data.max_price !== undefined && data.min_price !== undefined && data.max_price <= data.min_price) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Must be > Minimum price", path: ["max_price"] });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Must be greater than Minimum Price", path: ["max_price"] });
+        }
+        if (data.min_price === undefined || data.min_price === null) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Minimum Price is required", path: ["min_price"] });
+        }
+        if (data.max_price === undefined || data.max_price === null) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Maximum Price is required", path: ["max_price"] });
         }
     } else {
+        if (data.start_date && data.end_date && new Date(data.start_date) >= new Date(data.end_date)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End date must be after start date", path: ["end_date"] });
+        }
+        if (!data.start_date) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["start_date"] });
+        if (!data.end_date) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["end_date"] });
         if (data.code && data.code.length > 0 && data.code.length < 3) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Voucher code must be at least 3 characters if provided", path: ["code"] });
         }
@@ -124,11 +142,14 @@ export default function VoucherCreatePage() {
             discount_value: 0,
             start_date: "",
             end_date: "",
+            start_time: "",
+            end_time: "",
+            is_recurring: false,
             min_order_value: 0,
             apply_rank_code: "ALL",
             max_quantity: undefined,
             is_public: true,
-            min_price: 0,
+            min_price: undefined,
             max_price: undefined,
         },
     });
@@ -136,22 +157,49 @@ export default function VoucherCreatePage() {
     const watchType = form.watch('discount_type');
     const isPromo = watchType === 'PRODUCT_PERCENTAGE';
 
+    // ── Preview dialog state ──
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewData, setPreviewData] = useState<PromotionPreviewResult | null>(null);
+    const [pendingPromoId, setPendingPromoId] = useState<number | null>(null);
+    const [pendingRange, setPendingRange] = useState<{ minPrice: number; maxPrice: number } | null>(null);
+    const [isApplying, setIsApplying] = useState(false);
+
+    const handleApplyRange = async (overwrite: boolean) => {
+        if (!pendingPromoId || !pendingRange) return;
+        setIsApplying(true);
+        try {
+            const result = await PromotionsService.applyByPriceRange(pendingPromoId, pendingRange, overwrite);
+            const skipped = result.skipped ?? 0;
+            toast({
+                title: "Success!",
+                description: `Applied to ${result.count} item variants.${ skipped > 0 ? ` ${skipped} variants with existing promotions were skipped.` : '' }`
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e?.response?.data?.message || 'Failed to apply range.' });
+        } finally {
+            setIsApplying(false);
+            setPreviewOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['promotions'] });
+            navigate('/manager/vouchers?tab=promotions');
+        }
+    };
+
     const onSubmit: SubmitHandler<FormValues> = async (values) => {
         try {
             if (isPromo) {
                 // Auto-generate name if not provided
                 let finalName = values.name;
                 if (!finalName || finalName.trim() === '') {
-                    const startDateObj = new Date(values.start_date);
-                    
-                    // Lấy ra chuỗi ngày tháng ở định dạng MM/DD (VD: "08/03") để dò trong từ điển
-                    const dateMonthKey = format(startDateObj, 'dd/MM');
+                    const today = new Date();
+                    const dd = String(today.getDate()).padStart(2, '0');
+                    const mm = String(today.getMonth() + 1).padStart(2, '0');
+                    const dateMonthKey = `${dd}/${mm}`;
                     const holidayName = VIETNAMESE_HOLIDAYS[dateMonthKey];
 
                     if (holidayName) {
-                        finalName = `[${holidayName}] Sale ${values.discount_value}%`;
+                        finalName = `[${holidayName}] Flash Sale ${values.discount_value}%`;
                     } else {
-                        finalName = `Sale ${values.discount_value}%`;
+                        finalName = `Flash Sale ${values.discount_value}% (${values.start_time} - ${values.end_time})`;
                     }
                 }
 
@@ -159,25 +207,43 @@ export default function VoucherCreatePage() {
                     name: finalName,
                     type_code: 'PERCENTAGE',
                     value: values.discount_value!,
-                    start_date: new Date(values.start_date).toISOString(),
-                    end_date: new Date(values.end_date).toISOString(),
+                    start_time: values.start_time!,
+                    end_time: values.end_time!,
+                    is_recurring: values.is_recurring ?? false,
                     min_apply_price: values.min_price,
                     max_apply_price: values.max_price,
                 });
 
-                if (values.min_price !== undefined) {
-                    toast({ title: "Processing...", description: "System is scanning and applying automatically..." });
-                    const maxP = values.max_price !== undefined ? values.max_price : Number.MAX_SAFE_INTEGER;
-                    const result = await PromotionsService.applyByPriceRange(newPromo.promotion_id, {
-                        minPrice: values.min_price,
-                        maxPrice: maxP
+                const hasPriceRange = values.min_price !== undefined && values.max_price !== undefined;
+                if (hasPriceRange) {
+                    toast({ title: "Scanning products...", description: "Checking for conflicts..." });
+                    const preview = await PromotionsService.previewByPriceRange(newPromo.promotion_id, {
+                        minPrice: values.min_price!,
+                        maxPrice: values.max_price!
                     });
-                    toast({ title: "Success!", description: `Created and applied to ${result.count} products.` });
+
+                    if (preview.conflict_count === 0) {
+                        // No conflicts — apply immediately
+                        const result = await PromotionsService.applyByPriceRange(newPromo.promotion_id, {
+                            minPrice: values.min_price!,
+                            maxPrice: values.max_price!
+                        }, true);
+                        toast({ title: "Success!", description: `Created and applied to ${result.count} item variants.` });
+                        queryClient.invalidateQueries({ queryKey: ['promotions'] });
+                        navigate('/manager/vouchers?tab=promotions');
+                    } else {
+                        // Has conflicts — show dialog
+                        setPendingPromoId(newPromo.promotion_id);
+                        setPendingRange({ minPrice: values.min_price!, maxPrice: values.max_price! });
+                        setPreviewData(preview);
+                        setPreviewOpen(true);
+                        // Don't navigate yet — wait for user decision
+                    }
                 } else {
                     toast({ title: "Success", description: "Product Promotion created!" });
+                    queryClient.invalidateQueries({ queryKey: ['promotions'] });
+                    navigate('/manager/vouchers?tab=promotions');
                 }
-                queryClient.invalidateQueries({ queryKey: ['promotions'] });
-                navigate('/manager/vouchers?tab=promotions');
             } else {
                 let finalCode = values.code?.toUpperCase();
 
@@ -198,8 +264,8 @@ export default function VoucherCreatePage() {
                     apply_rank_code: values.apply_rank_code === 'ALL' ? undefined : values.apply_rank_code,
                     max_quantity: values.max_quantity || undefined,
                     is_public: values.is_public,
-                    start_date: new Date(values.start_date).toISOString(),
-                    end_date: new Date(values.end_date).toISOString(),
+                    start_date: new Date(values.start_date!).toISOString(),
+                    end_date: new Date(values.end_date!).toISOString(),
                 };
 
                 await VouchersService.create(payload);
@@ -325,41 +391,92 @@ export default function VoucherCreatePage() {
                                 ) : <div />} {/* Empty div to keep grid alignment if Free Ship */}
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <FormField
-                                    control={form.control}
-                                    name="start_date"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Start Date</FormLabel>
-                                            <FormControl>
-                                                <Input type="datetime-local" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="end_date"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>End Date</FormLabel>
-                                            <FormControl>
-                                                <Input type="datetime-local" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
+                            {/* TIME INPUTS — only for Product Promotions */}
+                            {isPromo ? (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <FormField
+                                            control={form.control}
+                                            name="start_time"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>⚡ Start Time</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="time" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="end_time"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>⚡ End Time</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="time" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="is_recurring"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border border-orange-200 bg-orange-50 p-4">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel className="text-base font-semibold text-orange-900">🔁 Daily Recurring</FormLabel>
+                                                    <FormDescription className="text-orange-700">
+                                                        When ON — Flash Sale repeats every day in the same time window. When OFF — it runs only today, then deactivates automatically.
+                                                    </FormDescription>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="start_date"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Start Date</FormLabel>
+                                                <FormControl>
+                                                    <Input type="datetime-local" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="end_date"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>End Date</FormLabel>
+                                                <FormControl>
+                                                    <Input type="datetime-local" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            )}
 
                             {/* SECTION: PRODUCT PROMOTION FIELDS */}
                             {isPromo && (
                                 <div className="space-y-4 border rounded-lg p-5 bg-slate-50">
                                     <h3 className="font-semibold text-lg">Application Range</h3>
                                     <p className="text-sm text-slate-500">
-                                        System automatically scans and applies the promotion to all products in this price range.
+                                        System automatically scans and applies the promotion to all item variants in this price range.
                                     </p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <FormField
@@ -367,11 +484,11 @@ export default function VoucherCreatePage() {
                                             name="min_price"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Minimum Price (VND)</FormLabel>
+                                                    <FormLabel>Minimum Price (VND) <span className="text-red-500">*</span></FormLabel>
                                                     <FormControl>
                                                         <Input 
                                                             type="text" 
-                                                            placeholder="0" 
+                                                            placeholder="e.g. 100.000" 
                                                             value={formatNumberStr(field.value)}
                                                             onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
                                                         />
@@ -385,16 +502,15 @@ export default function VoucherCreatePage() {
                                             name="max_price"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Maximum Price (VND)</FormLabel>
+                                                    <FormLabel>Maximum Price (VND) <span className="text-red-500">*</span></FormLabel>
                                                     <FormControl>
                                                         <Input 
                                                             type="text" 
-                                                            placeholder="Leave blank for no limit" 
+                                                            placeholder="e.g. 500.000" 
                                                             value={formatNumberStr(field.value)}
                                                             onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
                                                         />
                                                     </FormControl>
-                                                    <FormDescription>Leave blank for no limit</FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -479,6 +595,76 @@ export default function VoucherCreatePage() {
                     </Form>
                 </CardContent>
             </Card>
+
+            {/* ── Conflict Preview Dialog ── */}
+            <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+                <DialogContent className="max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-amber-600">
+                            <AlertTriangle className="h-5 w-5" />
+                            Promotion Conflict Detected
+                        </DialogTitle>
+                        <DialogDescription>
+                            Some item variants in this price range already have an active promotion. Choose how to proceed.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {previewData ? (
+                        <div className="space-y-4 py-2">
+                            {/* Summary Row */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center dark:border-emerald-800 dark:bg-emerald-950">
+                                    <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-600 mb-1" />
+                                    <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">{previewData.safe_count}</p>
+                                    <p className="text-xs text-emerald-600 dark:text-emerald-500">Ready to apply</p>
+                                </div>
+                                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-center dark:border-amber-800 dark:bg-amber-950">
+                                    <AlertTriangle className="mx-auto h-5 w-5 text-amber-600 mb-1" />
+                                    <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{previewData.conflict_count}</p>
+                                    <p className="text-xs text-amber-600 dark:text-amber-500">Have existing promotions</p>
+                                </div>
+                            </div>
+
+                            {/* Conflict List */}
+                            {previewData.conflict_products.length > 0 && (
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground mb-2">Conflicting variants:</p>
+                                    <div className="max-h-52 overflow-y-auto space-y-2 rounded-md border p-2">
+                                        {previewData.conflict_products.map(cp => (
+                                            <div key={cp.product_id} className="flex items-center justify-between gap-2 text-sm px-1">
+                                                <span className="font-medium truncate flex-1">{cp.name}</span>
+                                                <Badge variant="outline" className="shrink-0 text-xs border-amber-400 text-amber-600">
+                                                    {cp.current_promotion.name} • {Number(cp.current_promotion.value)}%
+                                                </Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
+
+                    <DialogFooter className="flex gap-2 sm:gap-2">
+                        <Button
+                            variant="outline"
+                            className="flex-1"
+                            disabled={isApplying}
+                            onClick={() => handleApplyRange(false)}
+                        >
+                            {isApplying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            ⏭️ Skip existing ({previewData?.conflict_count ?? 0})
+                        </Button>
+                        <Button
+                            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                            disabled={isApplying}
+                            onClick={() => handleApplyRange(true)}
+                        >
+                            {isApplying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            ✅ Overwrite all
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

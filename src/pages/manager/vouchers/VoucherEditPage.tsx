@@ -4,7 +4,6 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { format } from 'date-fns';
 
 import { VouchersService } from '@/services/vouchers.service';
 import { PromotionsService } from '@/services/promotions.service';
@@ -63,9 +62,16 @@ const formSchema = z.object({
     name: z.string().optional(),
     code: z.string().optional(),
     discount_value: z.coerce.number().min(0, "Value must be positive").optional(),
-    start_date: z.string().min(1, "Required"),
-    end_date: z.string().min(1, "Required"),
-    
+
+    // Voucher fields
+    start_date: z.string().optional(),
+    end_date: z.string().optional(),
+
+    // Promotion (Flash Sale) fields
+    start_time: z.string().optional(),
+    end_time: z.string().optional(),
+    is_recurring: z.boolean().default(false),
+
     // For Vouchers
     min_order_value: z.coerce.number().min(0).optional(),
     apply_rank_code: z.string().optional(),
@@ -76,15 +82,10 @@ const formSchema = z.object({
     min_price: z.number().optional().default(0),
     max_price: z.number().optional(),
 }).superRefine((data, ctx) => {
-    if (data.start_date && data.end_date && new Date(data.start_date) >= new Date(data.end_date)) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "End date must be after start date",
-            path: ["end_date"]
-        });
-    }
-
     if (data.discount_type === 'PRODUCT_PERCENTAGE') {
+        if (data.start_time && data.end_time && data.start_time >= data.end_time) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End time must be after start time", path: ["end_time"] });
+        }
         if (data.name && data.name.length < 2) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Program name must be at least 2 characters if provided", path: ["name"] });
         }
@@ -95,6 +96,9 @@ const formSchema = z.object({
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Must be > Minimum price", path: ["max_price"] });
         }
     } else {
+        if (data.start_date && data.end_date && new Date(data.start_date) >= new Date(data.end_date)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End date must be after start date", path: ["end_date"] });
+        }
         if (data.code && data.code.length > 0 && data.code.length < 3) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Voucher code must be at least 3 characters if provided", path: ["code"] });
         }
@@ -147,6 +151,9 @@ export default function VoucherEditPage() {
             discount_value: 0,
             start_date: "",
             end_date: "",
+            start_time: "",
+            end_time: "",
+            is_recurring: false,
             min_order_value: 0,
             apply_rank_code: "ALL",
             max_quantity: undefined,
@@ -186,8 +193,11 @@ export default function VoucherEditPage() {
                 name: promoData.name || "",
                 code: "",
                 discount_value: Number(promoData.value) || 0,
-                start_date: promoData.start_date ? promoData.start_date.substring(0, 16) : "",
-                end_date: promoData.end_date ? promoData.end_date.substring(0, 16) : "",
+                start_date: "",
+                end_date: "",
+                start_time: promoData.start_time ?? "",
+                end_time: promoData.end_time ?? "",
+                is_recurring: promoData.is_recurring ?? false,
                 min_order_value: 0,
                 apply_rank_code: "ALL",
                 max_quantity: undefined,
@@ -204,27 +214,19 @@ export default function VoucherEditPage() {
     const onSubmit: SubmitHandler<FormValues> = async (values) => {
         try {
             if (isPromo) {
-                // If converted to or edited as a product promotion (usually shouldn't cross-convert but handle just in case)
+                // Promotion update: use start_time/end_time
                 let finalName = values.name;
                 if (!finalName || finalName.trim() === '') {
-                    const startDateObj = new Date(values.start_date);
-                    
-                    const dateMonthKey = format(startDateObj, 'dd/MM');
-                    const holidayName = VIETNAMESE_HOLIDAYS[dateMonthKey];
-
-                    if (holidayName) {
-                        finalName = `[${holidayName}] Sale ${values.discount_value}%`;
-                    } else {
-                        finalName = `Sale ${values.discount_value}%`;
-                    }
+                    finalName = `Flash Sale ${values.discount_value}% (${values.start_time} - ${values.end_time})`;
                 }
 
                 await PromotionsService.update(Number(id), {
                     name: finalName,
                     type_code: 'PERCENTAGE',
                     value: values.discount_value!,
-                    start_date: new Date(values.start_date).toISOString(),
-                    end_date: new Date(values.end_date).toISOString(),
+                    start_time: values.start_time!,
+                    end_time: values.end_time!,
+                    is_recurring: values.is_recurring ?? false,
                     min_apply_price: values.min_price,
                     max_apply_price: values.max_price,
                 });
@@ -254,8 +256,8 @@ export default function VoucherEditPage() {
                     apply_rank_code: values.apply_rank_code === 'ALL' ? undefined : values.apply_rank_code,
                     max_quantity: values.max_quantity || undefined,
                     is_public: values.is_public,
-                    start_date: new Date(values.start_date).toISOString(),
-                    end_date: new Date(values.end_date).toISOString(),
+                    start_date: new Date(values.start_date!).toISOString(),
+                    end_date: new Date(values.end_date!).toISOString(),
                 };
 
                 await VouchersService.update(Number(id), payload);
@@ -397,34 +399,87 @@ export default function VoucherEditPage() {
                                 ) : <div />} {/* Empty div to keep grid alignment if Free Ship */}
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <FormField
-                                    control={form.control}
-                                    name="start_date"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Start Date</FormLabel>
-                                            <FormControl>
-                                                <Input type="datetime-local" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="end_date"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>End Date</FormLabel>
-                                            <FormControl>
-                                                <Input type="datetime-local" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
+                            {/* DATE/TIME SECTION - Conditional based on type */}
+                            {isPromo ? (
+                                // Promotion: Time inputs + recurring
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <FormField
+                                            control={form.control}
+                                            name="start_time"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>⚡ Start Time</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="time" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="end_time"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>⚡ End Time</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="time" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="is_recurring"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border border-orange-200 bg-orange-50 p-4">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel className="text-base font-semibold text-orange-900">🔁 Daily Recurring</FormLabel>
+                                                    <FormDescription className="text-orange-700">
+                                                        When ON — repeats every day. When OFF — runs once then deactivates.
+                                                    </FormDescription>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </>
+                            ) : (
+                                // Voucher: DateTime inputs
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="start_date"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Start Date</FormLabel>
+                                                <FormControl>
+                                                    <Input type="datetime-local" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="end_date"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>End Date</FormLabel>
+                                                <FormControl>
+                                                    <Input type="datetime-local" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            )}
 
                             {/* SECTION: PRODUCT PROMOTION FIELDS (Readonly mostly, but allowed to change limits if we want) */}
                             {isPromo && (
