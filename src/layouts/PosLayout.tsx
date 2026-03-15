@@ -10,7 +10,8 @@ import {
     User,
     CalendarDays, // Icon cho Work Schedule
     ChevronDown,
-    ChevronRight
+    ChevronRight,
+    ReceiptText
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ export default function PosLayout() {
             icon: User,
             description: 'Account Settings'
         },
+        { name: 'My Payroll', path: '/pos/my-payroll', icon: ReceiptText, description: 'Salary & Payslips' },
     ];
 
     const isActive = (path: string) => location.pathname === path;
@@ -165,6 +167,7 @@ export default function PosLayout() {
                         >
                             My Timesheets
                         </Link>
+
                     </CollapsibleContent>
                 </Collapsible>
             </nav>

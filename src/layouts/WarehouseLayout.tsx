@@ -9,6 +9,7 @@ import {
     Menu,
     X,
     CalendarDays,
+    ReceiptText,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,7 @@ export default function WarehouseLayout() {
         { name: 'Imports', path: '/warehouse/imports', icon: Truck },
         { name: 'Packing', path: '/warehouse/packing', icon: PackageCheck },
         { name: 'Returns', path: '/warehouse/returns', icon: RotateCcw },
+        { name: 'My Payroll', path: '/warehouse/my-payroll', icon: ReceiptText, description: 'Salary & Payslips' },
         // { name: 'Schedule', path: '/warehouse/schedule', icon: CalendarDays },
     ];
 

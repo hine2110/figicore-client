@@ -12,6 +12,7 @@ import { format, startOfWeek, addDays, subDays, endOfWeek, isSameDay } from 'dat
 import StaffSummaryTable from './StaffSummaryTable';
 import { useSecurityCheck } from '@/hooks/useSecurityCheck';
 
+
 // --- Types ---
 
 export interface User {
@@ -114,7 +115,9 @@ export default function ShiftManagement() {
     const getIsoDateTime = (dateStr: string, timeStr?: string) => {
         if (!dateStr || !timeStr) return undefined;
         try {
+            // Khởi tạo Date object. Trình duyệt sẽ tự hiểu đây là giờ Local (VD: GMT+7)
             const date = new Date(`${dateStr}T${timeStr}:00`);
+            // Chuyển thành chuỗi ISO (sẽ tự động lùi về UTC để gửi lên server)
             return date.toISOString();
         } catch (e) {
             console.error("Invalid date/time conversion", e);
@@ -125,10 +128,18 @@ export default function ShiftManagement() {
     // Convert ISO String -> HH:mm (String Manipulation for strict accuracy)
     const getTimeFromIso = (isoString?: string | null) => {
         if (!isoString) return '';
-        // Expected format: YYYY-MM-DDTHH:mm:ss... or just Time
-        // Regex to extract HH:mm regardless of T or Z
-        const match = isoString.match(/T?(\d{2}:\d{2})/);
-        return match ? match[1] : '';
+        try {
+            const dateObj = new Date(isoString);
+
+            // Lấy giờ và phút theo múi giờ địa phương của trình duyệt, thêm số 0 ở trước nếu cần
+            const hours = String(dateObj.getHours()).padStart(2, '0');
+            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+
+            return `${hours}:${minutes}`;
+        } catch (e) {
+            console.error("Invalid ISO format", e);
+            return '';
+        }
     };
 
     const getUserName = (schedule: WorkSchedule) => {

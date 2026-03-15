@@ -38,6 +38,7 @@ import PromotionEditPage from "@/pages/manager/promotions/PromotionEditPage";
 import VoucherListPage from "@/pages/manager/vouchers/VoucherListPage";
 import VoucherCreatePage from "@/pages/manager/vouchers/VoucherCreatePage";
 // import StaffDashboard from "@/pages/staff/StaffDashboard"; // Deprecated
+import Payroll from "@/pages/manager/SalaryConfiguration";
 
 // Customer Pages
 import CustomerHome from "@/pages/customer/CustomerHome";
@@ -90,7 +91,11 @@ import ResetPassword from "@/pages/guest/ResetPassword";
 import AuthSuccess from "@/pages/guest/AuthSuccess";
 import ActivationPage from "@/pages/auth/ActivationPage";
 import { Toaster } from "@/components/ui/toaster";
-
+import LeaveApprovals from "./pages/manager/LeaveApprovals";
+import CorrectionApprovals from "./pages/manager/CorrectionApprovals";
+import MyPayrollWarehouse from "./pages/warehouse/MyPayroll";
+import MyPayrollPos from "./pages/pos/MyPayroll";
+import PayrollManagement from "./pages/manager/PayrollManagement";
 export default function App() {
     return (
         <BrowserRouter>
@@ -150,6 +155,8 @@ export default function App() {
                             <Route path="returns" element={<ReturnApprovals />} />
                             <Route path="shifts" element={<ShiftManagement />} />
                             <Route path="timesheets" element={<ManagerTimesheets />} />
+                            <Route path="leave-approvals" element={<LeaveApprovals />} />
+                            <Route path="correction-approvals" element={<CorrectionApprovals />} />
                             <Route path="feedback" element={<CustomerFeedback />} />
                             <Route path="profile" element={<ProfilePage />} />
                             <Route path="promotions" element={<PromotionListPage />} />
@@ -157,6 +164,8 @@ export default function App() {
                             <Route path="promotions/:id/edit" element={<PromotionEditPage />} />
                             <Route path="vouchers" element={<VoucherListPage />} />
                             <Route path="vouchers/new" element={<VoucherCreatePage />} />
+                            <Route path="payroll" element={<Payroll />} />
+                            <Route path="payroll-management" element={<PayrollManagement />} />
                         </Route>
                     </Route>
 
@@ -172,6 +181,7 @@ export default function App() {
                             <Route path="profile" element={<ProfilePage />} />
                             <Route path="schedule" element={<WarehouseSchedule />} />
                             <Route path="timesheets" element={<WarehouseTimesheets />} />
+                            <Route path="my-payroll" element={<MyPayrollWarehouse />} />
                         </Route>
                     </Route>
 
@@ -188,6 +198,7 @@ export default function App() {
                             <Route path="customers" element={<CustomerLookup />} />
                             <Route path="customer/:id" element={<CustomerDetailPage />} />
                             <Route path="profile" element={<ProfilePage />} />
+                            <Route path="my-payroll" element={<MyPayrollPos />} />
                         </Route>
                     </Route>
 

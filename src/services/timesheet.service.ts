@@ -3,6 +3,7 @@ import { axiosInstance } from '@/lib/axiosInstance';
 const BASE = '/check-in';
 
 export interface TimesheetLog {
+    timesheet_id: number | null;
     date: string;
     shift_name: string;
     start_time: string | null;
