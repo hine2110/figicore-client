@@ -1,13 +1,13 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export default function ProtectedRoute() {
     const { isAuthenticated } = useAuthStore();
-    const location = useLocation();
 
     if (!isAuthenticated) {
-        // Redirect to login with proper return url
-        return <Navigate to={`/guest/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+        // Safe redirect to guest login page. 
+        // Note: encoding search parameters was occasionally causing routing 404s depending on the current path setup.
+        return <Navigate to={`/guest/login`} replace />;
     }
 
     return <Outlet />;

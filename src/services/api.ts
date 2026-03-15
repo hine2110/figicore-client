@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '@/store/useAuthStore';
 
 // Create Axios instance with base configuration
 // Create Axios instance with base configuration
@@ -24,14 +25,29 @@ api.interceptors.request.use(
     }
 );
 
-// Response Interceptor (Placeholder for Error Handling)
+// Response Interceptor (Handling Global Auto-Logout for 401s)
 api.interceptors.response.use(
     (response) => {
         return response;
     },
     (error) => {
-        // Normalize error format for usage in components
-        // if (error.response?.status === 401) { logout() ... }
+        // If the server rejects the token (e.g., expired or user is banned)
+        if (error.response?.status === 401) {
+            // Prevent redirect loop if already on a login page
+            const currentPath = window.location.pathname;
+            if (!currentPath.includes('/login') && !currentPath.includes('/guest/login')) {
+                // Clear zustand auth state and local storage
+                const store = useAuthStore.getState();
+                if (store.logout) {
+                    store.logout();
+                } else {
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('user');
+                }
+                // Redirect user to the correct login page, not just the non-existent /login
+                window.location.href = '/guest/login';
+            }
+        }
         return Promise.reject(error);
     }
 );

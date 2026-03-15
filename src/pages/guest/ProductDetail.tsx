@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Lock, Play, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { productsService } from '@/services/products.service';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn, calculateFinalPrice } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 export default function GuestProductDetail() {
     const { id } = useParams();
@@ -198,11 +198,10 @@ export default function GuestProductDetail() {
                                             if (!selectedVariant) return 'Select Option';
 
                                             const price = Number(selectedVariant.price);
-                                            const promoDetails = product.product_promotions;
-                                            const finalPrice = calculateFinalPrice(price, promoDetails);
-                                            const hasDiscount = finalPrice < price;
+                                            const finalPrice = selectedVariant.final_price !== undefined ? Number(selectedVariant.final_price) : price;
+                                            const hasDiscount = selectedVariant.is_on_sale;
 
-                                            if (hasDiscount) {
+                                            if (hasDiscount && finalPrice < price) {
                                                 return (
                                                     <div className="flex items-baseline gap-2">
                                                         <span className="text-red-600">{formatPrice(finalPrice)}</span>
@@ -210,7 +209,7 @@ export default function GuestProductDetail() {
                                                             {formatPrice(price)}
                                                         </span>
                                                         <Badge variant="destructive" className="ml-2 text-sm">
-                                                            {promoDetails?.type_code === 'PERCENTAGE' ? `-${Number(promoDetails.value)}%` : 'SALE'}
+                                                            {selectedVariant.discount_percentage ? `-${selectedVariant.discount_percentage}%` : 'SALE'}
                                                         </Badge>
                                                     </div>
                                                 );

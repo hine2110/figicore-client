@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/store/useCartStore';
 import { useToast } from "@/components/ui/use-toast";
 import { useState } from 'react';
-import { calculateFinalPrice } from '@/lib/utils';
-import { ProductPromotion } from '@/types/product';
 
 interface ProductCardProps {
     product: {
@@ -21,8 +19,7 @@ interface ProductCardProps {
 
         // Data might come as pre-calculated stock OR list of variants
         stock_available?: number;
-        product_variants?: any[]; // <--- ADD THIS to support calculating total stock
-        product_promotions?: ProductPromotion[] | any;
+        product_variants?: any[]; // variants including final_price, is_on_sale
     };
 }
 
@@ -77,12 +74,23 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
         }
     };
 
-    // Logic calculation to be robust
-    const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
+    // Logic calculation to be robust using variants
+    let minVariantPrice = product.price;
+    let minFinalPrice = product.price;
+    let hasDiscount = false;
 
-    // Calculate final price using the helper that respects range
-    const finalPrice = calculateFinalPrice(product.price, promo);
-    const hasDiscount = finalPrice < product.price;
+    if (product.product_variants && product.product_variants.length > 0) {
+        const minVariant = product.product_variants.reduce((min: any, v: any) => {
+            if (v.final_price !== undefined) {
+                return (v.final_price < (min.final_price !== undefined ? min.final_price : min.price)) ? v : min;
+            }
+            return min;
+        }, product.product_variants[0]);
+        
+        minVariantPrice = Number(minVariant.price) || product.price;
+        minFinalPrice = Number(minVariant.final_price) || minVariantPrice;
+        hasDiscount = minVariant.is_on_sale || false;
+    }
 
     return (
         <Link to={`/customer/product/${product.id}`} className="group relative block overflow-hidden rounded-xl bg-white border border-gray-100 hover:border-blue-100 hover:shadow-lg transition-all duration-300">
@@ -97,7 +105,7 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
                 {product.isNew && (
                     <span className="absolute top-3 left-3 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">New</span>
                 )}
-                {product.originalPrice && (
+                {hasDiscount && (
                     <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">Sale</span>
                 )}
 
@@ -168,7 +176,7 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
                         // 3. Retail Logic (Default)
                         else {
                             if (hasDiscount) {
-                                displayPrice = finalPrice;
+                                displayPrice = minFinalPrice;
                                 showOriginal = true;
                             }
                         }
@@ -179,7 +187,7 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
                                 {formatPrice(displayPrice)}
                                 {showOriginal && (
                                     <span className="ml-2 text-sm text-neutral-400 line-through">
-                                        {formatPrice(product.price)}
+                                        {formatPrice(minVariantPrice)}
                                     </span>
                                 )}
                             </span>
