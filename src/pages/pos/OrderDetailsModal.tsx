@@ -112,21 +112,11 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                         <p className="text-[11px]">76 Huỳnh Văn Nghệ, Ngũ Hành Sơn, ĐN</p>
                         <p className="text-[11px]">SĐT: 0868884343</p>
                         <div className="border-b border-dashed border-black my-2"></div>
-                        <h3 className="text-md font-bold uppercase">
-                            {order.is_vat_export ? 'HOÁ ĐƠN GIÁ TRỊ GIA TĂNG' : 'HOÁ ĐƠN THANH TOÁN'}
-                        </h3>
+                        <h3 className="text-md font-bold uppercase">HOÁ ĐƠN THANH TOÁN</h3>
                         <p className="text-[11px]">Số: {order.order_code}</p>
                     </div>
 
-                    {order.is_vat_export && (
-                        <div className="mb-3 text-[10px] space-y-0.5 border-b border-dotted border-black pb-2">
-                            <p className="font-bold uppercase text-[11px]">Đơn vị mua hàng:</p>
-                            <p className="font-bold">{order.vat_company_name}</p>
-                            <p>MST: <span className="font-bold">{order.vat_tax_number}</span></p>
-                            <p>Địa chỉ: {order.vat_company_address}</p>
-                            {order.vat_invoice_email && <p>Email: {order.vat_invoice_email}</p>}
-                        </div>
-                    )}
+
 
                     <div className="space-y-1 mb-3 text-[11px]">
                         <div className="flex justify-between">
@@ -187,16 +177,11 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                     </div>
 
                     <div className="border-t border-dashed border-black pt-2 space-y-1 text-[11px]">
-                        <div className="flex justify-between text-[11px]">
+                        <div className="flex justify-between text-sm">
                             <span>Tiền hàng ({order.order_items?.length || 0})</span>
-                            <span>{(Number(order.total_amount) - Number(order.total_tax || 0) + Number(order.discount_amount || 0)).toLocaleString()}</span>
+                            <span>{(Number(order.total_amount) + Number(order.discount_amount || 0)).toLocaleString()}</span>
                         </div>
-                        {Number(order.total_tax) > 0 && (
-                            <div className="flex justify-between text-[11px]">
-                                <span>Thuế VAT</span>
-                                <span>{Number(order.total_tax).toLocaleString()}</span>
-                            </div>
-                        )}
+
                         {Number(order.discount_amount) > 0 && (
                             <div className="flex justify-between">
                                 <span>Tổng giảm giá</span>
@@ -238,12 +223,8 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                 <div className="screen-only px-6 py-5 border-b border-neutral-200/60 flex justify-between items-start bg-white/50 backdrop-blur-md sticky top-0 z-10">
                     <div>
                         <DialogTitle className="text-xl font-bold text-neutral-900 flex items-center gap-3">
-                            {order.is_vat_export ? (
-                                <FileText className="w-6 h-6 text-red-600" />
-                            ) : (
-                                <Receipt className="w-6 h-6 text-indigo-600" />
-                            )}
-                            {order.is_vat_export ? "Official VAT Invoice" : "Order Receipt"}
+                            <Receipt className="w-6 h-6 text-indigo-600" />
+                            Order Receipt
                             <Badge variant="secondary" className={cn("font-bold border px-2.5 py-0.5 h-6 text-[10px] uppercase tracking-wide rounded-full flex items-center gap-1.5", StatusInfo.color)}>
                                 <StatusIcon className="w-3 h-3" />
                                 {StatusInfo.label}
@@ -262,13 +243,11 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                     </div>
                     {/* Official Stamp Effect */}
                     <div className={cn(
-                        "w-20 h-20 rounded-full border-4 flex flex-col items-center justify-center -rotate-12 opacity-40 transition-all",
-                        order.is_vat_export ? "border-red-500 text-red-600" : "border-neutral-200/50 text-neutral-300"
+                        "w-20 h-20 rounded-full border-4 flex flex-col items-center justify-center -rotate-12 opacity-40 transition-all border-neutral-200/50 text-neutral-300"
                     )}>
                         <span className="text-[10px] font-black uppercase text-center leading-none">
-                            {order.is_vat_export ? "E-INVOICE\nVERIFIED" : "Official\nReceipt"}
+                            Official\nReceipt
                         </span>
-                        {order.is_vat_export && <CheckCircle2 className="w-4 h-4 mt-1" />}
                     </div>
                 </div>
 
@@ -322,40 +301,7 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                             </div>
                         </div>
 
-                        {/* 1.1 Company Info (Only for VAT export) */}
-                        {order.is_vat_export && (
-                            <div className="bg-red-50/50 rounded-2xl border border-red-100 p-5 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                                <div className="absolute top-0 right-0 p-2 text-red-100">
-                                    <Building className="w-16 h-16" />
-                                </div>
-                                <h4 className="text-xs font-bold text-red-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <Building className="w-3.5 h-3.5" /> Buyer Information (Enterprise)
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 relative z-10">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold text-neutral-400 uppercase">Entity Name</p>
-                                        <p className="font-bold text-neutral-800 text-sm leading-tight">{order.vat_company_name}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold text-neutral-400 uppercase">Tax ID (MST)</p>
-                                        <p className="font-mono font-bold text-red-600 text-sm tracking-widest">{order.vat_tax_number}</p>
-                                    </div>
-                                    <div className="space-y-1 md:col-span-2">
-                                        <p className="text-[10px] font-bold text-neutral-400 uppercase">Registered Address</p>
-                                        <p className="text-neutral-600 text-sm">{order.vat_company_address}</p>
-                                    </div>
-                                    {order.vat_invoice_email && (
-                                        <div className="space-y-1 md:col-span-2">
-                                            <p className="text-[10px] font-bold text-neutral-400 uppercase">E-Invoice Recipient</p>
-                                            <p className="text-neutral-600 text-sm flex items-center gap-2">
-                                                <Mail className="w-3.5 h-3.5 text-neutral-400" />
-                                                {order.vat_invoice_email}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+
 
                         {/* 2. Order Items (Receipt Style) */}
                         <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col">
@@ -421,15 +367,10 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                                 <div className="flex justify-between text-sm">
                                     <span className="text-neutral-500">Subtotal</span>
                                     <span className="font-medium text-neutral-900">
-                                        {(Number(order.total_amount) - Number(order.total_tax || 0) + Number(order.discount_amount || 0)).toLocaleString('vi-VN')}₫
+                                        {(Number(order.total_amount) + Number(order.discount_amount || 0)).toLocaleString('vi-VN')}₫
                                     </span>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-neutral-500">Tax / VAT</span>
-                                    <span className="font-medium text-neutral-900">
-                                        {order.total_tax ? `${Number(order.total_tax).toLocaleString('vi-VN')}₫` : '0₫'}
-                                    </span>
-                                </div>
+
                                 <div className="flex justify-between text-sm">
                                     <span className="text-neutral-500">Discount</span>
                                     <span className="font-medium text-green-600">
@@ -478,12 +419,7 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                             <Printer className="w-4 h-4 mr-2" />
                             Print
                         </Button>
-                        {order.is_vat_export && (
-                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-xl shadow-sm">
-                                <Download className="w-4 h-4 mr-2" />
-                                Download VAT (.pdf)
-                            </Button>
-                        )}
+
                         {(order.status_code === 'PARKED' || order.status_code === 'PENDING_PAYMENT') && (
                             <Button
                                 variant="outline"
