@@ -13,7 +13,9 @@ import PosLayout from "@/layouts/PosLayout";
 // Pages
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 
-import AccountManagement from "@/pages/admin/AccountManagement";
+import AccountManagement from "./pages/admin/AccountManagement";
+import LivestreamManagement from "./pages/admin/LivestreamManagement";
+import AdminLivestreamLive from "./pages/admin/AdminLivestreamLive";
 import ProfileApproval from "@/pages/admin/ProfileApproval";
 import ProductManagement from "@/pages/admin/ProductManagement";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
@@ -59,6 +61,7 @@ import CustomerWallet from "@/pages/customer/CustomerWallet";
 import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
 import CustomerAuctionRoom from "@/pages/customer/AuctionRoom";
+import CustomerLivestreamRoom from "@/pages/customer/CustomerLivestreamRoom";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
 import OrderDetail from "@/pages/customer/OrderDetail"; // New Import
 import PreOrderPayment from "@/pages/customer/PreOrderPayment";
@@ -148,6 +151,8 @@ export default function App() {
                             <Route path="settings" element={<SystemSettings />} />
                             <Route path="logs" element={<AuditLogs />} />
                             <Route path="accounts" element={<AccountManagement />} />
+                            <Route path="livestreams" element={<LivestreamManagement />} />
+                            <Route path="livestreams/:id/live" element={<AdminLivestreamLive />} />
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
@@ -234,6 +239,7 @@ export default function App() {
                             <Route path="profile" element={<CustomerProfile />} />
                             <Route path="auctions" element={<CustomerAuctions />} />
                             <Route path="auctions/:id" element={<CustomerAuctionRoom />} />
+                            <Route path="live/:id" element={<CustomerLivestreamRoom />} />
                         </Route>
                     </Route>
 
