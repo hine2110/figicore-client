@@ -67,10 +67,10 @@ export default function CustomerLayout({ children, activePage = 'home', hideFoot
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center gap-8">
                             <div
-                                className="font-semibold text-xl cursor-pointer"
+                                className="cursor-pointer flex items-center"
                                 onClick={() => navigate('/customer/home')}
                             >
-                                FigiCore
+                                <img src="/logo.png?v=8" alt="Figi Logo" className="h-12 w-auto object-contain" />
                             </div>
 
                             <nav className="hidden md:flex items-center gap-6">
@@ -184,7 +184,7 @@ export default function CustomerLayout({ children, activePage = 'home', hideFoot
                     <div className="container mx-auto px-4 py-12">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                             <div>
-                                <div className="font-semibold text-lg mb-4">FigiCore</div>
+                                <img src="/logo.png" alt="Figi Logo" className="h-10 w-auto object-contain mb-4" />
                                 <p className="text-sm text-gray-600">
                                     Your trusted platform for collectible figures, art toys, and exclusive merchandise.
                                 </p>
@@ -217,8 +217,9 @@ export default function CustomerLayout({ children, activePage = 'home', hideFoot
                                 </ul>
                             </div>
                         </div>
-                        <div className="border-t border-gray-200 mt-8 pt-8 text-center text-sm text-gray-600">
-                            © 2026 FigiCore. All rights reserved.
+                        <div className="border-t border-gray-200 mt-8 pt-8 flex items-center justify-center gap-2 text-sm text-gray-600">
+                            <img src="/logo.png" alt="Figi Logo" className="h-5 w-auto object-contain opacity-80" />
+                            <p>© 2026 FigiCore. All rights reserved.</p>
                         </div>
                     </div>
                 </footer>

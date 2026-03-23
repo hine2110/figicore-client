@@ -40,6 +40,8 @@ import CustomerFeedback from "@/pages/manager/CustomerFeedback";
 import PromotionListPage from "@/pages/manager/promotions/PromotionListPage";
 import PromotionCreatePage from "@/pages/manager/promotions/PromotionCreatePage";
 import PromotionEditPage from "@/pages/manager/promotions/PromotionEditPage";
+import FlashSaleCreatePage from "@/pages/manager/promotions/FlashSaleCreatePage";
+import FlashSaleEditPage from "@/pages/manager/promotions/FlashSaleEditPage";
 import VoucherListPage from "@/pages/manager/vouchers/VoucherListPage";
 import VoucherCreatePage from "@/pages/manager/vouchers/VoucherCreatePage";
 import VoucherEditPage from "@/pages/manager/vouchers/VoucherEditPage";
@@ -173,7 +175,9 @@ export default function App() {
                             <Route path="profile" element={<ProfilePage />} />
                             <Route path="promotions" element={<PromotionListPage />} />
                             <Route path="promotions/new" element={<PromotionCreatePage />} />
+                            <Route path="promotions/flash-sale/new" element={<FlashSaleCreatePage />} />
                             <Route path="promotions/:id/edit" element={<PromotionEditPage />} />
+                            <Route path="promotions/flash-sale/:id/edit" element={<FlashSaleEditPage />} />
                             <Route path="vouchers" element={<VoucherListPage />} />
                             <Route path="vouchers/new" element={<VoucherCreatePage />} />
                             <Route path="payroll" element={<Payroll />} />

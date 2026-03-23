@@ -48,6 +48,7 @@ const retailSchema = baseSchema.extend({
     type_code: z.literal("RETAIL"),
     variants: z.array(z.object({
         option_name: z.string().min(1, "Option Name is required"),
+        cost_price: z.coerce.number().min(0, "Cost Price must be positive"),
         price: z.coerce.number().min(1000, "Price must be at least 1,000 VND"),
         sku: z.string().min(1, "SKU is required"),
 
@@ -60,7 +61,18 @@ const retailSchema = baseSchema.extend({
         scale: z.string().min(1, "Scale is required"),
         material: z.string().min(1, "Material is required"),
         included_items: z.string().min(1, "Included items are required"),
-    })).min(1, "At least one variant is required"),
+    }).refine(
+        (data) => {
+            const cost = Number(data.cost_price) || 0;
+            const retail = Number(data.price) || 0;
+            if (data.cost_price === undefined || data.price === undefined) return true;
+            return retail > cost;
+        },
+        {
+            message: "Retail price must be greater than cost price",
+            path: ["price"],
+        }
+    )).min(1, "At least one variant is required"),
 });
 
 const blindboxSchema = baseSchema.extend({
@@ -84,6 +96,7 @@ const preorderSchema = baseSchema.extend({
 
     variants: z.array(z.object({
         option_name: z.string().min(1, "Option Name is required"),
+        cost_price: z.coerce.number().min(0).optional(),
         price: z.coerce.number().min(1000, "Full Price must be at least 1,000 VND"),
         deposit_amount: z.coerce.number().min(1000, "Deposit must be at least 1,000 VND"),
         slot_limit: z.coerce.number().min(0, "Slots must be positive").default(0), // Maps to preorder_slot_limit
@@ -111,6 +124,7 @@ const auctionSchema = baseSchema.extend({
     type_code: z.literal("AUCTION"),
     variants: z.array(z.object({
         option_name: z.string().min(1, "Option Name is required"),
+        cost_price: z.coerce.number().min(0),
         price: z.coerce.number().min(0, "Price can be 0 for auctions"),
         sku: z.string().min(1, "SKU is required"),
 
@@ -123,7 +137,19 @@ const auctionSchema = baseSchema.extend({
         scale: z.string().optional(),
         material: z.string().optional(),
         included_items: z.string().optional(),
-    })).min(1, "At least one variant is required"),
+    }).refine(
+        (data) => {
+            const cost = Number(data.cost_price) || 0;
+            const retail = Number(data.price) || 0;
+            if (data.cost_price === undefined || data.price === undefined) return true;
+            if (retail === 0 && cost === 0) return true;
+            return retail > cost;
+        },
+        {
+            message: "Retail price must be greater than cost price (unless both are 0)",
+            path: ["price"],
+        }
+    )).min(1, "At least one variant is required"),
 });
 
 const formSchema = z.discriminatedUnion("type_code", [
@@ -668,7 +694,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         defaultValues: {
             name: "", description: "", media_items: [], type_code: "RETAIL",
 
-            variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" }],
+            variants: [{ option_name: "Standard", cost_price: 0, price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" }],
             price: 0, min_value_allow: 0, max_value_allow: 0, target_margin: 20, start_date: "", end_date: "",
             full_price: 0, deposit_amount: 0, release_date: "", max_slots: 100,
         },
@@ -734,9 +760,9 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
             if (p.type_code === 'RETAIL' || p.type_code === 'AUCTION') {
                 formValues.variants = p.product_variants?.map((v: any) => ({
-                    option_name: v.option_name, price: Number(v.price), sku: v.sku, media_assets: v.media_assets || [], description: v.description || "",
+                    option_name: v.option_name, price: Number(v.price), cost_price: Number(v.cost_price || 0), sku: v.sku, media_assets: v.media_assets || [], description: v.description || "",
                     weight_g: v.weight_g || 200, length_cm: v.length_cm || 10, width_cm: v.width_cm || 10, height_cm: v.height_cm || 10
-                })) || [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }];
+                })) || [{ option_name: "Standard", price: 0, cost_price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }];
             } else if (p.type_code === 'BLINDBOX') {
                 const bb = p.product_blindboxes?.[0];
                 if (bb) {
@@ -946,7 +972,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
             if (data.type_code === "RETAIL" || data.type_code === "AUCTION") {
                 payload.variants = data.variants.map((v: any) => ({
-                    option_name: v.option_name, price: v.price, sku: v.sku, media_assets: v.media_assets, description: v.description, stock_available: 0,
+                    option_name: v.option_name, price: v.price, cost_price: v.cost_price || 0, sku: v.sku, media_assets: v.media_assets, description: v.description, stock_available: 0,
                     weight_g: v.weight_g, length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm,
                     scale: v.scale, material: v.material, included_items: v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : []
                 }));
@@ -1117,7 +1143,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                                             <FormField control={form.control} name="type_code" render={({ field }) => (
-                                                <FormItem className="md:col-span-4 bg-white p-4 rounded-lg border shadow-sm border-neutral-200">
+                                                <FormItem className="md:col-span-12 bg-white p-4 rounded-lg border shadow-sm border-neutral-200">
                                                     <FormLabel className="text-[10px] uppercase font-bold tracking-wider text-neutral-800">Product Offering Type <span className="text-red-500">*</span></FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditMode}>
                                                         <FormControl><SelectTrigger className="border-none shadow-none p-0 h-auto focus:ring-0 text-base font-semibold"><SelectValue /></SelectTrigger></FormControl>
@@ -1131,21 +1157,6 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
-
-                                            {watchedType === "RETAIL" && (
-                                                <div className="md:col-span-8 bg-amber-50/50 p-4 rounded-lg border border-amber-100 flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                                                            <Tag className="w-4 h-4 text-amber-600" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[10px] uppercase font-bold tracking-wider text-amber-900 leading-tight">Tax Profile</p>
-                                                            <p className="text-xs text-amber-700 font-medium">1% GTGT, 0,5% TNCN (Hàng hóa)</p>
-                                                        </div>
-                                                    </div>
-                                                    <Badge variant="outline" className="bg-white text-amber-600 border-amber-200">Standard</Badge>
-                                                </div>
-                                            )}
                                         </div>
 
                                         {/* DYNAMIC FIELDS based on Type */}
@@ -1164,7 +1175,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                             </div>
                                                             <h4 className="font-bold text-sm uppercase tracking-wider text-amber-900">Retail Variants</h4>
                                                         </div>
-                                                        <Button type="button" size="sm" variant="outline" className="bg-white border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" })}><Plus className="w-4 h-4 mr-2" />Add Variant</Button>
+                                                        <Button type="button" size="sm" variant="outline" className="bg-white border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => append({ option_name: "", price: 0, cost_price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add Variant</Button>
                                                     </div>
                                                     <div className="space-y-6">
                                                         {fields.map((field, index) => (
@@ -1176,10 +1187,13 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
                                                                 <div className="grid grid-cols-12 gap-4">
                                                                     {/* Row 1: Basic Stats */}
-                                                                    <div className="col-span-4">
+                                                                    <div className="col-span-3">
                                                                         <FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500 font-bold">Variant Name <span className="text-red-500">*</span></FormLabel><FormControl><Input placeholder="Variant Name" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                                     </div>
-                                                                    <div className="col-span-3">
+                                                                    <div className="col-span-2">
+                                                                        <FormField control={form.control} name={`variants.${index}.cost_price`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500 font-bold">Cost Price <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                    </div>
+                                                                    <div className="col-span-2">
                                                                         <FormField control={form.control} name={`variants.${index}.price`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500 font-bold">Retail Price <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
                                                                     </div>
                                                                     <div className="col-span-3">

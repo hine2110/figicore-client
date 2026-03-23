@@ -38,6 +38,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 // --- Types ---
 interface ReceiptItem {
@@ -59,6 +61,7 @@ interface Receipt {
     receipt_id: number;
     created_at: string;
     note: string;
+    status_code: string;
     warehouse_staff_id: number;
     employees?: {
         users: {
@@ -76,6 +79,13 @@ export function InboundHistory() {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [expandedRows, setExpandedRows] = useState<number[]>([]);
+
+    // Approval Modal State
+    const [isApprovalOpen, setIsApprovalOpen] = useState(false);
+    const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
+    const [approvalItems, setApprovalItems] = useState<any[]>([]);
+    const [isApproving, setIsApproving] = useState(false);
+    const { toast } = useToast();
 
     // Filters
     const [search, setSearch] = useState("");
@@ -125,6 +135,52 @@ export function InboundHistory() {
     const handleClearDate = (e: React.MouseEvent) => {
         e.stopPropagation();
         setDate(undefined);
+    };
+
+    const handleOpenApproval = (e: React.MouseEvent, receipt: Receipt) => {
+        e.stopPropagation();
+        setSelectedReceipt(receipt);
+        setApprovalItems(receipt.inventory_receipt_items.map(item => ({
+            item_id: item.item_id,
+            quantity_total: item.quantity_total,
+            quantity_good: item.quantity_total, // Default to suggested amount
+            quantity_defect: 0,
+            option_name: item.product_variants.option_name,
+            sku: item.product_variants.sku,
+            name: item.product_variants.products.name
+        })));
+        setIsApprovalOpen(true);
+    };
+
+    const handleUpdateApprovalItem = (itemId: number, field: 'quantity_good' | 'quantity_defect', val: string) => {
+        if (val === '') {
+            setApprovalItems(prev => prev.map(i => i.item_id === itemId ? { ...i, [field]: 0 } : i));
+            return;
+        }
+        const qty = Math.max(0, parseInt(val) || 0);
+        setApprovalItems(prev => prev.map(i => i.item_id === itemId ? { ...i, [field]: qty } : i));
+    };
+
+    const handleSubmitApproval = async () => {
+        if (!selectedReceipt) return;
+        setIsApproving(true);
+        try {
+            await inventoryService.completeReceipt(selectedReceipt.receipt_id, {
+                items: approvalItems.map(i => ({
+                    item_id: i.item_id,
+                    quantity_good: i.quantity_good,
+                    quantity_defect: i.quantity_defect
+                }))
+            });
+            toast({ title: "Approved", description: "Receipt approved and stock updated successfully.", className: "bg-green-600 text-white" });
+            setIsApprovalOpen(false);
+            fetchHistory();
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: "Approval Failed", description: error.response?.data?.message || error.message || "Failed to approve receipt", variant: "destructive" });
+        } finally {
+            setIsApproving(false);
+        }
     };
 
     return (
@@ -321,9 +377,14 @@ export function InboundHistory() {
 
                                             <TableCell>
                                                 <div className="flex flex-col gap-1.5">
-                                                    <Badge variant="outline" className="w-fit font-mono text-[10px] bg-white text-neutral-500 border-neutral-200">
-                                                        #{receipt.receipt_id}
-                                                    </Badge>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="w-fit font-mono text-[10px] bg-white text-neutral-500 border-neutral-200">
+                                                            #{receipt.receipt_id}
+                                                        </Badge>
+                                                        <Badge className={cn("text-[8px] px-1.5 py-0 border-none shadow-none uppercase tracking-wider font-bold h-4 flex items-center justify-center", receipt.status_code === 'PENDING' ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700")}>
+                                                            {receipt.status_code}
+                                                        </Badge>
+                                                    </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-bold text-neutral-800">
                                                             {format(new Date(receipt.created_at), "MMM dd, yyyy")}
@@ -370,17 +431,27 @@ export function InboundHistory() {
 
                                             <TableCell className="text-right pr-8">
                                                 <div className="flex flex-col items-end gap-2">
-                                                    <div className="flex items-center gap-2">
-                                                        {hasDefects && (
-                                                            <div className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold border border-red-100">
-                                                                <AlertCircle className="w-3 h-3" />
-                                                                {totalDefects} Issues
-                                                            </div>
-                                                        )}
-                                                        <Badge className="bg-neutral-900 hover:bg-neutral-800 text-white border-none px-3 py-1 text-xs shadow-lg shadow-neutral-900/10">
-                                                            {totalQuantity} Units
-                                                        </Badge>
-                                                    </div>
+                                                    {receipt.status_code === 'PENDING' ? (
+                                                        <Button 
+                                                            size="sm" 
+                                                            className="h-8 bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20"
+                                                            onClick={(e) => handleOpenApproval(e, receipt)}
+                                                        >
+                                                            <CheckCircle2 className="w-4 h-4 mr-1.5" /> Approve Draft
+                                                        </Button>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            {hasDefects && (
+                                                                <div className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold border border-red-100">
+                                                                    <AlertCircle className="w-3 h-3" />
+                                                                    {totalDefects} Issues
+                                                                </div>
+                                                            )}
+                                                            <Badge className="bg-neutral-900 hover:bg-neutral-800 text-white border-none px-3 py-1 text-xs shadow-lg shadow-neutral-900/10">
+                                                                {totalQuantity} Units
+                                                            </Badge>
+                                                        </div>
+                                                    )}
                                                     <span className="text-[10px] font-medium text-neutral-400">
                                                         Across <span className="text-neutral-900 font-bold">{totalItems}</span> Product SKUs
                                                     </span>
@@ -510,6 +581,75 @@ export function InboundHistory() {
                     </div>
                 </div>
             </div>
+
+            {/* Approval Dialog */}
+            <Dialog open={isApprovalOpen} onOpenChange={setIsApprovalOpen}>
+                <DialogContent className="max-w-3xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+                    <div className="px-6 py-6 bg-gradient-to-b from-amber-50 to-white">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                <CheckCircle2 className="w-6 h-6 text-amber-500" />
+                                Approve Inventory Draft #{selectedReceipt?.receipt_id}
+                            </DialogTitle>
+                            <DialogDescription className="text-neutral-500 mt-2">
+                                Review the AI-generated restock quantities and confirm the actual received amounts.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    <div className="px-6 pb-6 max-h-[60vh] overflow-y-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="text-xs">Product Details</TableHead>
+                                    <TableHead className="text-xs text-center w-[120px]">Suggested Qty</TableHead>
+                                    <TableHead className="text-xs text-center text-green-600 w-[140px]">Good Qty</TableHead>
+                                    <TableHead className="text-xs text-center text-red-600 w-[140px]">Defect Qty</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {approvalItems.map(item => (
+                                    <TableRow key={item.item_id}>
+                                        <TableCell>
+                                            <div className="font-semibold text-sm text-neutral-800">{item.name}</div>
+                                            <div className="text-[10px] text-neutral-500 flex items-center gap-2 mt-1">
+                                                <Badge variant="secondary" className="font-normal text-[10px]">{item.option_name}</Badge>
+                                                <span className="font-mono bg-neutral-100 px-1 rounded">{item.sku}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center font-bold text-neutral-600">
+                                            {item.quantity_total}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                className="w-20 rounded-xl h-10 border border-neutral-200 bg-neutral-50 px-3 text-center text-sm font-semibold text-green-700 focus:bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500/50 outline-none transition-all mx-auto block"
+                                                value={item.quantity_good === 0 && item.quantity_good.toString() !== '0' ? '' : item.quantity_good}
+                                                onChange={e => handleUpdateApprovalItem(item.item_id, 'quantity_good', e.target.value)}
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                className="w-20 rounded-xl h-10 border border-neutral-200 bg-neutral-50 px-3 text-center text-sm font-semibold text-red-700 focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 outline-none transition-all mx-auto block"
+                                                value={item.quantity_defect === 0 && item.quantity_defect.toString() !== '0' ? '' : item.quantity_defect}
+                                                onChange={e => handleUpdateApprovalItem(item.item_id, 'quantity_defect', e.target.value)}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    <DialogFooter className="px-6 py-4 bg-neutral-50 border-t border-neutral-100 flex gap-2 justify-end">
+                        <Button variant="ghost" className="rounded-xl text-neutral-600" onClick={() => setIsApprovalOpen(false)}>Cancel</Button>
+                        <Button className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20" onClick={handleSubmitApproval} disabled={isApproving}>
+                            {isApproving ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/> Approving...</span> : "Confirm & Update Stock"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

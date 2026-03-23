@@ -93,7 +93,7 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
         try {
             // EXCEL: Regular JSON Import
             if (previewData.length === 0) return;
-            const res = await api.post('/employees/import', previewData);
+            const res = await api.post('/employees/import', previewData, { timeout: 60000 });
 
             setReport(res.data);
             

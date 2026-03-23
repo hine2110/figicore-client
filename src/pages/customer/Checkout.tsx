@@ -320,8 +320,10 @@ export default function Checkout() {
         return sum + o.order_items.reduce((itemSum: number, item: any) => itemSum + Number(item.total_price), 0);
     }, 0);
 
-    let calculatedDiscount = 0;
-    if (appliedDiscountPromo) {
+    let calculatedDiscount = orders.reduce((sum, o) => sum + Number(o.discount_amount || 0), 0);
+    
+    // Fallback display if discount_amount is 0 but promo exists (legacy fallback)
+    if (calculatedDiscount === 0 && appliedDiscountPromo) {
         if (appliedDiscountPromo.discount_type === 'PERCENTAGE') {
             calculatedDiscount = (subtotal * (appliedDiscountPromo.discount_value || 0)) / 100;
         } else {
@@ -331,20 +333,13 @@ export default function Checkout() {
 
     let calculatedFreeShip = 0;
     if (appliedShippingPromo && appliedShippingPromo.discount_type === 'FREE_SHIP') {
-        calculatedFreeShip = totalShipping;
+        const totalOriginalShipping = orders.reduce((sum, o) => sum + Number(o.original_shipping_fee || 30000), 0);
+        calculatedFreeShip = totalOriginalShipping - totalShipping;
     }
 
-    // Since total_amount from DB might already include the discount (subtotal + shipping - discount)
-    // or it might just be (subtotal + shipping) and the frontend needs to handle it.
-    // Based on orders.service.ts, total_amount does NOT explicitly subtract the voucher discount there for retail/pre-order deposits yet in this iteration, 
-    // unless we modified it. Assuming it is NOT subtracted in DB total_amount, we subtract it here for the UI.
-    // Wait, the backend logic for full payment vs deposit makes total_amount the exact amount to pay.
-    // Let's rely on the rawTotalAmount as the final payable amount if no voucher is applied dynamically,
-    // OR if the voucher is applied during Order Creation, the backend 'total_amount' is already discounted?
-    // Looking at backend `orders.service.ts` line 384: `total_amount: rtFinalTotal`, it is `rtTotalAmount + customerShippingFee`. It DOES NOT subtract the voucher!
-    // This means we must subtract it dynamically here for the UI and final payment, or fix the backend.
-    // Actually, sending payment to QR uses `grandTotal`. We will subtract `calculatedDiscount` and `calculatedFreeShip` from `rawTotalAmount`.
-    const grandTotal = Math.max(0, rawTotalAmount - calculatedDiscount - calculatedFreeShip);
+    // BUG FIXED: Backend authoritative checkout already subtracted vouchers from 'total_amount'.
+    // grandTotal should simply be rawTotalAmount (the sum of order.total_amount)
+    const grandTotal = Math.max(0, rawTotalAmount);
 
     // Address Info (From first order - assuming uniform address for group)
     const address = orders.length > 0 ? orders[0].addresses : null;

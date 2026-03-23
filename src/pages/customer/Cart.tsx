@@ -33,8 +33,7 @@ export default function Cart() {
         return items
             .filter(item => selectedItemIds.includes(item.id))
             .reduce((sum, item) => {
-                const finalPrice = calculateFinalPrice(item.price, item.promotion);
-                return sum + (finalPrice * item.quantity);
+                return sum + (item.price * item.quantity);
             }, 0);
     }, [items, selectedItemIds]);
 
@@ -212,7 +211,7 @@ export default function Cart() {
                     variant: "destructive",
                     title: isLimitError ? "Limit Reached" : "Order Creation Failed",
                     description: errorMsg,
-                    duration: isLimitError ? 5000 : 3000, 
+                    duration: isLimitError ? 5000 : 3000,
                 });
             }
         } finally {
@@ -244,19 +243,19 @@ export default function Cart() {
 
     const voucherDiscountAmount = useMemo(() => {
         if (!myVouchers) return { discount: 0, freeship: 0 };
-        
+
         let discount = 0;
         let freeship = 0;
 
         if (selectedDiscountCode) {
-           const v = myVouchers.find(mv => mv.promotions.code === selectedDiscountCode)?.promotions;
-           if (v) {
-               if (v.discount_type === 'PERCENTAGE') {
-                   discount = (totalAmount * (v.discount_value || 0)) / 100;
-               } else {
-                   discount = v.discount_value || 0;
-               }
-           }
+            const v = myVouchers.find(mv => mv.promotions.code === selectedDiscountCode)?.promotions;
+            if (v) {
+                if (v.discount_type === 'PERCENTAGE') {
+                    discount = (totalAmount * (v.discount_value || 0)) / 100;
+                } else {
+                    discount = v.discount_value || 0;
+                }
+            }
         }
 
         if (selectedFreeShipCode) {
@@ -372,17 +371,7 @@ export default function Cart() {
                         {/* Price */}
                         <div className="flex flex-col items-end gap-1">
                             <span className="font-bold text-slate-900 text-lg">
-                                {formatPrice(
-                                    calculateFinalPrice(
-                                        (type_code === 'PREORDER' &&
-                                            ((item.payment_option === 'FULL_PAYMENT' || item.payment_option === 'FULL') ||
-                                                (item.paymentOption === 'FULL_PAYMENT' || item.paymentOption === 'FULL'))
-                                        )
-                                            ? (item.full_price || item.price)
-                                            : (item.deposit_amount || item.price),
-                                        item.promotion
-                                    )
-                                )}
+                                {formatPrice(item.price)}
                             </span>
                             {item.originalPrice && item.originalPrice > item.price && (
                                 <span className="text-xs text-slate-400 line-through decoration-slate-400/50">
@@ -514,19 +503,19 @@ export default function Cart() {
                                         <span>Shipping</span>
                                         <span className="text-sm italic text-slate-400">Calculated at Payment</span>
                                     </div>
-                                    
+
                                     {/* Voucher System */}
                                     <div className="w-full h-px bg-slate-200/50 my-2" />
                                     <div className="flex items-center justify-between">
                                         <span className="text-slate-600 flex items-center gap-2">
                                             <TicketPercent className="w-4 h-4" /> Store Voucher
                                         </span>
-                                        
+
                                         <Dialog open={isVoucherModalOpen} onOpenChange={setIsVoucherModalOpen}>
                                             <DialogTrigger asChild>
                                                 <Button variant="outline" size="sm" className="h-8 text-xs font-semibold rounded-full border-dashed border-orange-300 text-orange-600 bg-orange-50 hover:bg-orange-100 hover:text-orange-700 hover:border-orange-400">
-                                                    {(selectedDiscountCode || selectedFreeShipCode) ? 
-                                                        `${[selectedDiscountCode, selectedFreeShipCode].filter(Boolean).length} Selected` : 
+                                                    {(selectedDiscountCode || selectedFreeShipCode) ?
+                                                        `${[selectedDiscountCode, selectedFreeShipCode].filter(Boolean).length} Selected` :
                                                         'Select from Wallet'}
                                                 </Button>
                                             </DialogTrigger>
@@ -538,7 +527,7 @@ export default function Cart() {
                                                         Select Vouchers
                                                     </DialogTitle>
                                                 </DialogHeader>
-                                                
+
                                                 <div className="px-6 pb-6 max-h-[60vh] overflow-y-auto space-y-6 relative z-10">
                                                     {!myVouchers || myVouchers.length === 0 ? (
                                                         <div className="text-center py-8 text-slate-500">
@@ -561,60 +550,60 @@ export default function Cart() {
                                                                             return 0;
                                                                         })
                                                                         .map(mv => {
-                                                                        const now = new Date();
-                                                                        const startDate = mv.promotions.start_date ? new Date(mv.promotions.start_date) : null;
-                                                                        const endDate = mv.promotions.end_date ? new Date(mv.promotions.end_date) : null;
-                                                                        
-                                                                        const isStarted = !startDate || startDate <= now;
-                                                                        const isNotExpired = !endDate || endDate > now;
-                                                                        
-                                                                        const meetsMinOrder = !mv.promotions.min_order_value || totalAmount >= mv.promotions.min_order_value;
-                                                                        const isAvailableForThisOrder = meetsMinOrder && isStarted && isNotExpired;
-                                                                        const isSelected = selectedDiscountCode === mv.promotions.code;
-                                                                        
-                                                                        return (
-                                                                            <div 
-                                                                                key={mv.id} 
-                                                                                onClick={() => {
-                                                                                    if (isAvailableForThisOrder) {
-                                                                                        setSelectedDiscountCode(isSelected ? null : mv.promotions.code!);
-                                                                                    }
-                                                                                }}
-                                                                                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${isAvailableForThisOrder 
-                                                                                    ? (isSelected ? 'border-orange-500 bg-orange-50' : 'border-white bg-white hover:border-orange-200')
-                                                                                    : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'}`}
-                                                                            >
-                                                                                <div>
-                                                                                    <div className="font-bold text-lg text-slate-900">
-                                                                                        {mv.promotions.discount_type === 'PERCENTAGE' 
-                                                                                        ? `${mv.promotions.discount_value}% OFF` 
-                                                                                        : `${formatPrice(Number(mv.promotions.discount_value))} OFF`}
+                                                                            const now = new Date();
+                                                                            const startDate = mv.promotions.start_date ? new Date(mv.promotions.start_date) : null;
+                                                                            const endDate = mv.promotions.end_date ? new Date(mv.promotions.end_date) : null;
+
+                                                                            const isStarted = !startDate || startDate <= now;
+                                                                            const isNotExpired = !endDate || endDate > now;
+
+                                                                            const meetsMinOrder = !mv.promotions.min_order_value || totalAmount >= mv.promotions.min_order_value;
+                                                                            const isAvailableForThisOrder = meetsMinOrder && isStarted && isNotExpired;
+                                                                            const isSelected = selectedDiscountCode === mv.promotions.code;
+
+                                                                            return (
+                                                                                <div
+                                                                                    key={mv.id}
+                                                                                    onClick={() => {
+                                                                                        if (isAvailableForThisOrder) {
+                                                                                            setSelectedDiscountCode(isSelected ? null : mv.promotions.code!);
+                                                                                        }
+                                                                                    }}
+                                                                                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${isAvailableForThisOrder
+                                                                                        ? (isSelected ? 'border-orange-500 bg-orange-50' : 'border-white bg-white hover:border-orange-200')
+                                                                                        : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'}`}
+                                                                                >
+                                                                                    <div>
+                                                                                        <div className="font-bold text-lg text-slate-900">
+                                                                                            {mv.promotions.discount_type === 'PERCENTAGE'
+                                                                                                ? `${mv.promotions.discount_value}% OFF`
+                                                                                                : `${formatPrice(Number(mv.promotions.discount_value))} OFF`}
+                                                                                        </div>
+                                                                                        <div className="text-sm text-slate-500">
+                                                                                            Code: <span className="font-mono font-bold">{mv.promotions.code}</span>
+                                                                                        </div>
+                                                                                        <div className="text-xs text-slate-400 mt-1">
+                                                                                            {mv.promotions.min_order_value ? `Min order: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'No minimum condition'}
+                                                                                        </div>
+                                                                                        {(!isStarted || !isNotExpired) && (
+                                                                                            <div className="text-xs text-red-500 font-medium mt-1">
+                                                                                                {!isNotExpired ? 'Expired' : `Available from ${startDate?.toLocaleDateString()}`}
+                                                                                            </div>
+                                                                                        )}
                                                                                     </div>
-                                                                                    <div className="text-sm text-slate-500">
-                                                                                        Code: <span className="font-mono font-bold">{mv.promotions.code}</span>
+                                                                                    <div className="shrink-0">
+                                                                                        {isSelected && (
+                                                                                            <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
+                                                                                        )}
+                                                                                        {!isAvailableForThisOrder && (
+                                                                                            <span className="text-xs font-bold text-red-400">
+                                                                                                {!meetsMinOrder ? 'Not Eligible' : (!isNotExpired ? 'Expired' : 'Upcoming')}
+                                                                                            </span>
+                                                                                        )}
                                                                                     </div>
-                                                                                    <div className="text-xs text-slate-400 mt-1">
-                                                                                        {mv.promotions.min_order_value ? `Min order: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'No minimum condition'}
-                                                                                    </div>
-                                                                                    {(!isStarted || !isNotExpired) && (
-                                                                                         <div className="text-xs text-red-500 font-medium mt-1">
-                                                                                            {!isNotExpired ? 'Expired' : `Available from ${startDate?.toLocaleDateString()}`}
-                                                                                         </div>
-                                                                                    )}
                                                                                 </div>
-                                                                                <div className="shrink-0">
-                                                                                    {isSelected && (
-                                                                                        <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
-                                                                                    )}
-                                                                                    {!isAvailableForThisOrder && (
-                                                                                        <span className="text-xs font-bold text-red-400">
-                                                                                            {!meetsMinOrder ? 'Not Eligible' : (!isNotExpired ? 'Expired' : 'Upcoming')}
-                                                                                        </span>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                        );
-                                                                    })}
+                                                                            );
+                                                                        })}
                                                                 </div>
                                                             )}
 
@@ -633,58 +622,58 @@ export default function Cart() {
                                                                             return 0;
                                                                         })
                                                                         .map(mv => {
-                                                                        const now = new Date();
-                                                                        const startDate = mv.promotions.start_date ? new Date(mv.promotions.start_date) : null;
-                                                                        const endDate = mv.promotions.end_date ? new Date(mv.promotions.end_date) : null;
-                                                                        
-                                                                        const isStarted = !startDate || startDate <= now;
-                                                                        const isNotExpired = !endDate || endDate > now;
-                                                                        
-                                                                        const meetsMinOrder = !mv.promotions.min_order_value || totalAmount >= mv.promotions.min_order_value;
-                                                                        const isAvailableForThisOrder = meetsMinOrder && isStarted && isNotExpired;
-                                                                        const isSelected = selectedFreeShipCode === mv.promotions.code;
-                                                                        
-                                                                        return (
-                                                                            <div 
-                                                                                key={mv.id} 
-                                                                                onClick={() => {
-                                                                                    if (isAvailableForThisOrder) {
-                                                                                        setSelectedFreeShipCode(isSelected ? null : mv.promotions.code!);
-                                                                                    }
-                                                                                }}
-                                                                                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${isAvailableForThisOrder 
-                                                                                    ? (isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-white bg-white hover:border-emerald-200')
-                                                                                    : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'}`}
-                                                                            >
-                                                                                <div>
-                                                                                    <div className="font-bold text-lg text-emerald-700">
-                                                                                        FREE SHIPPING
+                                                                            const now = new Date();
+                                                                            const startDate = mv.promotions.start_date ? new Date(mv.promotions.start_date) : null;
+                                                                            const endDate = mv.promotions.end_date ? new Date(mv.promotions.end_date) : null;
+
+                                                                            const isStarted = !startDate || startDate <= now;
+                                                                            const isNotExpired = !endDate || endDate > now;
+
+                                                                            const meetsMinOrder = !mv.promotions.min_order_value || totalAmount >= mv.promotions.min_order_value;
+                                                                            const isAvailableForThisOrder = meetsMinOrder && isStarted && isNotExpired;
+                                                                            const isSelected = selectedFreeShipCode === mv.promotions.code;
+
+                                                                            return (
+                                                                                <div
+                                                                                    key={mv.id}
+                                                                                    onClick={() => {
+                                                                                        if (isAvailableForThisOrder) {
+                                                                                            setSelectedFreeShipCode(isSelected ? null : mv.promotions.code!);
+                                                                                        }
+                                                                                    }}
+                                                                                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${isAvailableForThisOrder
+                                                                                        ? (isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-white bg-white hover:border-emerald-200')
+                                                                                        : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'}`}
+                                                                                >
+                                                                                    <div>
+                                                                                        <div className="font-bold text-lg text-emerald-700">
+                                                                                            FREE SHIPPING
+                                                                                        </div>
+                                                                                        <div className="text-sm text-slate-500">
+                                                                                            Code: <span className="font-mono font-bold">{mv.promotions.code}</span>
+                                                                                        </div>
+                                                                                        <div className="text-xs text-slate-400 mt-1">
+                                                                                            {mv.promotions.min_order_value ? `Min order: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'No minimum condition'}
+                                                                                        </div>
+                                                                                        {(!isStarted || !isNotExpired) && (
+                                                                                            <div className="text-xs text-red-500 font-medium mt-1">
+                                                                                                {!isNotExpired ? 'Expired' : `Available from ${startDate?.toLocaleDateString()}`}
+                                                                                            </div>
+                                                                                        )}
                                                                                     </div>
-                                                                                    <div className="text-sm text-slate-500">
-                                                                                        Code: <span className="font-mono font-bold">{mv.promotions.code}</span>
+                                                                                    <div className="shrink-0">
+                                                                                        {isSelected && (
+                                                                                            <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
+                                                                                        )}
+                                                                                        {!isAvailableForThisOrder && (
+                                                                                            <span className="text-xs font-bold text-red-400">
+                                                                                                {!meetsMinOrder ? 'Not Eligible' : (!isNotExpired ? 'Expired' : 'Upcoming')}
+                                                                                            </span>
+                                                                                        )}
                                                                                     </div>
-                                                                                    <div className="text-xs text-slate-400 mt-1">
-                                                                                        {mv.promotions.min_order_value ? `Min order: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'No minimum condition'}
-                                                                                    </div>
-                                                                                    {(!isStarted || !isNotExpired) && (
-                                                                                         <div className="text-xs text-red-500 font-medium mt-1">
-                                                                                            {!isNotExpired ? 'Expired' : `Available from ${startDate?.toLocaleDateString()}`}
-                                                                                         </div>
-                                                                                    )}
                                                                                 </div>
-                                                                                <div className="shrink-0">
-                                                                                    {isSelected && (
-                                                                                        <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
-                                                                                    )}
-                                                                                    {!isAvailableForThisOrder && (
-                                                                                        <span className="text-xs font-bold text-red-400">
-                                                                                            {!meetsMinOrder ? 'Not Eligible' : (!isNotExpired ? 'Expired' : 'Upcoming')}
-                                                                                        </span>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                        );
-                                                                    })}
+                                                                            );
+                                                                        })}
                                                                 </div>
                                                             )}
                                                         </>
@@ -698,7 +687,7 @@ export default function Cart() {
                                             </DialogContent>
                                         </Dialog>
                                     </div>
-                                    
+
                                     {selectedDiscountCode && (
                                         <div className="flex justify-between text-orange-600 font-medium">
                                             <span>Shop Discount</span>
