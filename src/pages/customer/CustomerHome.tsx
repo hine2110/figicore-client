@@ -21,6 +21,8 @@ import { customersService } from '@/services/customers.service';
 import { calculateFinalPrice } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import CollectVoucherBlock from '@/components/CollectVoucherBlock';
+import FlashSaleSection from '@/components/flash-sale/FlashSaleSection';
+import { PromotionsService } from '@/services/promotions.service';
 
 export default function CustomerHome() {
     const navigate = useNavigate();
@@ -29,6 +31,7 @@ export default function CustomerHome() {
     // Data States
     const [retailProducts, setRetailProducts] = useState<any[]>([]);
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
+    const [flashSaleItems, setFlashSaleItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<any>({ walletBalance: 0, loyaltyPoints: 0, activeOrders: 0, rankCode: 'MEMBER' });
 
@@ -36,10 +39,11 @@ export default function CustomerHome() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [retailData, preorderData, statsData] = await Promise.all([
+                const [retailData, preorderData, statsData, flashData] = await Promise.all([
                     productsService.getProducts({ type_code: 'RETAIL', limit: 50 }),
                     productsService.getProducts({ type_code: 'PREORDER', limit: 50 }),
-                    customersService.getDashboardStats()
+                    customersService.getDashboardStats().catch(() => null),
+                    PromotionsService.getActiveFlashSales().catch(() => [])
                 ]);
 
                 const getList = (res: any) => Array.isArray(res) ? res : (res as any)?.data || [];
@@ -55,6 +59,7 @@ export default function CustomerHome() {
                 setRetailProducts(shuffle(getList(retailData)).slice(0, 6));
                 setPreorderProducts(shuffle(getList(preorderData)).slice(0, 4));
                 if (statsData) setStats(statsData);
+                if (Array.isArray(flashData)) setFlashSaleItems(flashData);
 
             } catch (error) {
                 console.error("Failed to load dashboard data", error);
@@ -308,6 +313,14 @@ export default function CustomerHome() {
                         <div className="lg:col-span-3 space-y-12">
                             {/* Collect Voucher Block */}
                             <CollectVoucherBlock />
+
+                            {/* ⚡ Flash Sale Section (only shown when there are active flash sales) */}
+                            {flashSaleItems.length > 0 && (
+                                <FlashSaleSection
+                                    items={flashSaleItems}
+                                    endTime={flashSaleItems[0]?.end_time}
+                                />
+                            )}
                             {/* New Arrivals */}
                             <section>
                                 <div className="flex items-center justify-between mb-8">

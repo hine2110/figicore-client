@@ -1,13 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2, UploadCloud, CheckCircle } from "lucide-react";
-import { useDropzone } from "react-dropzone";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import api from "@/services/api";
+import { AvatarUploader } from "@/components/AvatarUploader";
 
 export default function ActivationPage() {
     const [searchParams] = useSearchParams();
@@ -18,12 +18,17 @@ export default function ActivationPage() {
     const [tempPassword, setTempPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-    const [avatarUrl, setAvatarUrl] = useState<string>("");
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [showTemp, setShowTemp] = useState(false);
     const [showNew, setShowNew] = useState(false);
+    
+    // Resend UI states
+    const [isExpired, setIsExpired] = useState(false);
+    const [emailForResend, setEmailForResend] = useState("");
+    const [resending, setResending] = useState(false);
     
     // Real-time validation states
     const [passwordError, setPasswordError] = useState("");
@@ -40,33 +45,33 @@ export default function ActivationPage() {
         }
     }, [token, navigate, toast]);
 
-    const onDrop = useCallback(async (acceptedFiles: File[]) => {
-        const file = acceptedFiles[0];
-        if (!file) return;
-
-        setUploading(true);
+    const handleResendLink = async () => {
+        if (!emailForResend) {
+            toast({ title: "Email required", description: "Please enter your email address.", variant: "destructive" });
+            return;
+        }
+        setResending(true);
         try {
-            const formData = new FormData();
-            formData.append("file", file);
-            // using the public upload endpoint
-            const res = await api.post("/upload", formData, {
-                headers: { "Content-Type": "multipart/form-data" }
+            await api.post("/auth/resend-activation", { email: emailForResend });
+            toast({
+                title: "Link Sent!",
+                description: "A new activation link has been sent to your email."
             });
-            setAvatarUrl(res.data.url);
-            toast({ title: "Avatar Uploaded", description: "Your profile picture is ready." });
+            setIsExpired(false);
         } catch (error: any) {
             console.error(error);
-            toast({ title: "Upload Failed", description: "Failed to upload avatar.", variant: "destructive" });
+            const msg = error.response?.data?.message || "Failed to resend link.";
+            toast({ title: "Error", description: msg, variant: "destructive" });
         } finally {
-            setUploading(false);
+            setResending(false);
         }
-    }, [toast]);
+    };
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop,
-        accept: { "image/*": [] },
-        maxFiles: 1
-    });
+    const handleAvatarSelect = async (file: File) => {
+        // Fast-fail validation is already handled by AvatarUploader.
+        // We simply store the valid file locally until form submission.
+        setAvatarFile(file);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -88,11 +93,17 @@ export default function ActivationPage() {
 
         setLoading(true);
         try {
-            await api.post("/auth/activate", {
-                token,
-                tempPassword,
-                newPassword,
-                avatarUrl: avatarUrl || undefined
+            const formData = new FormData();
+            formData.append("token", token as string);
+            formData.append("tempPassword", tempPassword);
+            formData.append("newPassword", newPassword);
+            
+            if (avatarFile) {
+                formData.append("file", avatarFile);
+            }
+
+            await api.post("/auth/activate", formData, {
+                headers: { "Content-Type": "multipart/form-data" }
             });
 
             toast({
@@ -105,7 +116,13 @@ export default function ActivationPage() {
         } catch (error: any) {
             console.error(error);
             const msg = error.response?.data?.message || "Activation failed.";
-            toast({ title: "Error", description: msg, variant: "destructive" });
+            
+            if (msg.toLowerCase().includes("expired") || error.response?.status === 401) {
+                setIsExpired(true);
+                toast({ title: "Link Expired", description: "Your activation link has expired.", variant: "destructive" });
+            } else {
+                toast({ title: "Error", description: msg, variant: "destructive" });
+            }
         } finally {
             setLoading(false);
         }
@@ -122,6 +139,41 @@ export default function ActivationPage() {
                         Enter your temporary password, set a new password, and upload an avatar.
                     </CardDescription>
                 </CardHeader>
+                
+                {isExpired ? (
+                    <div className="p-6 space-y-4 pt-0">
+                        <div className="bg-red-50 text-red-600 p-4 rounded-md text-sm border border-red-200">
+                            Your activation link has expired for security purposes. (Đường dẫn kích hoạt của bạn đã hết hạn để đảm bảo an toàn).
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="resend-email">Confirm your email address</Label>
+                            <Input 
+                                id="resend-email"
+                                type="email"
+                                value={emailForResend}
+                                onChange={(e) => setEmailForResend(e.target.value)}
+                                placeholder="name@figicore.com"
+                                required
+                            />
+                        </div>
+                        <Button 
+                            className="w-full bg-black hover:bg-neutral-800" 
+                            onClick={handleResendLink}
+                            disabled={resending}
+                        >
+                            {resending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Send new link to my email
+                        </Button>
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            className="w-full mt-2"
+                            onClick={() => setIsExpired(false)}
+                        >
+                            Back to Activation
+                        </Button>
+                    </div>
+                ) : (
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
@@ -206,37 +258,12 @@ export default function ActivationPage() {
                             {confirmError && <p className="text-xs text-red-500 mt-1">{confirmError}</p>}
                         </div>
 
-                        <div className="space-y-2">
-                            <Label>Avatar Photo (Optional)</Label>
-                            <div
-                                {...getRootProps()}
-                                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
-                                ${isDragActive ? 'border-primary bg-primary/5' : 'border-neutral-200 hover:border-primary/50'}`}
-                            >
-                                <input {...getInputProps()} />
-                                {uploading ? (
-                                    <div className="flex flex-col items-center">
-                                        <Loader2 className="h-8 w-8 animate-spin text-neutral-400 mb-2" />
-                                        <p className="text-sm text-neutral-500">Uploading...</p>
-                                    </div>
-                                ) : avatarUrl ? (
-                                    <div className="flex flex-col items-center">
-                                        <div className="relative mb-2">
-                                            <img src={avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover border" />
-                                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full">
-                                                <CheckCircle className="h-5 w-5 text-green-500" />
-                                            </div>
-                                        </div>
-                                        <p className="text-xs text-neutral-500">Click to change avatar</p>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center">
-                                        <UploadCloud className="h-8 w-8 text-neutral-400 mb-2" />
-                                        <p className="text-sm text-neutral-600">Drag & drop your photo</p>
-                                        <p className="text-xs text-neutral-400 mt-1">or click to browse</p>
-                                    </div>
-                                )}
-                            </div>
+                        <div className="space-y-4 flex flex-col items-center pt-2">
+                            <Label className="self-start">Avatar Photo (Optional)</Label>
+                            <AvatarUploader
+                                onFileSelect={handleAvatarSelect}
+                                defaultFallback="New"
+                            />
                         </div>
 
                     </CardContent>
@@ -247,6 +274,7 @@ export default function ActivationPage() {
                         </Button>
                     </CardFooter>
                 </form>
+                )}
             </Card>
         </div>
     );
