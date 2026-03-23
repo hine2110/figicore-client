@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Loader2, Camera } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { AvatarUploader } from "@/components/AvatarUploader";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { userService } from "@/services/user.service";
@@ -24,7 +25,11 @@ const personalSchema = z.object({
 
 const passwordSchema = z.object({
     oldPassword: z.string().min(1, "Old password is required"),
-    newPassword: z.string().min(6, "Password must be at least 6 characters"),
+    newPassword: z.string()
+        .min(8, "Password must be at least 8 characters")
+        .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+        .regex(/[0-9]/, "Password must contain at least one number")
+        .regex(/[^a-zA-Z0-9]/, "Password must contain at least one special character"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
 }).refine((data) => data.newPassword === data.confirmPassword, {
     message: "Passwords do not match",
@@ -93,26 +98,7 @@ export default function ProfilePage() {
 
 
 
-    const handleAvatarClick = () => {
-        if (!profile?.avatar_url && fileInputRef.current) {
-            fileInputRef.current.click();
-        }
-    };
-
-    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        // Validation
-        if (!file.type.startsWith("image/")) {
-            toast({ variant: "destructive", title: "Error", description: "Only image files are allowed" });
-            return;
-        }
-        if (file.size > 5 * 1024 * 1024) { // 5MB
-            toast({ variant: "destructive", title: "Error", description: "File size must be less than 5MB" });
-            return;
-        }
-
+    const handleAvatarSelect = async (file: File) => {
         setUploading(true);
         try {
             const { url } = await userService.uploadAvatar(file);
@@ -120,7 +106,6 @@ export default function ProfilePage() {
             
             // Optimistic Update
             setProfile((prev: any) => ({ ...prev, avatar_url: url }));
-            // Also update form if needed, though profile state drives the UI
         } catch (error: any) {
             toast({ 
                 variant: "destructive", 
@@ -129,7 +114,6 @@ export default function ProfilePage() {
             });
         } finally {
             setUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
         }
     };
 
@@ -202,43 +186,17 @@ export default function ProfilePage() {
                 {/* Left Column: Summary */}
                 <Card className="md:col-span-1 h-fit">
                     <CardHeader className="text-center">
-                        <div className="flex justify-center mb-4 relative group">
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                className="hidden" 
-                                accept="image/*"
-                                onChange={handleFileChange}
+                        <div className="flex flex-col items-center mb-4 relative group">
+                            <AvatarUploader 
+                                currentAvatarUrl={profile?.avatar_url}
+                                defaultFallback={profile?.full_name?.charAt(0)}
+                                onFileSelect={handleAvatarSelect}
                             />
-                            
-                            <div 
-                                className="relative group"
-                                title={profile.avatar_url ? "Ảnh đại diện cố định (Liên hệ Admin để reset)" : "Nhấn để tải lên ảnh đại diện (Chỉ 1 lần)"}
-                            >
-                                <div 
-                                    className={`relative overflow-hidden rounded-full w-32 h-32 border-4 border-white shadow-lg ${!profile.avatar_url ? 'cursor-pointer' : ''}`}
-                                    onClick={handleAvatarClick}
-                                >
-                                    <Avatar className="h-full w-full">
-                                        <AvatarImage src={profile?.avatar_url} className="object-cover" />
-                                        <AvatarFallback className="text-4xl">{profile?.full_name?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    
-                                    {/* Overlay Loading */}
-                                    {uploading && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20">
-                                            <Loader2 className="h-8 w-8 text-white animate-spin" />
-                                        </div>
-                                    )}
-
-                                    {/* Camera Icon Overlay (Always visible if no avatar) */}
-                                    {!profile.avatar_url && !uploading && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 hover:bg-black/60 transition-colors z-10">
-                                            <Camera className="w-8 h-8 text-white" />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            {uploading && (
+                                <p className="text-xs text-muted-foreground mt-2 animate-pulse flex flex-row items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin text-primary" /> Uploading image to server...
+                                </p>
+                            )}
                         </div>
 
                         <CardTitle>{profile.full_name}</CardTitle>
@@ -402,7 +360,7 @@ export default function ProfilePage() {
                                                     <FormItem>
                                                         <FormLabel>New Password</FormLabel>
                                                         <FormControl>
-                                                            <Input type="password" placeholder="Min. 6 characters" {...field} />
+                                                            <Input type="password" placeholder="Min. 8 chars, 1 Upper, 1 Number, 1 Special" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>

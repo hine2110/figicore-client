@@ -33,8 +33,7 @@ export default function Cart() {
         return items
             .filter(item => selectedItemIds.includes(item.id))
             .reduce((sum, item) => {
-                const finalPrice = calculateFinalPrice(item.price, item.promotion);
-                return sum + (finalPrice * item.quantity);
+                return sum + (item.price * item.quantity);
             }, 0);
     }, [items, selectedItemIds]);
 
@@ -155,7 +154,7 @@ export default function Cart() {
                     return {
                         variant_id: Number(realVariantId),
                         quantity: Number(i.quantity),
-                        price: calculateFinalPrice(i.price, i.promotion), // Send discounted price
+                        price: i.price, // Send exact price from cart
                         payment_option: (i as any).payment_option || (i as any).paymentOption || 'DEPOSIT' // Fix: Send explicit option
                     };
                 })
@@ -355,17 +354,7 @@ export default function Cart() {
                         {/* Price */}
                         <div className="flex flex-col items-end gap-1">
                             <span className="font-bold text-slate-900 text-lg">
-                                {formatPrice(
-                                    calculateFinalPrice(
-                                        (type_code === 'PREORDER' &&
-                                            ((item.payment_option === 'FULL_PAYMENT' || item.payment_option === 'FULL') ||
-                                                (item.paymentOption === 'FULL_PAYMENT' || item.paymentOption === 'FULL'))
-                                        )
-                                            ? (item.full_price || item.price)
-                                            : (item.deposit_amount || item.price),
-                                        item.promotion
-                                    )
-                                )}
+                                {formatPrice(item.price)}
                             </span>
                             {item.originalPrice && item.originalPrice > item.price && (
                                 <span className="text-xs text-slate-400 line-through decoration-slate-400/50">

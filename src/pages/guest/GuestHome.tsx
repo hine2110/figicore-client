@@ -6,6 +6,8 @@ import { GuestLayout } from '@/layouts/GuestLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Package, Star } from 'lucide-react';
+import FlashSaleSection from '@/components/flash-sale/FlashSaleSection';
+import { PromotionsService } from '@/services/promotions.service';
 
 // --- MOCK BANNERS (Refined Copy) ---
 const BANNERS = [
@@ -30,8 +32,8 @@ const BANNERS = [
 export function GuestHome() {
     const navigate = useNavigate();
     const [latestProducts, setLatestProducts] = useState<any[]>([]);
-
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
+    const [flashSaleItems, setFlashSaleItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -45,14 +47,16 @@ export function GuestHome() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [retail, preorder] = await Promise.all([
+                const [retail, preorder, flashData] = await Promise.all([
                     productsService.getProducts({ limit: 8, type_code: 'RETAIL' }),
-                    productsService.getProducts({ limit: 4, type_code: 'PREORDER' })
+                    productsService.getProducts({ limit: 4, type_code: 'PREORDER' }),
+                    PromotionsService.getActiveFlashSales().catch(() => [])
                 ]);
 
                 const getList = (res: any) => Array.isArray(res) ? res : (res as any)?.data || [];
                 setLatestProducts(getList(retail).slice(0, 8));
                 setPreorderProducts(getList(preorder).slice(0, 4));
+                if (Array.isArray(flashData)) setFlashSaleItems(flashData);
             } catch (error) {
                 console.error("Failed to load home data", error);
             } finally {
@@ -248,6 +252,16 @@ export function GuestHome() {
             <div className="bg-white min-h-screen font-sans text-neutral-800 pb-0">
 
                 <HeroSection />
+
+                {/* ⚡ FLASH SALE SECTION */}
+                {!loading && flashSaleItems.length > 0 && (
+                    <section className="pt-24 pb-8 container mx-auto px-6">
+                        <FlashSaleSection 
+                            items={flashSaleItems} 
+                            endTime={flashSaleItems[0]?.end_time} 
+                        />
+                    </section>
+                )}
 
                 {/* SECTION 1: NEW ARRIVALS */}
                 <section className="py-32 container mx-auto px-6">
