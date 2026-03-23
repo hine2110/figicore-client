@@ -1164,7 +1164,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                             </div>
                                                             <h4 className="font-bold text-sm uppercase tracking-wider text-amber-900">Retail Variants</h4>
                                                         </div>
-                                                        <Button type="button" size="sm" variant="outline" className="bg-white border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add Variant</Button>
+                                                        <Button type="button" size="sm" variant="outline" className="bg-white border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" })}><Plus className="w-4 h-4 mr-2" />Add Variant</Button>
                                                     </div>
                                                     <div className="space-y-6">
                                                         {fields.map((field, index) => (
@@ -1274,7 +1274,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                                         <span className="text-xs">Auto-Generate</span>
                                                                                     </Button>
                                                                                 </div>
-                                                                                <FormControl><Textarea placeholder="Generated description based on details..." {...field} className="min-h-[80px] text-xs bg-neutral-50" /></FormControl>
+                                                                                <FormControl><Textarea placeholder="Generated description based on details..." {...field} value={field.value || ""} className="min-h-[80px] text-xs bg-neutral-50" /></FormControl>
                                                                                 <FormMessage />
                                                                             </FormItem>
                                                                         )} />
@@ -1391,7 +1391,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                     <p className="text-xs text-blue-700 font-medium">Manage versions & deposits</p>
                                                                 </div>
                                                             </div>
-                                                            <Button type="button" size="sm" variant="outline" className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm" onClick={() => append({ option_name: "", price: 0, deposit_amount: 0, slot_limit: 50, max_qty_per_user: 2, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add Version</Button>
+                                                            <Button type="button" size="sm" variant="outline" className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm" onClick={() => append({ option_name: "", price: 0, deposit_amount: 0, slot_limit: 50, max_qty_per_user: 2, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" })}><Plus className="w-4 h-4 mr-2" />Add Version</Button>
                                                         </div>
                                                     </div>
 
@@ -1475,7 +1475,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                                             <span className="text-[10px] font-bold">Smart Write</span>
                                                                                         </Button>
                                                                                     </div>
-                                                                                    <FormControl><Textarea placeholder="Details..." {...field} className="min-h-[60px] text-xs bg-transparent border-none focus-visible:ring-0 p-0" /></FormControl>
+                                                                                    <FormControl><Textarea placeholder="Details..." {...field} value={field.value || ""} className="min-h-[60px] text-xs bg-transparent border-none focus-visible:ring-0 p-0" /></FormControl>
                                                                                     <FormMessage />
                                                                                 </FormItem>
                                                                             )} />

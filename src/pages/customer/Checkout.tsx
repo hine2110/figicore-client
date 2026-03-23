@@ -25,6 +25,7 @@ export default function Checkout() {
     // Support both new Ref and legacy ID
     const paymentRef = location.state?.paymentRef;
     const legacyOrderId = location.state?.orderId;
+    const livestreamId = location.state?.livestreamId;
 
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -67,7 +68,7 @@ export default function Checkout() {
     // 3. Fetch Orders Data
     const fetchOrders = async () => {
         if (!paymentRef && !legacyOrderId) {
-            navigate('/customer/cart');
+            navigate(livestreamId ? '/customer/home' : '/customer/cart');
             return;
         }
         try {
@@ -137,7 +138,7 @@ export default function Checkout() {
 
         } catch (error) {
             console.error("Orders Load Failed", error);
-            navigate('/customer/cart');
+            navigate(livestreamId ? '/customer/home' : '/customer/cart');
         } finally {
             setLoading(false);
         }
@@ -290,17 +291,19 @@ export default function Checkout() {
         setIsProcessing(true);
         try {
             await Promise.all(orders.map(o => api.post(`/orders/${o.order_id}/cancel`)));
-            toast({ 
-                title: isAuctionOrder ? "Auction Forfeited" : "Order Cancelled", 
-                description: isAuctionOrder ? "Tiền cọc của bạn đã bị tịch thu theo quy định" : "Items returned to cart/stock." 
+            toast({
+                title: isAuctionOrder ? "Auction Forfeited" : "Order Cancelled",
+                description: isAuctionOrder ? "Tiền cọc của bạn đã bị tịch thu theo quy định" : "Items returned to cart/stock."
             });
             // Navigate to auctions list if this was an auction order, else go to retail
             navigate(isAuctionOrder ? '/customer/auctions' : '/customer/retail');
         } catch (e) {
             toast({ variant: "destructive", title: "Error", description: "Failed to cancel orders." });
+            if (livestreamId) navigate('/customer/home');
         } finally {
             setIsProcessing(false);
             setShowCancelDialog(false);
+            if (livestreamId) navigate('/customer/home');
         }
     };
 
@@ -354,7 +357,7 @@ export default function Checkout() {
             <div className="min-h-screen bg-[#F8F9FA] py-10 font-sans text-slate-900">
                 <div className="container mx-auto px-4 max-w-6xl">
                     <div className="flex items-center gap-4 mb-8">
-                        <Button variant="ghost" size="icon" onClick={() => navigate('/customer/cart')} className="rounded-full bg-white/50 border border-slate-200">
+                        <Button variant="ghost" size="icon" onClick={() => navigate(livestreamId ? '/customer/home' : '/customer/cart')} className="rounded-full bg-white/50 border border-slate-200">
                             <ArrowLeft className="w-5 h-5 text-slate-600" />
                         </Button>
                         <div>

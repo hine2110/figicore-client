@@ -14,7 +14,8 @@ import {
     Bell,
     Search,
     PanelLeftClose,
-    PanelLeftOpen
+    PanelLeftOpen,
+    Video
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -37,13 +38,14 @@ export default function AdminLayout() {
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+    const isStudio = /\/admin\/(auctions|livestreams)\/\d+\/live/.test(location.pathname);
+
     // Auto-collapse on studio routes
     useEffect(() => {
-        const isStudio = /\/admin\/auctions\/\d+\/live/.test(location.pathname);
         if (isStudio) {
             setIsSidebarCollapsed(true);
         }
-    }, [location.pathname]);
+    }, [isStudio]);
 
     const navItems = [
         { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
@@ -52,6 +54,7 @@ export default function AdminLayout() {
         { name: 'Products', path: '/admin/products', icon: ShoppingBag },
         { name: 'Orders Oversight', path: '/admin/orders', icon: FileText },
         { name: 'Auctions', path: '/admin/auctions', icon: Gavel },
+        { name: 'Livestreams', path: '/admin/livestreams', icon: Video },
         { name: 'Manual Refunds', path: '/admin/refunds', icon: RotateCcw },
         { name: 'System Settings', path: '/admin/settings', icon: Settings },
         { name: 'Audit Logs', path: '/admin/logs', icon: History },
@@ -128,7 +131,6 @@ export default function AdminLayout() {
         </div>
     );
 
-    const isStudio = /\/admin\/auctions\/\d+\/live/.test(location.pathname);
 
     return (
         <div className="flex min-h-screen bg-neutral-50 font-sans">

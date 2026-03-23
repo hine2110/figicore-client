@@ -15,7 +15,7 @@ import { TicketPercent } from 'lucide-react';
 
 export default function Cart() {
     const navigate = useNavigate();
-    const { items, updateQuantity, removeFromCart } = useCartStore();
+    const { items, updateQuantity, removeFromCart, fetchCart } = useCartStore();
     const [selectedItemIds, setSelectedItemIds] = useState<(string | number)[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [selectedDiscountCode, setSelectedDiscountCode] = useState<string | null>(null);
@@ -156,7 +156,8 @@ export default function Cart() {
                         variant_id: Number(realVariantId),
                         quantity: Number(i.quantity),
                         price: calculateFinalPrice(i.price, i.promotion), // Send discounted price
-                        payment_option: (i as any).payment_option || (i as any).paymentOption || 'DEPOSIT' // Fix: Send explicit option
+                        payment_option: (i as any).payment_option || (i as any).paymentOption || 'DEPOSIT', // Fix: Send explicit option
+                        livestreamId: (i as any).livestream_id || undefined, // Live pricing context
                     };
                 })
             };
@@ -193,17 +194,27 @@ export default function Cart() {
         } catch (error: any) {
             console.error("Proceed Error:", error);
 
-            // Handle specific Anti-scalping error more gracefully
-            // The message usually comes as "Anti-scalping limit reached..."
             const errorMsg = error.response?.data?.message || error.message || "Failed to initiate order.";
             const isLimitError = errorMsg.includes('limit reached') || errorMsg.includes('max_qty');
+            const isPriceChanged = errorMsg.includes('PRICE_CHANGED');
 
-            toast({
-                variant: "destructive",
-                title: isLimitError ? "Limit Reached" : "Order Creation Failed",
-                description: errorMsg,
-                duration: isLimitError ? 5000 : 3000, // Longer for limit errors
-            });
+            if (isPriceChanged) {
+                // Auto refresh cart to get the new prices
+                await fetchCart();
+                toast({
+                    variant: "destructive",
+                    title: "Giỏ hàng đã cập nhật giá",
+                    description: errorMsg.replace('PRICE_CHANGED: ', ''),
+                    duration: 6000,
+                });
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: isLimitError ? "Limit Reached" : "Order Creation Failed",
+                    description: errorMsg,
+                    duration: isLimitError ? 5000 : 3000, 
+                });
+            }
         } finally {
             setIsProcessing(false);
         }
@@ -317,6 +328,12 @@ export default function Cart() {
                                     DEPOSIT
                                 </div>
                             )}
+                        </div>
+                    )}
+                    {/* LIVE PRICE badge */}
+                    {item.livestream_id && type_code !== 'PREORDER' && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-rose-600/80 to-transparent pb-1 pt-2 flex items-center justify-center">
+                            <span className="text-white text-[9px] font-black uppercase tracking-wider">🔴 Live Price</span>
                         </div>
                     )}
                 </div>

@@ -21,6 +21,8 @@ import { customersService } from '@/services/customers.service';
 import { calculateFinalPrice } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import CollectVoucherBlock from '@/components/CollectVoucherBlock';
+import { livestreamsService } from '@/services/livestreams.service';
+import LivestreamPreviewCard from '@/components/customer/LivestreamPreviewCard';
 
 export default function CustomerHome() {
     const navigate = useNavigate();
@@ -31,15 +33,17 @@ export default function CustomerHome() {
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<any>({ walletBalance: 0, loyaltyPoints: 0, activeOrders: 0, rankCode: 'MEMBER' });
+    const [liveSessions, setLiveSessions] = useState<any[]>([]);
 
     // Initial Data Fetch
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [retailData, preorderData, statsData] = await Promise.all([
+                const [retailData, preorderData, statsData, liveData] = await Promise.all([
                     productsService.getProducts({ type_code: 'RETAIL', limit: 50 }),
                     productsService.getProducts({ type_code: 'PREORDER', limit: 50 }),
-                    customersService.getDashboardStats()
+                    customersService.getDashboardStats(),
+                    livestreamsService.getLivestreams('LIVE')
                 ]);
 
                 const getList = (res: any) => Array.isArray(res) ? res : (res as any)?.data || [];
@@ -54,6 +58,7 @@ export default function CustomerHome() {
 
                 setRetailProducts(shuffle(getList(retailData)).slice(0, 6));
                 setPreorderProducts(shuffle(getList(preorderData)).slice(0, 4));
+                setLiveSessions(Array.isArray(liveData) ? liveData : []);
                 if (statsData) setStats(statsData);
 
             } catch (error) {
@@ -301,6 +306,25 @@ export default function CustomerHome() {
                                         </Button>
                                     </div>
                                 </div>
+
+                                {/* Live Now Section (Moved to Sidebar) */}
+                                {liveSessions.length > 0 && (
+                                    <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h2 className="text-xl font-bold text-slate-900">Live Now</h2>
+                                                    <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-ping"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {liveSessions.map(session => (
+                                                <LivestreamPreviewCard key={session.id} session={session} />
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
                             </div>
                         </div>
 
@@ -308,6 +332,7 @@ export default function CustomerHome() {
                         <div className="lg:col-span-3 space-y-12">
                             {/* Collect Voucher Block */}
                             <CollectVoucherBlock />
+
                             {/* New Arrivals */}
                             <section>
                                 <div className="flex items-center justify-between mb-8">
