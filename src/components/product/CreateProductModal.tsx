@@ -1143,7 +1143,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                                             <FormField control={form.control} name="type_code" render={({ field }) => (
-                                                <FormItem className="md:col-span-4 bg-white p-4 rounded-lg border shadow-sm border-neutral-200">
+                                                <FormItem className="md:col-span-12 bg-white p-4 rounded-lg border shadow-sm border-neutral-200">
                                                     <FormLabel className="text-[10px] uppercase font-bold tracking-wider text-neutral-800">Product Offering Type <span className="text-red-500">*</span></FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditMode}>
                                                         <FormControl><SelectTrigger className="border-none shadow-none p-0 h-auto focus:ring-0 text-base font-semibold"><SelectValue /></SelectTrigger></FormControl>
@@ -1157,21 +1157,6 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
-
-                                            {watchedType === "RETAIL" && (
-                                                <div className="md:col-span-8 bg-amber-50/50 p-4 rounded-lg border border-amber-100 flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                                                            <Tag className="w-4 h-4 text-amber-600" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[10px] uppercase font-bold tracking-wider text-amber-900 leading-tight">Tax Profile</p>
-                                                            <p className="text-xs text-amber-700 font-medium">1% GTGT, 0,5% TNCN (Hàng hóa)</p>
-                                                        </div>
-                                                    </div>
-                                                    <Badge variant="outline" className="bg-white text-amber-600 border-amber-200">Standard</Badge>
-                                                </div>
-                                            )}
                                         </div>
 
                                         {/* DYNAMIC FIELDS based on Type */}
