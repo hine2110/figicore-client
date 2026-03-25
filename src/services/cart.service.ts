@@ -13,7 +13,8 @@ export const cartService = {
         productId: number,
         variantId?: number,
         quantity: number,
-        paymentOption?: 'DEPOSIT' | 'FULL_PAYMENT'
+        paymentOption?: 'DEPOSIT' | 'FULL_PAYMENT',
+        livestreamId?: number
     }) => {
         const response = await axiosInstance.post('/cart', payload);
         return response.data; // Return updated cart

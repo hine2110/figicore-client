@@ -13,5 +13,10 @@ export const inventoryService = {
         return response.data;
     },
 
+    completeReceipt: async (id: number, data: { items: { item_id: number, quantity_good: number, quantity_defect: number }[] }): Promise<ApiResponse<any>> => {
+        const response = await axiosInstance.patch(`/inventory/receipts/${id}/complete`, data);
+        return response.data;
+    },
+
     // Future: Get receipts, details, etc.
 };

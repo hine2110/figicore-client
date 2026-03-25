@@ -26,6 +26,7 @@ export interface CartItem {
     // Optional / Legacy (to avoid breaking if accessed, but should use nested)
     promotion?: import('@/types/product').ProductPromotion;
     originalPrice?: number;
+    livestream_id?: number;
 }
 
 interface CartState {
@@ -35,7 +36,7 @@ interface CartState {
     isLoading: boolean;
 
     fetchCart: () => Promise<void>;
-    addToCart: (product: any & { paymentOption?: 'DEPOSIT' | 'FULL_PAYMENT', max_qty_per_user?: number }) => Promise<void>;
+    addToCart: (product: any & { paymentOption?: 'DEPOSIT' | 'FULL_PAYMENT', max_qty_per_user?: number, livestream_id?: number, livestreamId?: number }) => Promise<void>;
     removeFromCart: (itemId: string | number) => Promise<void>;
     updateQuantity: (itemId: string | number, quantity: number) => Promise<void>;
     clearCart: () => Promise<void>;
@@ -89,6 +90,7 @@ export const useCartStore = create<CartState>()(
                 const paymentOption = product.paymentOption || 'DEPOSIT';
                 const typeCode = product.type_code || 'RETAIL';
                 const maxQty = product.max_qty_per_user ? Number(product.max_qty_per_user) : undefined;
+                const livestreamId = product.livestreamId ? Number(product.livestreamId) : product.livestream_id ? Number(product.livestream_id) : undefined;
 
                 // Guard: Invalid ID
                 if (!productId || isNaN(productId)) {
@@ -101,12 +103,12 @@ export const useCartStore = create<CartState>()(
                 const existingItem = currentItems.find(i =>
                     Number(i.productId) === productId &&
                     Number(i.product_variants?.variant_id) === variantId &&
-                    // CRITICAL FIX: Treat different payment options as DIFFERENT line items (or block mix)
                     // Current Rule: User can have both options but usually we merge? 
                     // No, if user adds Deposit then Adds Full -> They are distinct items or we block.
                     // User Request: "hiện tại tôi chọn cọc 300k add to cart sau đó chọn cọc full 1tr2 vẫn âdd to cart nhưng kiểm tra cart là cọc 300 cho 2 sản phẩm đó"
                     // => System merged them incorrectly. We must match payment_option too.
-                    (i.payment_option || 'DEPOSIT') === paymentOption
+                    (i.payment_option || 'DEPOSIT') === paymentOption &&
+                    (i.livestream_id || undefined) === (livestreamId || undefined) // Prevent merging live vs non-live
                 );
 
                 if (existingItem) {
@@ -164,7 +166,8 @@ export const useCartStore = create<CartState>()(
                             productId: productId,
                             variantId: variantId,
                             quantity,
-                            paymentOption: paymentOption as any // Ensure type match
+                            paymentOption: paymentOption as any, // Ensure type match
+                            livestreamId: livestreamId
                         });
                         await get().fetchCart(); // Refresh lại cart chuẩn từ server
                     } catch (error: any) {
@@ -180,7 +183,12 @@ export const useCartStore = create<CartState>()(
                 let newItems;
                 if (existingItem) {
                     newItems = currentItems.map(i => {
-                        if (Number(i.productId) === productId && Number(i.product_variants?.variant_id) === variantId && (i.payment_option || 'DEPOSIT') === paymentOption) {
+                        if (
+                            Number(i.productId) === productId && 
+                            Number(i.product_variants?.variant_id) === variantId && 
+                            (i.payment_option || 'DEPOSIT') === paymentOption &&
+                            (i.livestream_id || undefined) === (livestreamId || undefined)
+                        ) {
                             return { ...i, quantity: i.quantity + quantity };
                         }
                         return i;
@@ -194,6 +202,7 @@ export const useCartStore = create<CartState>()(
                         payment_option: paymentOption,
                         max_qty_per_user: maxQty,
                         originalPrice: product.price,
+                        livestream_id: livestreamId,
                         // Construct nested object for UI compatibility
                         product_variants: {
                             variant_id: variantId,

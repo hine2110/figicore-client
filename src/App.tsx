@@ -13,7 +13,9 @@ import PosLayout from "@/layouts/PosLayout";
 // Pages
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 
-import AccountManagement from "@/pages/admin/AccountManagement";
+import AccountManagement from "./pages/admin/AccountManagement";
+import LivestreamManagement from "./pages/admin/LivestreamManagement";
+import AdminLivestreamLive from "./pages/admin/AdminLivestreamLive";
 import ProfileApproval from "@/pages/admin/ProfileApproval";
 import ProductManagement from "@/pages/admin/ProductManagement";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
@@ -38,6 +40,8 @@ import CustomerFeedback from "@/pages/manager/CustomerFeedback";
 import PromotionListPage from "@/pages/manager/promotions/PromotionListPage";
 import PromotionCreatePage from "@/pages/manager/promotions/PromotionCreatePage";
 import PromotionEditPage from "@/pages/manager/promotions/PromotionEditPage";
+import FlashSaleCreatePage from "@/pages/manager/promotions/FlashSaleCreatePage";
+import FlashSaleEditPage from "@/pages/manager/promotions/FlashSaleEditPage";
 import VoucherListPage from "@/pages/manager/vouchers/VoucherListPage";
 import VoucherCreatePage from "@/pages/manager/vouchers/VoucherCreatePage";
 import VoucherEditPage from "@/pages/manager/vouchers/VoucherEditPage";
@@ -57,6 +61,7 @@ import CustomerWallet from "@/pages/customer/CustomerWallet";
 import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
 import CustomerAuctionRoom from "@/pages/customer/AuctionRoom";
+import CustomerLivestreamRoom from "@/pages/customer/CustomerLivestreamRoom";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
 import OrderDetail from "@/pages/customer/OrderDetail"; // New Import
 import PreOrderPayment from "@/pages/customer/PreOrderPayment";
@@ -146,6 +151,8 @@ export default function App() {
                             <Route path="settings" element={<SystemSettings />} />
                             <Route path="logs" element={<AuditLogs />} />
                             <Route path="accounts" element={<AccountManagement />} />
+                            <Route path="livestreams" element={<LivestreamManagement />} />
+                            <Route path="livestreams/:id/live" element={<AdminLivestreamLive />} />
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
@@ -168,7 +175,9 @@ export default function App() {
                             <Route path="profile" element={<ProfilePage />} />
                             <Route path="promotions" element={<PromotionListPage />} />
                             <Route path="promotions/new" element={<PromotionCreatePage />} />
+                            <Route path="promotions/flash-sale/new" element={<FlashSaleCreatePage />} />
                             <Route path="promotions/:id/edit" element={<PromotionEditPage />} />
+                            <Route path="promotions/flash-sale/:id/edit" element={<FlashSaleEditPage />} />
                             <Route path="vouchers" element={<VoucherListPage />} />
                             <Route path="vouchers/new" element={<VoucherCreatePage />} />
                             <Route path="payroll" element={<Payroll />} />
@@ -230,6 +239,7 @@ export default function App() {
                             <Route path="profile" element={<CustomerProfile />} />
                             <Route path="auctions" element={<CustomerAuctions />} />
                             <Route path="auctions/:id" element={<CustomerAuctionRoom />} />
+                            <Route path="live/:id" element={<CustomerLivestreamRoom />} />
                         </Route>
                     </Route>
 
