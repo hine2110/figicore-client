@@ -74,6 +74,11 @@ export default function CustomerProfile() {
     const [isUploading, setIsUploading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+    // OTP States
+    const [isOtpOpen, setIsOtpOpen] = useState(false);
+    const [otpValue, setOtpValue] = useState('');
+    const [isOtpVerifying, setIsOtpVerifying] = useState(false);
+
     const hasChanges = user && (
         formData.full_name !== (user.full_name || '') ||
         formData.phone !== (user.phone || '')
@@ -160,34 +165,83 @@ export default function CustomerProfile() {
 
     const handleSaveProfile = async () => {
         if (!hasChanges) return;
+
+        // Check if sensitive field (phone) is changing
+        const isPhoneChanging = formData.phone !== (user?.phone || '');
+
+        if (isPhoneChanging) {
+            setIsLoading(true);
+            try {
+                await userService.requestUpdateOtp();
+                setIsOtpOpen(true);
+                toast({
+                    title: "OTP Sent",
+                    description: "Please check your email for the verification code.",
+                });
+            } catch (error: any) {
+                toast({
+                    variant: "destructive",
+                    title: "Failed to send OTP",
+                    description: error.response?.data?.message || "Something went wrong.",
+                });
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
+
+        // Only full_name changed or other non-sensitive fields
         setIsLoading(true);
         setMessage(null);
         try {
             await authService.updateProfile({
                 full_name: formData.full_name,
-                phone: formData.phone
             });
 
             // Update local store with new data
-            const updatedUser = { ...user, ...formData };
-            setUser(updatedUser as any);
+            setUser({ ...user, full_name: formData.full_name } as any);
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
             toast({
                 title: "Profile Updated",
-                description: "Your profile information has been saved.",
+                description: "Your full name has been saved.",
                 duration: 5000,
             });
         } catch (error: any) {
-            console.error('Update profile error:', error);
             setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to update profile' });
-            toast({
-                variant: "destructive",
-                title: "Update Failed",
-                description: error.response?.data?.message || "Failed to update profile",
-                duration: 5000,
-            });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleVerifyOtpAndSave = async () => {
+        if (!otpValue) return;
+        setIsOtpVerifying(true);
+        try {
+            await userService.requestProfileUpdate({
+                changes: {
+                    full_name: formData.full_name,
+                    phone: formData.phone
+                },
+                otp: otpValue
+            });
+
+            // Success: Update store & UI
+            setUser({ ...user, ...formData } as any);
+            setIsOtpOpen(false);
+            setOtpValue('');
+            setMessage({ type: 'success', text: 'Profile updated successfully with OTP!' });
+            toast({
+                title: "Changes Saved",
+                description: "Your phone number has been updated successfully.",
+            });
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Verification Failed",
+                description: error.response?.data?.message || "Invalid OTP code.",
+            });
+        } finally {
+            setIsOtpVerifying(false);
         }
     };
 
@@ -493,6 +547,53 @@ export default function CustomerProfile() {
                                                     <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 text-white">
                                                         Delete
                                                     </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+
+                                        <AlertDialog open={isOtpOpen} onOpenChange={setIsOtpOpen}>
+                                            <AlertDialogContent className="bg-white/80 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl p-8 max-w-md">
+                                                <AlertDialogHeader>
+                                                    <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-4 mx-auto">
+                                                        <Shield className="w-8 h-8" />
+                                                    </div>
+                                                    <AlertDialogTitle className="text-2xl font-bold text-center text-slate-800">Verify Identity</AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-center text-slate-500 mt-2">
+                                                        We've sent a 6-digit code to your registered email. Please enter it below to confirm your phone change.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+
+                                                <div className="py-8 space-y-4">
+                                                    <Input
+                                                        value={otpValue}
+                                                        onChange={(e) => setOtpValue(e.target.value.replace(/[^0-9]/g, ''))}
+                                                        placeholder="000000"
+                                                        className="text-center text-3xl font-mono tracking-[0.5em] h-16 rounded-2xl border-2 border-slate-100 focus:border-blue-400 bg-white/50"
+                                                        maxLength={6}
+                                                    />
+                                                    <p className="text-center text-xs text-slate-400">
+                                                        Code expires in 5 minutes.
+                                                    </p>
+                                                </div>
+
+                                                <AlertDialogFooter className="flex gap-3 mt-4 sm:justify-center">
+                                                    <AlertDialogCancel className="rounded-2xl border-slate-200 text-slate-500 hover:bg-slate-50 min-w-[120px]">
+                                                        Cancel
+                                                    </AlertDialogCancel>
+                                                    <Button
+                                                        onClick={handleVerifyOtpAndSave}
+                                                        disabled={otpValue.length !== 6 || isOtpVerifying}
+                                                        className="rounded-2xl bg-slate-900 text-white hover:bg-slate-800 min-w-[140px] shadow-lg shadow-slate-200"
+                                                    >
+                                                        {isOtpVerifying ? (
+                                                            <>
+                                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                                Verifying
+                                                            </>
+                                                        ) : (
+                                                            "Confirm"
+                                                        )}
+                                                    </Button>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>

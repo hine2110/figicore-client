@@ -35,7 +35,7 @@ api.interceptors.response.use(
         if (error.response?.status === 401) {
             // Prevent redirect loop if already on a login page
             const currentPath = window.location.pathname;
-            if (!currentPath.includes('/login') && !currentPath.includes('/guest/login')) {
+            if (!currentPath.includes('/login') && !currentPath.includes('/guest/home')) {
                 // Clear zustand auth state and local storage
                 const store = useAuthStore.getState();
                 if (store.logout) {
@@ -45,7 +45,7 @@ api.interceptors.response.use(
                     localStorage.removeItem('user');
                 }
                 // Redirect user to the correct login page, not just the non-existent /login
-                window.location.href = '/guest/login';
+                window.location.href = '/guest/home';
             }
         }
         return Promise.reject(error);

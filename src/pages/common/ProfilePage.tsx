@@ -14,6 +14,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import api from "@/services/api";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Shield } from "lucide-react";
 
 // Schema for Personal Information
 const personalSchema = z.object({
@@ -44,6 +55,12 @@ export default function ProfilePage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [error, setError] = useState<string | null>(null);
+
+    // OTP States
+    const [isOtpOpen, setIsOtpOpen] = useState(false);
+    const [otpValue, setOtpValue] = useState("");
+    const [isOtpVerifying, setIsOtpVerifying] = useState(false);
+    const [pendingValues, setPendingValues] = useState<z.infer<typeof personalSchema> | null>(null);
 
     const form = useForm<z.infer<typeof personalSchema>>({
         resolver: zodResolver(personalSchema),
@@ -118,24 +135,98 @@ export default function ProfilePage() {
     };
 
     const onSubmit = async (values: z.infer<typeof personalSchema>) => {
+        const isPhoneChanged = values.phone && values.phone !== (profile.phone || "");
+        
+        // Only send fields that have actually changed
+        const changes: any = {};
+        if (values.full_name !== profile.full_name) changes.full_name = values.full_name;
+        if (isPhoneChanged) changes.phone = values.phone;
+        if (values.address !== (profile.addresses?.find((a: any) => a.is_default)?.detail_address || "")) {
+            changes.address = values.address;
+        }
+
+        if (isPhoneChanged) {
+            // Sensitivity Update: Requires OTP
+            setPendingValues(values);
+            setLoading(true);
+            try {
+                await userService.requestUpdateOtp();
+                setIsOtpOpen(true);
+                toast({
+                    title: "Authentication Required",
+                    description: "An OTP has been sent to your email to verify this change.",
+                });
+            } catch (error: any) {
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: error.response?.data?.message || "Failed to send OTP",
+                });
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            if (Object.keys(changes).length === 0) {
+                toast({ title: "No changes", description: "Your profile is already up to date." });
+                return;
+            }
+
+            // Basic Info Update: No OTP required
+            setLoading(true);
+            try {
+                await userService.requestProfileUpdate({
+                    changes,
+                    otp: "" 
+                });
+                
+                toast({
+                    title: "Request Submitted",
+                    description: "Your profile update request has been sent for Admin approval.",
+                });
+                
+                fetchProfile();
+            } catch (error: any) {
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: error.response?.data?.message || "Failed to submit request",
+                });
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    const handleVerifyOtpAndSubmit = async () => {
+        if (!pendingValues || !otpValue) return;
+        setIsOtpVerifying(true);
         try {
             await userService.requestProfileUpdate({
-                full_name: values.full_name,
-                phone: values.phone,
-                address: values.address,
-                avatar_url: values.avatar_url,
+                changes: {
+                    full_name: pendingValues.full_name,
+                    phone: pendingValues.phone,
+                    address: pendingValues.address,
+                },
+                otp: otpValue
             });
+            
+            setIsOtpOpen(false);
+            setOtpValue("");
             toast({
-                title: "Success",
-                description: "Yêu cầu cập nhật đã được gửi đi chờ duyệt",
+                title: "Request Submitted",
+                description: "Your profile update request has been sent for Admin approval.",
             });
-            // Do not update local state immediately as it needs approval
+            
+            // Refresh profile to show pending status
+            fetchProfile();
         } catch (error: any) {
             toast({
                 variant: "destructive",
-                title: "Error",
-                description: error.response?.data?.message || "Failed to update profile",
+                title: "Verification Failed",
+                description: error.response?.data?.message || "Invalid or expired OTP",
             });
+        } finally {
+            setIsOtpVerifying(false);
         }
     };
 
@@ -296,6 +387,50 @@ export default function ProfilePage() {
                                             </Button>
                                         </form>
                                     </Form>
+
+                                    <AlertDialog open={isOtpOpen} onOpenChange={setIsOtpOpen}>
+                                        <AlertDialogContent className="bg-white/80 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl p-8 max-w-md">
+                                            <AlertDialogHeader>
+                                                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-4 mx-auto">
+                                                    <Shield className="w-8 h-8" />
+                                                </div>
+                                                <AlertDialogTitle className="text-2xl font-bold text-center text-slate-800">Verify Identity</AlertDialogTitle>
+                                                <AlertDialogDescription className="text-center text-slate-500 mt-2">
+                                                    We've sent a 6-digit code to your email. Enter it below to confirm your profile update request.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+
+                                            <div className="py-8 space-y-4">
+                                                <Input
+                                                    value={otpValue}
+                                                    onChange={(e) => setOtpValue(e.target.value.replace(/[^0-9]/g, ''))}
+                                                    placeholder="000000"
+                                                    className="text-center text-3xl font-mono tracking-[0.5em] h-16 rounded-2xl border-2 border-slate-100 focus:border-blue-400 bg-white/50"
+                                                    maxLength={6}
+                                                />
+                                            </div>
+
+                                            <AlertDialogFooter className="flex gap-3 mt-4 sm:justify-center">
+                                                <AlertDialogCancel className="rounded-2xl border-slate-200 text-slate-500 hover:bg-slate-50 min-w-[120px]">
+                                                    Cancel
+                                                </AlertDialogCancel>
+                                                <Button
+                                                    onClick={handleVerifyOtpAndSubmit}
+                                                    disabled={otpValue.length !== 6 || isOtpVerifying}
+                                                    className="rounded-2xl bg-slate-900 text-white hover:bg-slate-800 min-w-[140px] shadow-lg shadow-slate-200"
+                                                >
+                                                    {isOtpVerifying ? (
+                                                        <>
+                                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                            Verifying
+                                                        </>
+                                                    ) : (
+                                                        "Confirm"
+                                                    )}
+                                                </Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 </CardContent>
                             </Card>
                         </TabsContent>

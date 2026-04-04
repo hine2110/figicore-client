@@ -222,7 +222,7 @@ export default function SignIn() {
     setRegLoading(true);
     try {
       await authService.register({ email: regForm.email, otp: regForm.otp });
-      navigate("/guest/login?registered=true");
+      navigate("/guest/home");
     } catch (err: any) {
       setRegGenError(err.response?.data?.message || "Registration failed");
     } finally {

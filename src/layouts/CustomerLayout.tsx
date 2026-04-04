@@ -129,7 +129,7 @@ export default function CustomerLayout({ children, activePage = 'home', hideFoot
                                             import('@/store/useAuthStore').then(({ useAuthStore }) => {
                                                 useAuthStore.getState().logout();
                                                 useCartStore.getState().clearCart();
-                                                navigate('/guest/login');
+                                                navigate('/guest/home');
                                             });
                                         }}
                                         className={darkNav ? 'focus:bg-white/5 focus:text-white text-red-400' : ''}
