@@ -237,11 +237,11 @@ export default function CustomerProfile() {
         fetchLatestProfile();
     }, [setUser]);
 
-    const handleSaveProfile = async () => {
+    const handleSaveProfile = async (values: ProfileFormValues) => {
         if (!hasChanges) return;
 
         // Check if sensitive field (phone) is changing
-        const isPhoneChanging = formData.phone !== (user?.phone || '');
+        const isPhoneChanging = values.phone !== (user?.phone || '');
 
         if (isPhoneChanging) {
             setIsLoading(true);
@@ -264,17 +264,11 @@ export default function CustomerProfile() {
             return;
         }
 
-        // Only full_name changed or other non-sensitive fields
-    const handleSaveProfile = async (values: ProfileFormValues) => {
+        // Only full_name/dob changed or other non-sensitive fields
         setIsLoading(true);
         setMessage(null);
         try {
             await authService.updateProfile({
-                full_name: formData.full_name,
-            });
-
-            // Update local store with new data
-            setUser({ ...user, full_name: formData.full_name } as any);
                 full_name: values.full_name,
                 phone: values.phone,
                 dob: values.dob ? values.dob.toISOString().split('T')[0] : undefined
@@ -286,7 +280,7 @@ export default function CustomerProfile() {
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
             toast({
                 title: "Profile Updated",
-                description: "Your full name has been saved.",
+                description: "Your changes have been saved.",
                 duration: 5000,
             });
         } catch (error: any) {
@@ -299,17 +293,25 @@ export default function CustomerProfile() {
     const handleVerifyOtpAndSave = async () => {
         if (!otpValue) return;
         setIsOtpVerifying(true);
+        const values = form.getValues();
         try {
             await userService.requestProfileUpdate({
                 changes: {
-                    full_name: formData.full_name,
-                    phone: formData.phone
+                    full_name: values.full_name,
+                    phone: values.phone,
+                    dob: values.dob ? values.dob.toISOString().split('T')[0] : undefined
                 },
                 otp: otpValue
             });
 
             // Success: Update store & UI
-            setUser({ ...user, ...formData } as any);
+            const updatedUser = { 
+                ...user, 
+                full_name: values.full_name,
+                phone: values.phone,
+                dob: values.dob ? values.dob.toISOString().split('T')[0] : user?.dob
+            };
+            setUser(updatedUser as any);
             setIsOtpOpen(false);
             setOtpValue('');
             setMessage({ type: 'success', text: 'Profile updated successfully with OTP!' });
@@ -798,22 +800,6 @@ export default function CustomerProfile() {
                                         </AlertDialog>
 
                                         {/* Submit Button */}
-                                        <div className="flex justify-end pt-4">
-                                            <Button
-                                                className="bg-neutral-900 text-white hover:bg-neutral-800 min-w-[120px]"
-                                                onClick={handleSaveProfile}
-                                                disabled={isLoading || !hasChanges}
-                                            >
-                                                {isLoading ? (
-                                                    <>
-                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                        Saving...
-                                                    </>
-                                                ) : (
-                                                    "Save Changes"
-                                                )}
-                                            </Button>
-                                        </div>
                                     </div>
                                 )}
 
