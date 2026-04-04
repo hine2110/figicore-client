@@ -33,9 +33,9 @@ api.interceptors.response.use(
     (error) => {
         // If the server rejects the token (e.g., expired or user is banned)
         if (error.response?.status === 401) {
-            // Prevent redirect loop if already on a login page
+            // Prevent redirect loop if already on a login page or activation page (which handles 401s uniquely)
             const currentPath = window.location.pathname;
-            if (!currentPath.includes('/login') && !currentPath.includes('/guest/home')) {
+            if (!currentPath.includes('/login') && !currentPath.includes('/guest/login') && !currentPath.includes('/activate')) {
                 // Clear zustand auth state and local storage
                 const store = useAuthStore.getState();
                 if (store.logout) {

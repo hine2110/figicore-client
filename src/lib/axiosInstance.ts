@@ -12,7 +12,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
  */
 export const axiosInstance = axios.create({
     baseURL: BASE_URL,
-    timeout: 10000,
+    timeout: 60000, // Tăng lên 60s để chờ model AI xử lý ảnh
     headers: {
         'Content-Type': 'application/json',
     },
