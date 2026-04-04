@@ -232,7 +232,7 @@ export default function VoucherListPage() {
     });
 
     const formatCurrency = (val: number) =>
-        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(val);
 
     if (user?.role_code !== 'MANAGER' && user?.role_code !== 'SUPER_ADMIN') return null;
 
@@ -330,12 +330,12 @@ export default function VoucherListPage() {
                                                 <TableRow key={v.promotion_id}>
                                                     <TableCell className="font-semibold">{v.code}</TableCell>
                                                     <TableCell>
-                                                        {v.discount_type === 'PERCENTAGE' ? `${v.discount_value}%` : v.discount_type === 'FREE_SHIP' ? 'Free Ship' : `${new Intl.NumberFormat('vi-VN').format(Number(v.discount_value))}đ`}
+                                                        {v.discount_type === 'PERCENTAGE' ? `${v.discount_value}%` : v.discount_type === 'FREE_SHIP' ? 'Free Ship' : `${new Intl.NumberFormat('en-US').format(Number(v.discount_value))}đ`}
                                                     </TableCell>
                                                     <TableCell>
                                                         {v.apply_rank_code ? <Badge variant="outline" className="bg-yellow-50">{v.apply_rank_code}</Badge> : <span className="text-gray-400">All</span>}
                                                     </TableCell>
-                                                    <TableCell>{v.min_order_value ? `${new Intl.NumberFormat('vi-VN').format(Number(v.min_order_value))}đ` : '-'}</TableCell>
+                                                    <TableCell>{v.min_order_value ? `${new Intl.NumberFormat('en-US').format(Number(v.min_order_value))}đ` : '-'}</TableCell>
                                                     <TableCell>{v.collected_quantity || 0} / {v.max_quantity || '∞'}</TableCell>
                                                     <TableCell className="text-sm">
                                                         {v.start_date && v.end_date ? (
@@ -556,12 +556,12 @@ export default function VoucherListPage() {
                                 <p className="font-semibold">
                                     {viewVoucher?.discount_type === 'PERCENTAGE' ? `${viewVoucher.discount_value}% OFF` :
                                      viewVoucher?.discount_type === 'FREE_SHIP' ? '🚚 Free Shipping' :
-                                     `${new Intl.NumberFormat('vi-VN').format(Number(viewVoucher?.discount_value))}đ OFF`}
+                                     `${new Intl.NumberFormat('en-US').format(Number(viewVoucher?.discount_value))}đ OFF`}
                                 </p>
                             </div>
                             <div className="rounded-lg bg-slate-50 p-3">
                                 <p className="text-xs text-muted-foreground mb-1">Minimum Order</p>
-                                <p className="font-semibold">{viewVoucher?.min_order_value ? `${new Intl.NumberFormat('vi-VN').format(Number(viewVoucher.min_order_value))}đ` : 'No limit'}</p>
+                                <p className="font-semibold">{viewVoucher?.min_order_value ? `${new Intl.NumberFormat('en-US').format(Number(viewVoucher.min_order_value))}đ` : 'No limit'}</p>
                             </div>
                             <div className="rounded-lg bg-slate-50 p-3">
                                 <p className="text-xs text-muted-foreground mb-1">Applied Rank</p>
@@ -753,8 +753,8 @@ export default function VoucherListPage() {
                             <p className="text-sm text-muted-foreground">
                                 This voucher will be <strong>permanently deleted</strong>. Customers who have already collected it will still be able to use it.
                             </p>
-                            <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-amber-800 text-xs mt-2">
-                                ⚠️ Order Vouchers <strong>do not have an automatic expiry/deletion mechanism</strong>. You must manually delete them if needed.
+                            <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-blue-800 text-xs mt-2">
+                                ℹ️ The system now <strong>marks vouchers as EXPIRED automatically</strong> but preserves them for your records. Use this button only if you want to permanently remove it.
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -787,7 +787,7 @@ export default function VoucherListPage() {
                                 The promotion will be disabled and all applied products will automatically revert to their previous promotions.
                             </p>
                             <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-blue-800 text-xs mt-2">
-                                ℹ️ The system has an <strong>automatic cron job</strong> that deletes expired promotions every minute. This button allows manual deletion before expiration.
+                                ℹ️ Expired promotions are <strong>automatically deactivated and preserved</strong> in the system. Use this button to permanently delete this record.
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>

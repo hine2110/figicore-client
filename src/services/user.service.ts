@@ -44,8 +44,13 @@ export const userService = {
         return response.data;
     },
 
-    requestProfileUpdate: async (data: any) => {
+    requestProfileUpdate: async (data: { changes: any; otp: string }) => {
         const response = await axiosInstance.post(`${BASE}/profile/request-update`, data);
+        return response.data;
+    },
+
+    requestUpdateOtp: async () => {
+        const response = await axiosInstance.post(`${BASE}/profile/request-update-otp`);
         return response.data;
     },
 

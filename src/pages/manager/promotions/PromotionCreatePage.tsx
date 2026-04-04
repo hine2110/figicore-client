@@ -82,6 +82,8 @@ export default function PromotionCreatePage() {
         },
     });
 
+    const minDateTime = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
     const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
     const [conflictData, setConflictData] = useState<any[]>([]);
     const [safeVariantIds, setSafeVariantIds] = useState<number[]>([]);
@@ -310,7 +312,7 @@ export default function PromotionCreatePage() {
                                         <FormItem>
                                             <FormLabel>Start Date <span className="text-red-500">*</span></FormLabel>
                                             <FormControl>
-                                                <Input type="datetime-local" {...field} />
+                                                <Input type="datetime-local" min={minDateTime} {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -323,7 +325,7 @@ export default function PromotionCreatePage() {
                                         <FormItem>
                                             <FormLabel>End Date <span className="text-red-500">*</span></FormLabel>
                                             <FormControl>
-                                                <Input type="datetime-local" {...field} />
+                                                <Input type="datetime-local" min={form.watch('start_datetime') || minDateTime} {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

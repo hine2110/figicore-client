@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { productsService } from "@/services/products.service";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -92,6 +94,10 @@ export function InboundHistory() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [date, setDate] = useState<DateRange | undefined>();
 
+    // Blind box state
+    const [draftBlindboxes, setDraftBlindboxes] = useState<any[]>([]);
+    const [draftLoading, setDraftLoading] = useState(false);
+
     // --- Effects ---
     // Debounce Search
     useEffect(() => {
@@ -123,7 +129,30 @@ export function InboundHistory() {
 
     useEffect(() => {
         fetchHistory();
+        fetchDraftBlindboxes();
     }, [page, debouncedSearch, date]);
+
+    const fetchDraftBlindboxes = async () => {
+        setDraftLoading(true);
+        try {
+            const res = await productsService.getDraftBlindboxes();
+            setDraftBlindboxes(res || []);
+        } catch (error) {
+            console.error("Failed to fetch draft blindboxes", error);
+        } finally {
+            setDraftLoading(false);
+        }
+    };
+
+    const handleApproveBlindbox = async (id: number) => {
+        try {
+            await productsService.approveBlindbox(id);
+            toast({ title: "Đã duyệt", description: "Blind Box đã được chuyển sang trạng thái ACTIVE." });
+            fetchDraftBlindboxes();
+        } catch (error: any) {
+            toast({ title: "Lỗi duyệt", description: error.response?.data?.message || error.message, variant: "destructive" });
+        }
+    };
 
     // --- Handlers ---
     const toggleRow = (id: number) => {
@@ -217,6 +246,18 @@ export function InboundHistory() {
                     </div>
                 </div>
             </div>
+
+            <Tabs defaultValue="inbound" className="w-full">
+                <TabsList className="mb-6 h-12 bg-neutral-100 rounded-xl p-1 gap-1 flex items-center justify-start w-fit">
+                    <TabsTrigger value="inbound" className="h-full px-6 rounded-lg data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm font-bold text-neutral-500">
+                        Inbound History
+                    </TabsTrigger>
+                    <TabsTrigger value="blindbox" className="h-full px-6 rounded-lg data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-sm font-bold text-neutral-500">
+                        Blind Box Approval <Badge className="ml-2 bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">{draftBlindboxes.length}</Badge>
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="inbound" className="space-y-6 mt-0">
 
             {/* Filter Toolbar - Floating & Glassy */}
             <div className="sticky top-4 z-40 bg-white/80 backdrop-blur-xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-2 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
@@ -381,7 +422,10 @@ export function InboundHistory() {
                                                         <Badge variant="outline" className="w-fit font-mono text-[10px] bg-white text-neutral-500 border-neutral-200">
                                                             #{receipt.receipt_id}
                                                         </Badge>
-                                                        <Badge className={cn("text-[8px] px-1.5 py-0 border-none shadow-none uppercase tracking-wider font-bold h-4 flex items-center justify-center", receipt.status_code === 'PENDING' ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700")}>
+                                                        <Badge className={cn(
+                                                            "text-[8px] px-1.5 py-0 border-none shadow-none uppercase tracking-wider font-bold h-4 flex items-center justify-center", 
+                                                            ['DRAFT', 'PENDING'].includes(receipt.status_code) ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"
+                                                        )}>
                                                             {receipt.status_code}
                                                         </Badge>
                                                     </div>
@@ -431,7 +475,7 @@ export function InboundHistory() {
 
                                             <TableCell className="text-right pr-8">
                                                 <div className="flex flex-col items-end gap-2">
-                                                    {receipt.status_code === 'PENDING' ? (
+                                                    {['DRAFT', 'PENDING'].includes(receipt.status_code) ? (
                                                         <Button 
                                                             size="sm" 
                                                             className="h-8 bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20"
@@ -650,6 +694,76 @@ export function InboundHistory() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+                </TabsContent>
+
+                <TabsContent value="blindbox" className="mt-0">
+                    <div className="rounded-3xl border border-purple-100 shadow-xl shadow-neutral-900/5 bg-white overflow-hidden p-6 min-h-[400px]">
+                        <div className="mb-6 flex items-center gap-3">
+                            <div className="p-2 bg-purple-100 rounded-lg">
+                                <Package className="w-5 h-5 text-purple-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg text-purple-900">Pending Blind Boxes</h3>
+                                <p className="text-sm text-neutral-500">Check physical inventory and approve Manager's draft blind boxes.</p>
+                            </div>
+                        </div>
+
+                        {draftLoading ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
+                                <Loader2 className="w-8 h-8 animate-spin mb-4 text-purple-500" />
+                                <span>Loading pending blind boxes...</span>
+                            </div>
+                        ) : draftBlindboxes.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
+                                <CheckCircle2 className="w-12 h-12 text-neutral-300 mb-4" />
+                                <span className="text-lg font-semibold text-neutral-600">All Caught Up!</span>
+                                <p className="text-sm text-neutral-400 mt-1">No draft blind boxes awaiting approval.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {draftBlindboxes.map(bb => (
+                                    <div key={bb.product_id} className="bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-3">
+                                            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-none font-bold uppercase tracking-wider text-[10px]">Pending</Badge>
+                                        </div>
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center overflow-hidden shrink-0 border border-purple-100">
+                                                {bb.media_urls ? <img src={typeof bb.media_urls === 'string' ? bb.media_urls : bb.media_urls[0]} alt="" className="w-full h-full object-cover" /> : <Package className="w-6 h-6 text-purple-300" />}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-sm text-neutral-900 line-clamp-1">{bb.name}</h4>
+                                                <p className="text-xs text-neutral-500">{bb.brands?.name} • {bb.categories?.name}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-3 bg-neutral-50 p-3 rounded-xl mb-4 border border-neutral-100">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-neutral-500">Ticket Price:</span>
+                                                <span className="text-sm font-bold text-purple-700">{bb.product_blindboxes?.[0]?.price?.toLocaleString()}đ</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-neutral-500">Value Range:</span>
+                                                <span className="text-xs font-semibold">{bb.product_blindboxes?.[0]?.min_value?.toLocaleString()}đ - {bb.product_blindboxes?.[0]?.max_value?.toLocaleString()}đ</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-neutral-500">Total Variants:</span>
+                                                <span className="text-xs font-semibold">{bb._count?.product_variants || 0}</span>
+                                            </div>
+                                        </div>
+                                        <Button 
+                                            className="w-full bg-purple-600 hover:bg-purple-700 rounded-xl"
+                                            onClick={() => handleApproveBlindbox(bb.product_id)}
+                                        >
+                                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                                            Verify & Approve
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

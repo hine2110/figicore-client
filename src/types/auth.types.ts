@@ -15,6 +15,7 @@ export interface User {
         total_spent: string | number;
         loyalty_points: number;
     } | null;
+    dob?: string | null;
 }
 
 export interface AuthState {

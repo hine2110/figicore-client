@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 export function SignUp() {
   const navigate = useNavigate();
   useEffect(() => {
-    navigate("/guest/login?mode=register", { replace: true });
+    navigate("/guest/home", { replace: true });
   }, [navigate]);
   return null;
 }

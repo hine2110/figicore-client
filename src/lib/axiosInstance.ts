@@ -12,7 +12,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
  */
 export const axiosInstance = axios.create({
     baseURL: BASE_URL,
-    timeout: 10000,
+    timeout: 60000, // Tăng lên 60s để chờ model AI xử lý ảnh
     headers: {
         'Content-Type': 'application/json',
     },
@@ -53,7 +53,7 @@ axiosInstance.interceptors.response.use(
         if (error.response?.status === 401 && !originalRequest._retry) {
 
             // 1. SAFETY CHECK: Không redirect nếu đang ở trang Login (để hiển thị lỗi sai pass)
-            if (!window.location.pathname.includes('/guest/login')) {
+            if (!window.location.pathname.includes('/guest/home')) {
                 console.warn('Unauthorized (401) detected - Logging out...');
 
                 // 2. CLEANUP: Xóa mọi data xác thực
@@ -62,7 +62,7 @@ axiosInstance.interceptors.response.use(
                 localStorage.removeItem('auth-storage'); // Xóa cache của Zustand Persist
 
                 // 3. FORCE REDIRECT: Đá về đúng trang Login của hệ thống
-                window.location.href = '/guest/login';
+                window.location.href = '/guest/home';
                 return Promise.reject(error); // Reject để không chạy logic tiếp theo
             }
 
