@@ -24,11 +24,13 @@ export default function ActivationPage() {
     const [uploading, setUploading] = useState(false);
     const [showTemp, setShowTemp] = useState(false);
     const [showNew, setShowNew] = useState(false);
+    const [avatarKey, setAvatarKey] = useState(0);
     
     // Resend UI states
     const [isExpired, setIsExpired] = useState(false);
     const [emailForResend, setEmailForResend] = useState("");
     const [resending, setResending] = useState(false);
+    const [linkSent, setLinkSent] = useState(false);
     
     // Real-time validation states
     const [passwordError, setPasswordError] = useState("");
@@ -57,7 +59,7 @@ export default function ActivationPage() {
                 title: "Link Sent!",
                 description: "A new activation link has been sent to your email."
             });
-            setIsExpired(false);
+            setLinkSent(true);
         } catch (error: any) {
             console.error(error);
             const msg = error.response?.data?.message || "Failed to resend link.";
@@ -103,7 +105,8 @@ export default function ActivationPage() {
             }
 
             await api.post("/auth/activate", formData, {
-                headers: { "Content-Type": "multipart/form-data" }
+                headers: { "Content-Type": "multipart/form-data" },
+                timeout: 60000 // 60 seconds specifically for AI face validation and Cloudinary Upload
             });
 
             toast({
@@ -115,13 +118,19 @@ export default function ActivationPage() {
 
         } catch (error: any) {
             console.error(error);
-            const msg = error.response?.data?.message || "Activation failed.";
+            const rawMsg = error.response?.data?.message || "Activation failed.";
+            const msg = Array.isArray(rawMsg) ? rawMsg[0] : String(rawMsg);
             
             if (msg.toLowerCase().includes("expired") || error.response?.status === 401) {
                 setIsExpired(true);
                 toast({ title: "Link Expired", description: "Your activation link has expired.", variant: "destructive" });
             } else {
-                toast({ title: "Error", description: msg, variant: "destructive" });
+                toast({ title: "Error", description: Array.isArray(rawMsg) ? rawMsg.join(", ") : msg, variant: "destructive" });
+                const errorStr = String(msg).toLowerCase();
+                if (errorStr.includes("cartoons") || errorStr.includes("drawings")) {
+                    setAvatarFile(null);
+                    setAvatarKey(prev => prev + 1);
+                }
             }
         } finally {
             setLoading(false);
@@ -140,7 +149,20 @@ export default function ActivationPage() {
                     </CardDescription>
                 </CardHeader>
                 
-                {isExpired ? (
+                {linkSent ? (
+                    <div className="p-6 space-y-4 pt-0 text-center">
+                        <div className="bg-green-50 text-green-700 p-4 rounded-md text-sm border border-green-200">
+                            A new activation link and temporary password have been sent to your email. Please check your inbox to continue.
+                        </div>
+                        <Button 
+                            type="button" 
+                            className="w-full mt-4 bg-black hover:bg-neutral-800"
+                            onClick={() => navigate("/guest/login")}
+                        >
+                            Back to Login
+                        </Button>
+                    </div>
+                ) : isExpired ? (
                     <div className="p-6 space-y-4 pt-0">
                         <div className="bg-red-50 text-red-600 p-4 rounded-md text-sm border border-red-200">
                             Your activation link has expired for security purposes. (Đường dẫn kích hoạt của bạn đã hết hạn để đảm bảo an toàn).
@@ -261,6 +283,7 @@ export default function ActivationPage() {
                         <div className="space-y-4 flex flex-col items-center pt-2">
                             <Label className="self-start">Avatar Photo (Optional)</Label>
                             <AvatarUploader
+                                key={avatarKey}
                                 onFileSelect={handleAvatarSelect}
                                 defaultFallback="New"
                             />

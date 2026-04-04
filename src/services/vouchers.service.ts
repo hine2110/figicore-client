@@ -26,7 +26,9 @@ export interface MyVoucher {
     id: number;
     user_id: number;
     promotion_id: number;
-    is_used: boolean;
+    status: 'COLLECTED' | 'USED' | 'EXPIRED';
+    collected_at: string;
+    used_at?: string | null;
     created_at: string;
     promotions: Voucher;
 }

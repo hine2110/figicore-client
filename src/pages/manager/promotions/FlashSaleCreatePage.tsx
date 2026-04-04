@@ -101,6 +101,8 @@ export default function FlashSaleCreatePage() {
         },
     });
 
+    const minDateTime = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
     const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -315,7 +317,7 @@ export default function FlashSaleCreatePage() {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Start Date & Time <span className="text-red-500">*</span></FormLabel>
-                                            <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                                            <FormControl><Input type="datetime-local" min={minDateTime} {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -326,7 +328,7 @@ export default function FlashSaleCreatePage() {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>End Date & Time <span className="text-red-500">*</span></FormLabel>
-                                            <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                                            <FormControl><Input type="datetime-local" min={form.watch('start_datetime') || minDateTime} {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}

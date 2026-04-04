@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 
 // Guards
 import ProtectedRoute from "@/guards/ProtectedRoute";
@@ -66,6 +66,7 @@ import CustomerProductDetail from "@/pages/customer/ProductDetail";
 import OrderDetail from "@/pages/customer/OrderDetail"; // New Import
 import PreOrderPayment from "@/pages/customer/PreOrderPayment";
 import OrderSuccess from "@/pages/customer/OrderSuccess";
+import CollectVoucher from "@/pages/customer/CollectVoucher";
 import ScrollToTop from "@/components/ScrollToTop";
 
 // Staff Pages
@@ -77,6 +78,7 @@ import ReturnInspection from "@/pages/warehouse/ReturnInspection";
 import WarehouseDashboard from "@/pages/warehouse/WarehouseDashboard";
 import WarehouseSchedule from "@/pages/warehouse/WarehouseSchedule";
 import WarehouseTimesheets from "@/pages/warehouse/WarehouseTimesheets";
+import MyPayrollWarehouse from "./pages/warehouse/MyPayroll";
 
 // POS Pages
 import OrderProcessing from "@/pages/pos/OrderProcessing";
@@ -87,6 +89,7 @@ import PosTimesheets from "@/pages/pos/PosTimesheets";
 import SessionManager from "@/pages/pos/SessionManager";
 import CustomerDetailPage from "@/pages/pos/CustomerDetailPage";
 import CustomerLookup from "@/pages/pos/CustomerLookup";
+import MyPayrollPos from "./pages/pos/MyPayroll";
 
 // Guest Pages
 import { GuestHome } from "@/pages/guest/GuestHome";
@@ -102,9 +105,8 @@ import ActivationPage from "@/pages/auth/ActivationPage";
 import { Toaster } from "@/components/ui/toaster";
 import LeaveApprovals from "./pages/manager/LeaveApprovals";
 import CorrectionApprovals from "./pages/manager/CorrectionApprovals";
-import MyPayrollWarehouse from "./pages/warehouse/MyPayroll";
-import MyPayrollPos from "./pages/pos/MyPayroll";
 import PayrollManagement from "./pages/manager/PayrollManagement";
+
 export default function App() {
     return (
         <BrowserRouter>
@@ -221,19 +223,20 @@ export default function App() {
 
                     {/* CUSTOMER Routes */}
                     <Route element={<RoleGuard allowedRoles={['CUSTOMER']} />}>
-                        <Route path="/customer">
+                        <Route path="/customer" element={<Outlet />}>
                             <Route index element={<Navigate to="/customer/home" replace />} />
                             <Route path="home" element={<CustomerHome />} />
-                            {/* <Route path="shop" element={<CustomerShop />} /> */}
                             <Route path="retail" element={<RetailShop />} />
                             <Route path="blindbox" element={<BlindBoxShop />} />
                             <Route path="preorder" element={<PreOrderShop />} />
                             <Route path="product/:id" element={<CustomerProductDetail />} />
                             <Route path="cart" element={<Cart />} />
                             <Route path="checkout" element={<Checkout />} />
+                            <Route path="vouchers" element={<Navigate to="/customer/profile?tab=vouchers" replace />} />
+                            <Route path="vouchers/collect/:promotionId" element={<CollectVoucher />} />
                             <Route path="order-success" element={<OrderSuccess />} />
 
-                            <Route path="orders/:id" element={<OrderDetail />} /> {/* New Route */}
+                            <Route path="orders/:id" element={<OrderDetail />} />
                             <Route path="preorders/:id/pay" element={<PreOrderPayment />} />
                             <Route path="wallet" element={<CustomerWallet />} />
                             <Route path="profile" element={<CustomerProfile />} />

@@ -70,7 +70,7 @@ export const AvatarUploader: React.FC<AvatarUploaderProps> = ({
             // Validate the presence of a face
             const detections = await faceapi.detectAllFaces(
               img, 
-              new faceapi.TinyFaceDetectorOptions()
+              new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.85 })
             );
 
             if (detections.length === 0) {

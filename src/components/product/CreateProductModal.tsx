@@ -827,7 +827,6 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
     };
 
     // --- AI GENERATION LOGIC ---
-    // --- AI GENERATION LOGIC ---
     const [magicWriteState, setMagicWriteState] = useState<{
         isOpen: boolean;
         target: 'MAIN' | 'VARIANT';
@@ -836,6 +835,45 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         imageUrl?: string;
         richContext?: any; // <--- Added Rich Context
     }>({ isOpen: false, target: 'MAIN' });
+
+    // --- AI BLINDBOX PRICING ---
+    const [isAnalyzingPrice, setIsAnalyzingPrice] = useState(false);
+    const [pricingSuggestion, setPricingSuggestion] = useState<any>(null);
+
+    const handleSuggestBlindboxPrice = async () => {
+        const minValue = form.getValues('min_value_allow');
+        const maxValue = form.getValues('max_value_allow');
+        const currentPrice = form.getValues('price');
+
+        if (!minValue || !maxValue || Number(minValue) >= Number(maxValue)) {
+            return toast({
+                title: "Lỗi Nhập liệu",
+                description: "Vui lòng nhập Min/Max hợp lệ (Min phải nhỏ hơn Max).",
+                variant: "destructive"
+            });
+        }
+
+        setIsAnalyzingPrice(true);
+        try {
+            const { inventoryAnalyticsService } = await import('@/services/inventory-analytics.service');
+            const res = await inventoryAnalyticsService.analyzeBlindboxRisk({
+                minValue: Number(minValue),
+                maxValue: Number(maxValue),
+                suggestedPrice: Number(currentPrice) || undefined
+            });
+            if (res.success && res.data) {
+                setPricingSuggestion(res.data);
+                // Cập nhật giá vé theo đề xuất AI
+                form.setValue('price', res.data.recommendedTicketPrice);
+                toast({ title: "Phân tích Rủi ro Xong", description: "Đã cập nhật giá bán vé theo chuyên gia AI!" });
+            }
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Lỗi Phân tích", description: "Hệ thống AI đang quá tải, vui lòng thử lại sau.", variant: "destructive" });
+        } finally {
+            setIsAnalyzingPrice(false);
+        }
+    };
 
 
 
@@ -959,7 +997,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         }
     };
 
-    const onSubmit = async (data: ProductFormValues) => {
+    const onSubmit = async (data: ProductFormValues, targetStatus: string = 'ACTIVE') => {
         setLoading(true);
         try {
             const mediaUrlsAsString = data.media_items?.map((m: MediaItem) => m.url) || [];
@@ -967,7 +1005,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                 name: data.name, description: data.description || "",
                 media_urls: mediaUrlsAsString,
                 brand_id: data.brand_id, category_id: data.category_id, series_id: data.series_id,
-                type_code: data.type_code, status_code: 'ACTIVE'
+                type_code: data.type_code, status_code: targetStatus
             };
 
             if (data.type_code === "RETAIL" || data.type_code === "AUCTION") {
@@ -1056,7 +1094,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
                         <div className="p-6 flex-1 overflow-y-auto space-y-8">
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                                <form onSubmit={form.handleSubmit((data) => onSubmit(data))} className="space-y-8">
 
                                     {/* SECTION 1: BASIC INFO */}
                                     <div className="bg-gradient-to-br from-blue-50/40 to-indigo-50/40 p-6 rounded-xl border border-blue-100/50 space-y-4">
@@ -1325,16 +1363,53 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
                                                         {/* 2. Value Ranges */}
                                                         <div className="bg-white p-4 rounded-lg border shadow-sm border-purple-100">
-                                                            <div className="flex items-center gap-2 mb-4">
-                                                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                                                    <Layers className="w-4 h-4 text-blue-600" />
+                                                            <div className="flex items-center justify-between mb-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                                                        <Layers className="w-4 h-4 text-blue-600" />
+                                                                    </div>
+                                                                    <h4 className="text-[10px] uppercase font-bold tracking-wider text-blue-900">Value Specs (Probabilities)</h4>
                                                                 </div>
-                                                                <h4 className="text-[10px] uppercase font-bold tracking-wider text-blue-900">Value Specs (Probabilities)</h4>
+                                                                <Button 
+                                                                    type="button" 
+                                                                    onClick={handleSuggestBlindboxPrice}
+                                                                    disabled={isAnalyzingPrice}
+                                                                    className="h-8 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-md shadow-pink-500/20 gap-1 rounded-xl text-xs px-3"
+                                                                >
+                                                                    {isAnalyzingPrice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-yellow-300" />}
+                                                                    AI Analyze & Suggest Price
+                                                                </Button>
                                                             </div>
-                                                            <div className="grid grid-cols-1 gap-4">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                 <FormField control={form.control} name="min_value_allow" render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold">Min Value (Common) <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
                                                                 <FormField control={form.control} name="max_value_allow" render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold">Max Value (Secret) <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
                                                             </div>
+
+                                                            {/* AI Risk Output Box */}
+                                                            {pricingSuggestion && (
+                                                                <div className="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4 animate-in fade-in slide-in-from-top-2">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <div>
+                                                                            <h5 className="text-[11px] uppercase font-bold text-indigo-800 flex items-center gap-1"><Sparkles className="w-3 h-3"/> Chuyên gia Định giá (AI Actuary)</h5>
+                                                                            <p className="text-xs text-indigo-600 mt-1">{pricingSuggestion.explanation}</p>
+                                                                        </div>
+                                                                        <div className="text-right ml-4 shrink-0">
+                                                                            <p className="text-[10px] text-indigo-400">Kỳ Vọng Toán Học (EV)</p>
+                                                                            <p className="font-bold text-indigo-900">{formatPrice(pricingSuggestion.expectedValue)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                                                                        <div className="bg-white p-2 rounded border border-indigo-50 flex items-center justify-between">
+                                                                            <span className="text-neutral-500">Break-even (Hòa Vốn):</span>
+                                                                            <span className="font-medium text-amber-600">{formatPrice(pricingSuggestion.breakEvenPoint)}</span>
+                                                                        </div>
+                                                                        <div className="bg-white p-2 rounded border border-indigo-50 flex items-center justify-between">
+                                                                            <span className="text-neutral-500">Khuyến nghị Giá vé:</span>
+                                                                            <span className="font-medium text-green-600">{formatPrice(pricingSuggestion.recommendedTicketPrice)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     {/* Campaign Schedule */}
@@ -1628,11 +1703,27 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                     {/* FOOTER ACTIONS */}
                                     <div className="p-4 border-t bg-neutral-50 flex justify-end gap-3 shrink-0">
                                         <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+                                        
+                                        {watchedType === "BLINDBOX" && !isEditMode && (
+                                            <Button
+                                                type="button"
+                                                onClick={() => {
+                                                    form.handleSubmit((d) => onSubmit(Math.random() > 10 ? d : d, 'DRAFT'), (errors) => {
+                                                        const firstError = Object.values(errors)[0] as any;
+                                                        toast({ title: "Validation Error", description: firstError?.message || "Please check the form.", variant: "destructive" });
+                                                    })();
+                                                }}
+                                                disabled={loading}
+                                                className="min-w-[120px] bg-purple-600 hover:bg-purple-700"
+                                            >
+                                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Accept & Save Draft"}
+                                            </Button>
+                                        )}
+
                                         <Button
                                             type="button"
                                             onClick={() => {
-                                                form.handleSubmit(onSubmit, (errors) => {
-                                                    console.log("Validation Errors:", errors);
+                                                form.handleSubmit((d) => onSubmit(d, 'ACTIVE'), (errors) => {
                                                     const firstError = Object.values(errors)[0] as any;
                                                     toast({
                                                         title: "Validation Error",
@@ -1644,7 +1735,7 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                             disabled={loading}
                                             className="min-w-[120px]"
                                         >
-                                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isEditMode ? "Update Product" : "Create Product")}
+                                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isEditMode ? "Update Product" : "Publish Active")}
                                         </Button>
                                     </div>
                                 </form>
