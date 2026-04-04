@@ -45,7 +45,7 @@ export default function ResetPassword() {
             await authService.resetPassword(token, formData.password);
             setMessage('Password reset successfully! Redirecting to login...');
             setTimeout(() => {
-                navigate('/guest/login');
+                navigate('/guest/home');
             }, 2000);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to reset password. Link may be expired.');

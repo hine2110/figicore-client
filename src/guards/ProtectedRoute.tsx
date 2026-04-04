@@ -7,7 +7,7 @@ export default function ProtectedRoute() {
     if (!isAuthenticated) {
         // Safe redirect to guest login page. 
         // Note: encoding search parameters was occasionally causing routing 404s depending on the current path setup.
-        return <Navigate to={`/guest/login`} replace />;
+        return <Navigate to={`/guest/home`} replace />;
     }
 
     return <Outlet />;

@@ -95,7 +95,7 @@ export default function BulkCreateUserSheet({
         })),
       };
 
-      console.log("Sending Payload:", JSON.stringify(payload, null, 2)); // Debug Log
+
       const result = await userService.createBulk(payload);
       
       setCreatedUsers(result);

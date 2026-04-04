@@ -43,7 +43,7 @@ export default function ActivationPage() {
                 description: "Activation token is missing.",
                 variant: "destructive"
             });
-            navigate("/guest/login");
+            navigate("/guest/home");
         }
     }, [token, navigate, toast]);
 
@@ -114,7 +114,7 @@ export default function ActivationPage() {
                 description: "Your account is now active. Please login."
             });
 
-            navigate("/guest/login");
+            navigate("/guest/home");
 
         } catch (error: any) {
             console.error(error);

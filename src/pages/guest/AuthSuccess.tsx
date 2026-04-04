@@ -16,7 +16,7 @@ export default function AuthSuccess() {
 
         const handleAuth = async () => {
             if (!token) {
-                navigate("/guest/login?error=NoToken");
+                navigate("/guest/home");
                 return;
             }
 
@@ -56,7 +56,7 @@ export default function AuthSuccess() {
 
             } catch (error) {
                 console.error("Auth Success Error:", error);
-                navigate("/guest/login?error=AuthFailed");
+                navigate("/guest/home");
             }
         };
 

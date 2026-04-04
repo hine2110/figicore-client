@@ -6,7 +6,9 @@ export interface ApiResponse<T> {
 }
 
 export interface PaginatedResponse<T> {
+    success: boolean;
     items: T[];
+    data?: T[]; // Included for backward compatibility in some components
     total: number;
     page: number;
     limit: number;

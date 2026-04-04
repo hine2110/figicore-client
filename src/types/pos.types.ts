@@ -22,6 +22,7 @@ export interface PosProductVariant {
     price: number;
     current_stock: number;
     thumbnail: string | null;
+    barcode?: string;
 }
 
 // Product with multiple variants

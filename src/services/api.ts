@@ -45,7 +45,7 @@ api.interceptors.response.use(
                     localStorage.removeItem('user');
                 }
                 // Redirect user to the correct login page, not just the non-existent /login
-                window.location.href = '/guest/login';
+                window.location.href = '/guest/home';
             }
         }
         return Promise.reject(error);

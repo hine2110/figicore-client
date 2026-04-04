@@ -24,7 +24,7 @@ export default function GuestProductCard({ product }: ProductCardProps) {
         e.preventDefault();
         e.stopPropagation();
         // Simulate auth check redirect
-        navigate('/guest/login');
+        navigate('/guest/home');
     };
 
     // Logic calculation to be robust using variants
