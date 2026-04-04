@@ -330,7 +330,7 @@ export default function Cart() {
                         </div>
                     )}
                     {/* LIVE PRICE badge */}
-                    {item.livestream_id && type_code !== 'PREORDER' && (
+                    {item.livestream_id && item.is_live && type_code !== 'PREORDER' && (
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-rose-600/80 to-transparent pb-1 pt-2 flex items-center justify-center">
                             <span className="text-white text-[9px] font-black uppercase tracking-wider">🔴 Live Price</span>
                         </div>

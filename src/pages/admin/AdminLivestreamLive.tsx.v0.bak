@@ -49,8 +49,7 @@ import {
     History,
     RefreshCw,
     Sparkles,
-    AlertTriangle,
-    BadgeDollarSign,
+    AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,7 +72,7 @@ import {
 // ── Utilities ──
 const getUserColor = (name: string) => {
     const colors = [
-        'text-blue-400', 'text-emerald-400', 'text-amber-400', 'text-rose-400',
+        'text-blue-400', 'text-emerald-400', 'text-amber-400', 'text-rose-400', 
         'text-fuchsia-400', 'text-indigo-400', 'text-sky-400', 'text-teal-400'
     ];
     let hash = 0;
@@ -124,11 +123,11 @@ const StreamTimer = memo(({ startTime }: { startTime?: string }) => {
             const now = Date.now();
             const diff = now - start;
             if (diff < 0) return;
-
+            
             const hours = Math.floor(diff / 3600000);
             const minutes = Math.floor((diff % 3600000) / 60000);
             const seconds = Math.floor((diff % 60000) / 1000);
-
+            
             setDuration([
                 hours.toString().padStart(2, '0'),
                 minutes.toString().padStart(2, '0'),
@@ -150,7 +149,7 @@ const PinnedProductPriceCard = memo(({ product, livestreamId }: { product: any, 
     if (!product) return (
         <div className="bg-[#1a1b23] border border-dashed border-white/5 rounded-2xl p-5 flex flex-col items-center justify-center text-neutral-600 min-h-[140px]">
             <Tag className="w-8 h-8 opacity-10 mb-2" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-center">No Active<br />Focus Item</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-center">No Active<br/>Focus Item</span>
         </div>
     );
 
@@ -199,51 +198,32 @@ const StatTile = memo(function StatTile({ label, value, icon: Icon, trend }: { l
     );
 });
 
-const LiveInventoryLog = memo(({
-    products,
-    onAdd,
-    onPin,
-    onRemove,
-    onFlashSale,
-    onFocus,
-    onRestock,
+const LiveInventoryLog = memo(({ 
+    products, 
+    onAdd, 
+    onPin, 
+    onRemove, 
+    onFlashSale, 
+    onFocus, 
+    onRestock, 
     focusedId,
     pinnedId
-}: {
-    products: any[],
-    onAdd: any,
-    onPin: any,
-    onRemove: any,
-    onFlashSale: any,
-    onFocus: (id: number) => void,
-    onRestock: (id: number, amt: number) => void,
+}: { 
+    products: any[], 
+    onAdd: any, 
+    onPin: any, 
+    onRemove: any, 
+    onFlashSale: any, 
+    onFocus: (id: number) => void, 
+    onRestock: (id: number, amt: number) => void, 
     focusedId?: number,
     pinnedId?: number
 }) => {
-    const groupedProducts = useMemo(() => {
+    const sortedProducts = useMemo(() => {
         if (!products) return [];
-        const groups: Record<number, any> = {};
-        products.forEach((p: any) => {
-            const pid = p.product_variants?.product_id;
-            if (!pid) return; // Fallback if data is malformed
-            if (!groups[pid]) {
-                groups[pid] = {
-                    product_id: pid,
-                    product_name: p.product_variants?.products?.name || p.product_variants?.option_name || 'Unknown Product',
-                    media_url: p.product_variants?.media_assets?.[0]?.url || p.product_variants?.products?.media_urls?.[0] || "/placeholder.png",
-                    variants: [],
-                    hasPinned: false
-                };
-            }
-            groups[pid].variants.push(p);
-            if (p.variant_id === pinnedId) {
-                groups[pid].hasPinned = true;
-            }
-        });
-
-        return Object.values(groups).sort((a: any, b: any) => {
-            if (a.hasPinned && !b.hasPinned) return -1;
-            if (!a.hasPinned && b.hasPinned) return 1;
+        return [...products].sort((a, b) => {
+            if (a.variant_id === pinnedId) return -1;
+            if (b.variant_id === pinnedId) return 1;
             return 0;
         });
     }, [products, pinnedId]);
@@ -257,91 +237,86 @@ const LiveInventoryLog = memo(({
                 {onAdd}
             </div>
             <div className="grid grid-cols-1 gap-4 max-h-[600px] overflow-y-auto scrollbar-none pr-1 pb-10">
-                {groupedProducts.map((group: any) => (
-                    <div key={group.product_id} className={`flex flex-col rounded-3xl border transition-all duration-500 overflow-hidden ${group.hasPinned ? 'bg-amber-500/5 border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.05)]' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}>
-                        {/* Parent Header */}
-                        <div className="p-3 bg-black/20 flex gap-3 items-center border-b border-white/5 shrink-0">
-                            <div className="w-10 h-10 rounded-xl bg-black/50 border border-white/5 p-1 shrink-0 overflow-hidden shadow-inner">
-                                <img src={group.media_url} className="w-full h-full object-contain opacity-90" alt="" />
+                {sortedProducts.map((p: any, idx: number) => (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        key={idx} 
+                        className={`group relative flex flex-col rounded-3xl border transition-all duration-500 overflow-hidden ${pinnedId === p.variant_id ? 'bg-amber-500/10 border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'bg-white/[0.03] backdrop-blur-md border-white/5 hover:bg-white/5 hover:border-white/10 hover:shadow-2xl'}`}
+                    >
+                        {/* Top Section: Media & Primary Info */}
+                        <div className="p-4 flex gap-4">
+                            <div className="w-16 h-16 rounded-2xl bg-black/50 border border-white/5 p-1.5 shrink-0 overflow-hidden relative shadow-inner">
+                                <img src={p.product_variants?.media_assets?.[0]?.url || "/placeholder.png"} className="w-full h-full object-contain opacity-90 transition-transform duration-700 group-hover:scale-110" alt="" />
+                                {pinnedId === p.variant_id && (
+                                    <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center animate-pulse">
+                                        <Tag className="w-6 h-6 text-amber-500" />
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-[10px] font-black text-white uppercase italic truncate group-hover:text-amber-400 transition-colors">
-                                    {group.product_name}
+                            
+                            <div className="flex-1 flex flex-col min-w-0 justify-center">
+                                <h3 className="text-[10px] font-black text-white leading-tight uppercase italic tracking-tighter mb-1 break-words group-hover:text-amber-400 transition-colors">
+                                                    {p.product_variants?.products?.name || p.product_variants?.option_name || 'Unknown Product'}
                                 </h3>
-                                <div className="text-[7px] text-neutral-500 uppercase tracking-widest">{group.variants.length} Options Added</div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[8px] font-bold text-neutral-500 uppercase px-2 py-0.5 bg-white/5 rounded-full">{p.product_variants?.option_name}</span>
+                                    <span className="text-[7px] font-mono text-neutral-600 uppercase">SKU: {p.product_variants?.sku?.slice(-6) || '---'}</span>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Variants List */}
-                        <div className="flex flex-col">
-                            {group.variants.map((p: any) => (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    key={p.variant_id}
-                                    className={`relative flex flex-col p-3 gap-3 border-b border-white/5 last:border-0 transition-all ${pinnedId === p.variant_id ? 'bg-amber-500/10' : 'hover:bg-white/5'}`}
+                        {/* Bottom Section: Stats row + Button row (separate to avoid layout shift) */}
+                        <div className="px-4 pb-4 flex flex-col gap-2">
+                            {/* Stats Row */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[6px] font-black uppercase text-neutral-600 tracking-widest leading-none mb-0.5">Live Price (-2%)</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[11px] font-black text-emerald-500 font-mono drop-shadow-[0_0_10px_rgba(16,185,129,0.3)] truncate">
+                                            {formatPrice(computeLivePrice(p.product_variants?.price, p.flash_sale_price))}
+                                        </span>
+                                        <span className="text-[7px] text-neutral-600 line-through font-mono opacity-50">
+                                            {formatPrice(p.product_variants?.price)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="w-px h-5 bg-white/5 mx-1 shrink-0" />
+                                <div className="flex flex-col shrink-0 text-right">
+                                    <span className="text-[6px] font-black uppercase text-neutral-600 tracking-widest leading-none mb-0.5">{Number(p.flash_sale_price) > 0 ? 'Flash Stock' : 'Stock'}</span>
+                                    <span className={`text-[11px] font-black font-mono ${(Number(p.flash_sale_price) > 0 ? p.flash_sale_stock : p.product_variants?.stock_available) < 10 ? 'text-rose-500' : 'text-neutral-300'}`}>
+                                        {Number(p.flash_sale_price) > 0 ? p.flash_sale_stock : p.product_variants?.stock_available}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Control Bar — always full-width, never squished */}
+                            <div className="flex items-center justify-end gap-1.5 p-1 bg-black/40 rounded-2xl border border-white/5 shadow-inner w-full">
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className={`w-8 h-8 rounded-xl transition-all ${pinnedId === p.variant_id ? 'bg-amber-500 text-white' : 'hover:bg-amber-500/20 text-amber-500'}`}
+                                    onClick={() => onPin(p.variant_id)}
+                                    title="Pin to Screen"
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`text-[9px] font-bold uppercase ${pinnedId === p.variant_id ? 'text-amber-400' : 'text-neutral-300'}`}>{p.product_variants?.option_name}</span>
-                                            {pinnedId === p.variant_id && <Tag className="w-3 h-3 text-amber-500 animate-pulse" />}
-                                        </div>
-                                        <span className="text-[7px] font-mono text-neutral-600 uppercase">SKU: {p.product_variants?.sku?.slice(-6) || '---'}</span>
-                                    </div>
-
-                                    {/* Bottom Section: Stats & Controls */}
-                                    <div className="flex items-center justify-between gap-2">
-                                        {/* Stats Row */}
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex flex-col min-w-0">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[11px] font-black text-emerald-500 font-mono drop-shadow-[0_0_10px_rgba(16,185,129,0.3)] truncate">
-                                                        {formatPrice(computeLivePrice(p.product_variants?.price, p.flash_sale_price))}
-                                                    </span>
-                                                    <span className="text-[7px] text-neutral-600 line-through font-mono opacity-50">
-                                                        {formatPrice(p.product_variants?.price)}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="w-px h-5 bg-white/5 mx-1 shrink-0" />
-                                            <div className="flex flex-col shrink-0">
-                                                <span className={`text-[10px] font-black font-mono ${(Number(p.flash_sale_price) > 0 ? p.flash_sale_stock : p.product_variants?.stock_available) < 10 ? 'text-rose-500' : 'text-neutral-300'}`}>
-                                                    {Number(p.flash_sale_price) > 0 ? p.flash_sale_stock : p.product_variants?.stock_available}
-                                                    <span className="text-[6px] ml-1 text-neutral-600 uppercase tracking-widest">{Number(p.flash_sale_price) > 0 ? 'FL' : 'ST'}</span>
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Controls */}
-                                        <div className="flex items-center gap-1 px-1 py-0.5 bg-black/40 rounded-xl border border-white/5 shadow-inner">
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className={`w-7 h-7 rounded-lg transition-all ${pinnedId === p.variant_id ? 'bg-amber-500 text-white' : 'hover:bg-amber-500/20 text-amber-500'}`}
-                                                onClick={() => onPin(p.variant_id)}
-                                                title="Pin to Screen"
-                                            >
-                                                <Tag className="w-3 h-3" />
-                                            </Button>
-                                            <FlashSaleTrigger
-                                                variant={p.product_variants}
-                                                onTrigger={(price: number, stock: number) => onFlashSale(p.variant_id, price, stock)}
-                                            />
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="w-7 h-7 rounded-lg hover:bg-rose-500/20 text-rose-500 transition-all"
-                                                onClick={() => onRemove(p.variant_id)}
-                                                title="Remove"
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                    <Tag className="w-3.5 h-3.5" />
+                                </Button>
+                                <FlashSaleTrigger 
+                                    variant={p.product_variants} 
+                                    onTrigger={(price: number, stock: number) => onFlashSale(p.variant_id, price, stock)} 
+                                />
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="w-8 h-8 rounded-xl hover:bg-rose-500/20 text-rose-500 transition-all"
+                                    onClick={() => onRemove(p.variant_id)}
+                                    title="Remove from list"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </Button>
+                            </div>
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
                 {!products?.length && (
                     <div className="py-12 text-center opacity-10">
@@ -355,7 +330,7 @@ const LiveInventoryLog = memo(({
 });
 
 const PostLiveReportModal = ({ isOpen, data, onConfirm }: { isOpen: boolean, data: any, onConfirm: () => void }) => (
-    <Dialog open={isOpen} onOpenChange={() => { }}>
+    <Dialog open={isOpen} onOpenChange={() => {}}>
         <DialogContent className="bg-[#0f1015] border-white/10 rounded-[2.5rem] max-w-md p-0 overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.15)]">
             <div className="bg-gradient-to-br from-emerald-600 to-teal-700 p-8 text-center relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
@@ -367,7 +342,7 @@ const PostLiveReportModal = ({ isOpen, data, onConfirm }: { isOpen: boolean, dat
                 <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Transmission Report</h2>
                 <p className="text-emerald-100/60 text-[8px] font-mono uppercase tracking-[0.3em] mt-1">Status: Success • Verified</p>
             </div>
-
+            
             <div className="p-8 space-y-8">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 rounded-3xl bg-white/5 border border-white/5 text-center">
@@ -391,7 +366,7 @@ const PostLiveReportModal = ({ isOpen, data, onConfirm }: { isOpen: boolean, dat
                     </div>
                 </div>
 
-                <Button
+                <Button 
                     onClick={onConfirm}
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] uppercase tracking-[0.2em] h-14 rounded-2xl shadow-[0_10px_30px_rgba(16,185,129,0.3)] transition-all"
                 >
@@ -406,7 +381,7 @@ const SystemHealth = memo(() => {
     const remoteParticipants = useRemoteParticipants();
     const room = useRoomContext();
     const connectionState = useConnectionState(room);
-
+    
     const getStatusColor = (state: string) => {
         switch (state) {
             case 'connected': return 'text-emerald-500';
@@ -475,34 +450,34 @@ export default function AdminLivestreamLive() {
     const livekitUrl = import.meta.env.VITE_LIVEKIT_WS_URL;
 
     const fetchLivestream = async () => {
-        try {
-            const data = await livestreamsService.getLivestreamById(Number(id));
-            if (data.status === 'ENDED') {
-                toast({ title: "Session Closed", description: "This session has already ended." });
-                navigate('/admin/livestreams');
-                return;
-            }
-            setStream(data);
-            if (data.pinned_product_id) {
-                const pinned = data.products.find((p: any) => p.variant_id === data.pinned_product_id);
-                if (pinned) setPinnedProduct(pinned);
-            } else {
-                setPinnedProduct(null);
-            }
-            setHeartsCount(data.hearts_count || 0);
-            setSharesCount(data.shares_count || 0);
-
-            // Fetch existing orders for this session to get accurate count
             try {
-                const sessionOrders = await api.get(`/livestreams/${id}/orders`);
-                if (sessionOrders.data && Array.isArray(sessionOrders.data)) {
-                    setOrders(sessionOrders.data);
+                const data = await livestreamsService.getLivestreamById(Number(id));
+                if (data.status === 'ENDED') {
+                    toast({ title: "Session Closed", description: "This session has already ended." });
+                    navigate('/admin/livestreams');
+                    return;
                 }
-            } catch (err) {
-                console.error("Failed to fetch session orders:", err);
-            }
+                setStream(data);
+                if (data.pinned_product_id) {
+                    const pinned = data.products.find((p: any) => p.variant_id === data.pinned_product_id);
+                    if (pinned) setPinnedProduct(pinned);
+                } else {
+                    setPinnedProduct(null);
+                }
+                setHeartsCount(data.hearts_count || 0);
+                setSharesCount(data.shares_count || 0);
 
-        } catch (error) {
+                // Fetch existing orders for this session to get accurate count
+                try {
+                    const sessionOrders = await api.get(`/livestreams/${id}/orders`);
+                    if (sessionOrders.data && Array.isArray(sessionOrders.data)) {
+                        setOrders(sessionOrders.data);
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch session orders:", err);
+                }
+
+            } catch (error) {
             console.error("Failed to fetch stream:", error);
         }
     };
@@ -513,9 +488,9 @@ export default function AdminLivestreamLive() {
             try {
                 await fetchLivestream();
                 const tokenRes = await api.get(`/livekit/token`, {
-                    params: {
-                        room: roomName,
-                        username: user?.full_name || 'Host',
+                    params: { 
+                        room: roomName, 
+                        username: user?.full_name || 'Host', 
                         isHost: 'true',
                         identity: `Host_${user?.user_id || Date.now()}_${Math.floor(Math.random() * 1000)}`
                     }
@@ -576,11 +551,11 @@ export default function AdminLivestreamLive() {
             }
         };
         if (user && id) init();
-        return () => {
+        return () => { 
             isMounted = false;
             if (socketRef.current) {
                 socketRef.current.removeAllListeners();
-                socketRef.current.disconnect();
+                socketRef.current.disconnect(); 
             }
         };
     }, [id, user]);
@@ -617,8 +592,8 @@ export default function AdminLivestreamLive() {
         const next = !isRecording;
         setIsRecording(next);
         socketRef.current?.emit('toggle_recording', { livestreamId: Number(id), active: next });
-        toast({
-            title: next ? "Recording Started" : "Recording Stopped",
+        toast({ 
+            title: next ? "Recording Started" : "Recording Stopped", 
             description: next ? "Session is being captured for evidence." : "Recording saved to server archive."
         });
     };
@@ -667,16 +642,6 @@ export default function AdminLivestreamLive() {
         }
     };
 
-    const handleViewAnalytics = async () => {
-        try {
-            const report = await api.get(`/livestreams/${id}/report`).then(res => res.data);
-            setReportData(report);
-            setIsReportOpen(true);
-        } catch (error) {
-            toast({ title: 'Error', description: 'Could not load analytics', variant: 'destructive' });
-        }
-    };
-
     const handleEndSession = async () => {
         setConfirmConfig({
             isOpen: true,
@@ -718,11 +683,11 @@ export default function AdminLivestreamLive() {
     };
 
     const handlePinComment = (msg: any) => {
-        socketRef.current?.emit('pin_comment', {
-            roomId: roomName,
-            messageId: msg.id || Date.now(),
-            content: msg.text,
-            name: msg.name
+        socketRef.current?.emit('pin_comment', { 
+            roomId: roomName, 
+            messageId: msg.id || Date.now(), 
+            content: msg.text, 
+            name: msg.name 
         });
         toast({ title: "Comment Pinned" });
     };
@@ -768,7 +733,7 @@ export default function AdminLivestreamLive() {
             }}
             className="flex h-screen bg-[#08090d] text-white overflow-hidden font-outfit"
         >
-            <AdminStudioContent
+            <AdminStudioContent 
                 isFullscreenMode={isFullscreenMode}
                 setIsFullscreenMode={setIsFullscreenMode}
                 viewerCount={viewerCount}
@@ -786,7 +751,6 @@ export default function AdminLivestreamLive() {
                 id={id}
                 navigate={navigate}
                 handleEndSession={handleEndSession}
-                handleViewAnalytics={handleViewAnalytics}
                 handleToggleRecording={handleToggleRecording}
                 handleToggleStreaming={handleToggleStreaming}
                 handleSendBroadcast={handleSendBroadcast}
@@ -822,12 +786,12 @@ export default function AdminLivestreamLive() {
 }
 
 function AdminStudioContent(props: any) {
-    const {
-        isFullscreenMode, setIsFullscreenMode, viewerCount, orders, latestOrder, heartsCount, sharesCount,
-        stream, pinnedProduct, focusedVariantId, isStreaming, isRecording, chatMessages,
-        chatEndRef, id, navigate, handleEndSession, handleViewAnalytics, handleToggleRecording,
-        handleToggleStreaming, handleSendBroadcast, handlePinComment,
-        handleKickUser, handlePinProduct, handleRemoveProduct,
+    const { 
+        isFullscreenMode, setIsFullscreenMode, viewerCount, orders, latestOrder, heartsCount, sharesCount, 
+        stream, pinnedProduct, focusedVariantId, isStreaming, isRecording, chatMessages, 
+        chatEndRef, id, navigate, handleEndSession, handleToggleRecording, 
+        handleToggleStreaming, handleSendBroadcast, handlePinComment, 
+        handleKickUser, handlePinProduct, handleRemoveProduct, 
         handleTriggerFlashSale, handleFocusProduct, handleRestock, handleAddProducts,
         isReportOpen, setIsReportOpen, reportData, handleConfirmReview, pinnedComment, setPinnedComment
     } = props;
@@ -848,8 +812,8 @@ function AdminStudioContent(props: any) {
         } catch (error: any) {
             console.error("Media error:", error);
             if (error.name === 'NotAllowedError') {
-                toast({
-                    title: "Permission Denied",
+                toast({ 
+                    title: "Permission Denied", 
                     description: "Please allow camera/mic access in your browser settings to go live.",
                     variant: "destructive"
                 });
@@ -876,37 +840,11 @@ function AdminStudioContent(props: any) {
                         </div>
                         <PinnedProductPriceCard product={pinnedProduct} />
                         <div className="grid grid-cols-2 gap-3">
-                                <StatTile label="Viewers" value={viewerCount} icon={Users} />
-                                <StatTile
-                                    label="Orders"
-                                    value={orders.length}
-                                    icon={ShoppingBag}
-                                    trend={orders.length > 0 ? `+${orders.length} paid` : undefined}
-                                />
-                                <StatTile
-                                    label="Revenue"
-                                    value={(() => {
-                                        const total = orders.reduce((sum: number, o: any) => sum + (Number(o.amount) || 0), 0);
-                                        if (total >= 1_000_000) return `${(total / 1_000_000).toFixed(1)}M`;
-                                        if (total >= 1_000) return `${(total / 1_000).toFixed(0)}K`;
-                                        return total.toString();
-                                    })()}
-                                    icon={BadgeDollarSign}
-                                    trend={orders.length > 0 ? '✓ Paid' : undefined}
-                                />
-                                <StatTile
-                                    label="Avg Order"
-                                    value={(() => {
-                                        if (orders.length === 0) return '0';
-                                        const total = orders.reduce((sum: number, o: any) => sum + (Number(o.amount) || 0), 0);
-                                        const avg = total / orders.length;
-                                        if (avg >= 1_000_000) return `${(avg / 1_000_000).toFixed(1)}M`;
-                                        if (avg >= 1_000) return `${(avg / 1_000).toFixed(0)}K`;
-                                        return avg.toFixed(0);
-                                    })()}
-                                    icon={TrendingUp}
-                                />
-                            </div>
+                            <StatTile label="Viewers" value={viewerCount} icon={Users} />
+                            <StatTile label="Orders" value={orders.length} icon={ShoppingBag} trend={orders.length > 0 ? `+${orders.length}` : undefined} />
+                            <StatTile label="Hearts" value={heartsCount} icon={Heart} />
+                            <StatTile label="Shares" value={sharesCount} icon={Share2} />
+                        </div>
                     </section>
 
                     <section className="pt-2">
@@ -931,9 +869,6 @@ function AdminStudioContent(props: any) {
                         <Button variant="outline" className="w-full h-11 bg-white/5 border-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest gap-2 hover:bg-white/10 transition-all">
                             <Share2 className="w-3.5 h-3.5" /> Share Stream
                         </Button>
-                        <Button onClick={handleViewAnalytics} variant="outline" className="w-full h-11 bg-indigo-500/10 border-indigo-500/20 text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2 hover:bg-indigo-500 hover:text-white transition-all">
-                            <Activity className="w-3.5 h-3.5" /> View Analytics
-                        </Button>
                         <Button onClick={handleEndSession} variant="ghost" className="w-full h-11 bg-rose-500/5 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl font-black text-[10px] uppercase tracking-widest gap-2 transition-all">
                             <Power className="w-3.5 h-3.5" /> Terminate Session
                         </Button>
@@ -955,9 +890,9 @@ function AdminStudioContent(props: any) {
                         </div>
                         <StatusBadge isLive={isStreaming} />
                         <div className="flex items-center gap-3">
-                            <Button
-                                variant="ghost"
-                                size="sm"
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
                                 onClick={handleToggleRecording}
                                 className={`h-8 px-3 rounded-full border transition-all ${isRecording ? 'bg-rose-500/10 border-rose-500/30 text-rose-500 animate-pulse' : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'}`}
                             >
@@ -991,15 +926,15 @@ function AdminStudioContent(props: any) {
                     {/* Floating Donate-style Notification */}
                     <AnimatePresence>
                         {latestOrder && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -50, scale: 0.9 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                            <motion.div 
+                                initial={{ opacity: 0, y: -50, scale: 0.9 }} 
+                                animate={{ opacity: 1, y: 0, scale: 1 }} 
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 className="absolute top-8 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-amber-500/90 to-rose-500/90 backdrop-blur-xl border border-white/20 shadow-[0_0_50px_rgba(245,158,11,0.5)] rounded-[2rem] p-2 pl-4 pr-6 flex items-center gap-4 overflow-hidden"
                             >
                                 <div className="absolute inset-0 bg-[url('/noise.png')] opacity-20 mix-blend-overlay"></div>
                                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full animate-[shimmer_2s_infinite]"></div>
-
+                                
                                 <div className="relative w-12 h-12 rounded-full bg-white/20 flex items-center justify-center border border-white/30 animate-bounce shadow-xl">
                                     <ShoppingBag className="w-6 h-6 text-white" />
                                 </div>
@@ -1054,8 +989,8 @@ function AdminStudioContent(props: any) {
                                     <span className="text-[6px] font-black uppercase text-neutral-600 tracking-tighter">Market Value</span>
                                     <span className="text-sm font-black text-white font-mono">{pinnedProduct ? formatPrice(pinnedProduct.price) : '--'}</span>
                                 </div>
-                                <Button
-                                    onClick={onToggleStreaming}
+                                <Button 
+                                    onClick={onToggleStreaming} 
                                     className={`w-40 h-12 font-black text-[10px] uppercase tracking-[0.3em] rounded-[1rem] transition-all duration-500 ${isStreaming ? 'bg-rose-500/10 border border-rose-500/30 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_30px_rgba(16,185,129,0.3)]'}`}
                                 >
                                     <span className="relative z-10 flex items-center justify-center gap-2">
@@ -1143,7 +1078,7 @@ function AdminStudioContent(props: any) {
                                 <Megaphone className="w-3 h-3 text-emerald-500" />
                                 <span className="text-[8px] font-black uppercase text-emerald-500 tracking-[0.2em]">Live Broadcast</span>
                             </div>
-                            <input
+                            <input 
                                 type="text"
                                 placeholder="Type session-wide message..."
                                 className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[10px] text-white focus:outline-none focus:border-emerald-500/50 placeholder:text-neutral-700 transition-all"
@@ -1158,18 +1093,18 @@ function AdminStudioContent(props: any) {
                     </section>
                 </aside>
             )}
-
+            
             {/* Post-Live Metrics Overlay */}
-            <PostLiveReportModal
-                isOpen={isReportOpen}
-                data={reportData}
-                onConfirm={handleConfirmReview}
+            <PostLiveReportModal 
+                isOpen={isReportOpen} 
+                data={reportData} 
+                onConfirm={handleConfirmReview} 
             />
 
             {/* Pinned Comment Overlay */}
             <AnimatePresence>
                 {pinnedComment && (
-                    <motion.div
+                    <motion.div 
                         initial={{ opacity: 0, y: -20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
@@ -1230,7 +1165,7 @@ function StudioTrackToggle() {
         <div className="flex flex-col items-center gap-4">
             <AnimatePresence>
                 {isControlsVisible && (
-                    <motion.div
+                    <motion.div 
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
@@ -1251,8 +1186,8 @@ function StudioTrackToggle() {
                                     <DropdownMenuContent className="bg-[#1a1b23] border-white/10 text-white min-w-[200px]">
                                         <div className="px-3 py-2 text-[8px] font-black uppercase text-neutral-500 tracking-widest border-b border-white/5 mb-1">Select Microphone</div>
                                         {mics.map(device => (
-                                            <DropdownMenuItem
-                                                key={device.deviceId}
+                                            <DropdownMenuItem 
+                                                key={device.deviceId} 
                                                 onClick={() => setMic(device.deviceId)}
                                                 className={`text-[10px] font-bold ${activeMicId === device.deviceId ? 'text-emerald-500 bg-emerald-500/5' : 'text-neutral-400'}`}
                                             >
@@ -1280,8 +1215,8 @@ function StudioTrackToggle() {
                                     <DropdownMenuContent className="bg-[#1a1b23] border-white/10 text-white min-w-[200px]">
                                         <div className="px-3 py-2 text-[8px] font-black uppercase text-neutral-500 tracking-widest border-b border-white/5 mb-1">Select Camera</div>
                                         {cameras.map(device => (
-                                            <DropdownMenuItem
-                                                key={device.deviceId}
+                                            <DropdownMenuItem 
+                                                key={device.deviceId} 
                                                 onClick={() => setCamera(device.deviceId)}
                                                 className={`text-[10px] font-bold ${activeCameraId === device.deviceId ? 'text-emerald-500 bg-emerald-500/5' : 'text-neutral-400'}`}
                                             >
@@ -1298,7 +1233,7 @@ function StudioTrackToggle() {
             </AnimatePresence>
 
             {/* Visibility Toggle */}
-            <button
+            <button 
                 onClick={() => setIsControlsVisible(!isControlsVisible)}
                 className="w-10 h-10 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 text-white flex items-center justify-center hover:bg-black/60 transition-all group relative overflow-hidden"
             >
@@ -1335,9 +1270,9 @@ function FlashSaleTrigger({ variant, onTrigger }: { variant: any, onTrigger: (pr
             console.error("AI Suggestion failed", err);
             // Fallback: Use simple logic
             setPrice(Math.round(Math.max(variant.price * 0.8, costPrice * 1.1)));
-            setAiInfo({
-                reason: "Không thể kết nối AI, sử dụng quy tắc giá an toàn mặc định.",
-                strategy: "FALLBACK"
+            setAiInfo({ 
+                reason: "Không thể kết nối AI, sử dụng quy tắc giá an toàn mặc định.", 
+                strategy: "FALLBACK" 
             });
         } finally {
             setIsSuggesting(false);
@@ -1353,7 +1288,7 @@ function FlashSaleTrigger({ variant, onTrigger }: { variant: any, onTrigger: (pr
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-64 bg-[#1a1b23] border border-white/10 p-5 rounded-3xl shadow-2xl overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-[50px] -translate-y-1/2 translate-x-1/2" />
-
+                
                 <div className="space-y-4 relative z-10">
                     <div className="pb-3 border-b border-white/5">
                         <div className="flex items-center gap-2 mb-1">
@@ -1373,14 +1308,14 @@ function FlashSaleTrigger({ variant, onTrigger }: { variant: any, onTrigger: (pr
                                 )}
                             </div>
                             <div className="relative">
-                                <input
-                                    type="number"
-                                    value={price}
+                                <input 
+                                    type="number" 
+                                    value={price} 
                                     onChange={e => setPrice(Number(e.target.value))}
-                                    className={`w-full bg-black/40 border rounded-xl px-3 py-3 text-xs text-white outline-none transition-all font-mono font-black ${isBelowCost ? 'border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.1)]' : 'border-white/10 focus:border-rose-500'}`}
+                                    className={`w-full bg-black/40 border rounded-xl px-3 py-3 text-xs text-white outline-none transition-all font-mono font-black ${isBelowCost ? 'border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.1)]' : 'border-white/10 focus:border-rose-500'}`} 
                                 />
-                                <Button
-                                    size="sm"
+                                <Button 
+                                    size="sm" 
                                     onClick={handleAISuggest}
                                     disabled={isSuggesting}
                                     className="absolute right-1 top-1 bottom-1 bg-white/5 hover:bg-white/10 text-[8px] font-black uppercase tracking-widest text-emerald-500 h-auto px-2 rounded-lg border border-white/5"
@@ -1390,19 +1325,20 @@ function FlashSaleTrigger({ variant, onTrigger }: { variant: any, onTrigger: (pr
                             </div>
 
                             {aiInfo && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
+                                <motion.div 
+                                    initial={{ opacity: 0, height: 0 }} 
                                     animate={{ opacity: 1, height: 'auto' }}
                                     className="bg-white/5 border border-white/5 rounded-xl p-2.5 mt-2 overflow-hidden"
                                 >
                                     <div className="flex items-center justify-between mb-1.5">
                                         <div className="flex items-center gap-1.5">
                                             <Sparkles className="w-2.5 h-2.5 text-emerald-500" />
-                                            <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full ${aiInfo.strategy === 'LIQUIDATION' ? 'bg-rose-500/20 text-rose-500' :
-                                                    aiInfo.strategy === 'SCARCITY' ? 'bg-amber-500/20 text-amber-500' :
-                                                        aiInfo.strategy === 'GROWTH' ? 'bg-emerald-500/20 text-emerald-500' :
-                                                            'bg-neutral-500/20 text-neutral-500'
-                                                }`}>
+                                            <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full ${
+                                                aiInfo.strategy === 'LIQUIDATION' ? 'bg-rose-500/20 text-rose-500' :
+                                                aiInfo.strategy === 'SCARCITY' ? 'bg-amber-500/20 text-amber-500' :
+                                                aiInfo.strategy === 'GROWTH' ? 'bg-emerald-500/20 text-emerald-500' :
+                                                'bg-neutral-500/20 text-neutral-500'
+                                            }`}>
                                                 {aiInfo.strategy} STRATEGY
                                             </span>
                                         </div>
@@ -1410,7 +1346,7 @@ function FlashSaleTrigger({ variant, onTrigger }: { variant: any, onTrigger: (pr
                                     <p className="text-[9px] text-neutral-400 italic leading-snug">"{aiInfo.reason}"</p>
                                 </motion.div>
                             )}
-
+                            
                             {isBelowCost && (
                                 <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-1.5 mt-2 px-1">
                                     <AlertTriangle className="w-3 h-3 text-rose-500" />
@@ -1422,17 +1358,17 @@ function FlashSaleTrigger({ variant, onTrigger }: { variant: any, onTrigger: (pr
                         {/* Stock Limit Area */}
                         <div className="space-y-1.5 px-0.5">
                             <label className="text-[8px] text-neutral-600 uppercase font-black tracking-tighter">Event Inventory Limit</label>
-                            <input
-                                type="number"
-                                value={stock}
+                            <input 
+                                type="number" 
+                                value={stock} 
                                 onChange={e => setStock(Number(e.target.value))}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-3 text-xs text-white focus:border-rose-500 outline-none transition-all font-mono font-black"
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-3 text-xs text-white focus:border-rose-500 outline-none transition-all font-mono font-black" 
                             />
                         </div>
                     </div>
 
-                    <Button
-                        size="sm"
+                    <Button 
+                        size="sm" 
                         disabled={price <= 0 || stock <= 0}
                         className={`w-full h-11 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] mt-2 transition-all duration-300 ${isBelowCost ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed opacity-50' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-[0_10px_20px_rgba(225,29,72,0.2)]'}`}
                         onClick={() => onTrigger(price, stock)}
@@ -1461,9 +1397,9 @@ function LiveInventorySelector({ onAdd, existingIds }: { onAdd: (ids: number[]) 
                     if (p.type_code === 'RETAIL' && p.product_variants) {
                         p.product_variants.forEach((v: any) => {
                             if (!existingIds.includes(v.variant_id) && v.stock_available > 0) {
-                                flat.push({
-                                    ...v,
-                                    productName: p.name,
+                                flat.push({ 
+                                    ...v, 
+                                    productName: p.name, 
                                     imageUrl: p.media_urls?.[0] || v.media_assets?.[0]?.url || p.media_urls?.[0]
                                 });
                             }
@@ -1477,87 +1413,44 @@ function LiveInventorySelector({ onAdd, existingIds }: { onAdd: (ids: number[]) 
 
     const filtered = products.filter(p => p.productName.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()));
 
-    const groupedFiltered = useMemo(() => {
-        const groups: Record<number, any> = {};
-        filtered.forEach(p => {
-            if (!groups[p.product_id]) {
-                groups[p.product_id] = {
-                    product_id: p.product_id,
-                    productName: p.productName,
-                    imageUrl: p.imageUrl,
-                    variants: []
-                };
-            }
-            groups[p.product_id].variants.push(p);
-        });
-        return Object.values(groups);
-    }, [filtered]);
-
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="bg-[#0f1015] border-white/10 rounded-[2.5rem] max-w-md p-8 shadow-[0_0_80px_rgba(0,0,0,0.5)]">
                 <DialogTitle className="text-white font-black uppercase tracking-[0.2em] text-xs mb-6 text-center">In-Live Stock Injection</DialogTitle>
                 <div className="space-y-6">
                     <div className="relative group">
-                        <Input
-                            placeholder="Lookup SKU or Name..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
+                        <Input 
+                            placeholder="Lookup SKU or Name..." 
+                            value={search} 
+                            onChange={e => setSearch(e.target.value)} 
                             className="bg-white/5 border-white/10 focus:border-emerald-500 rounded-2xl h-12 text-xs text-white pl-4 transition-all"
                         />
                     </div>
                     <ScrollArea className="h-[350px] pr-4">
-                        <div className="space-y-4">
-                            {groupedFiltered.map(group => (
-                                <div key={group.product_id} className="rounded-2xl bg-white/5 border border-white/5 overflow-hidden transition-all hover:border-white/10">
-                                    <div className="p-3 bg-black/20 flex gap-3 items-center border-b border-white/5">
-                                        <div className="w-8 h-8 rounded-lg bg-black shrink-0 overflow-hidden border border-white/5 p-1">
-                                            {group.imageUrl && <img src={group.imageUrl} className="w-full h-full object-contain" />}
+                        <div className="space-y-3">
+                            {filtered.map(p => (
+                                <div key={p.variant_id} className="p-3 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-black shrink-0 overflow-hidden border border-white/5 p-1">
+                                            {p.imageUrl && <img src={p.imageUrl} className="w-full h-full object-contain" />}
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <span className="text-[10px] font-black text-white leading-tight truncate block group-hover:text-emerald-400">{group.productName}</span>
-                                            <span className="text-[7px] text-neutral-500 uppercase tracking-widest">{group.variants.length} Optional Variants</span>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={group.variants.every((v: any) => selected.includes(v.variant_id))}
-                                            onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    const newSelected = new Set(selected);
-                                                    group.variants.forEach((v: any) => newSelected.add(v.variant_id));
-                                                    setSelected(Array.from(newSelected));
-                                                } else {
-                                                    const groupVariantIds = group.variants.map((v: any) => v.variant_id);
-                                                    setSelected(selected.filter(id => !groupVariantIds.includes(id)));
-                                                }
-                                            }}
-                                            className="w-4 h-4 rounded border-white/10 bg-black accent-emerald-500 cursor-pointer"
-                                        />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        {group.variants.map((p: any) => (
-                                            <div key={p.variant_id} className="p-3 flex items-center justify-between border-b border-white/5 last:border-0 hover:bg-white/5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex flex-col min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[9px] text-neutral-300 font-bold uppercase">{p.option_name}</span>
-                                                            <span className="text-[8px] text-rose-500 font-mono font-bold px-1.5 py-0.5 bg-rose-500/10 rounded">Stock: {p.stock_available}</span>
-                                                        </div>
-                                                        <span className="text-[8px] text-neutral-500 font-mono tracking-tighter">SKU: {p.sku}</span>
-                                                    </div>
-                                                </div>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selected.includes(p.variant_id)}
-                                                    onChange={() => setSelected(prev => prev.includes(p.variant_id) ? prev.filter(id => id !== p.variant_id) : [...prev, p.variant_id])}
-                                                    className="w-4 h-4 text-emerald-500 rounded border-white/10 bg-black cursor-pointer"
-                                                />
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[10px] font-black text-white leading-tight mb-1 truncate w-40">{p.productName}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[9px] text-neutral-500 font-mono tracking-tighter">{p.option_name} | {p.sku}</span>
+                                                <span className="text-[9px] text-rose-500/50 font-mono font-bold">Stock: {p.stock_available}</span>
                                             </div>
-                                        ))}
+                                        </div>
                                     </div>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selected.includes(p.variant_id)}
+                                        onChange={() => setSelected(prev => prev.includes(p.variant_id) ? prev.filter(id => id !== p.variant_id) : [...prev, p.variant_id])}
+                                        className="w-5 h-5 rounded-lg border-white/10 bg-black accent-emerald-500 cursor-pointer"
+                                    />
                                 </div>
                             ))}
-                            {groupedFiltered.length === 0 && (
+                            {filtered.length === 0 && (
                                 <div className="py-20 text-center opacity-10 flex flex-col items-center gap-3">
                                     <Package className="w-10 h-10" />
                                     <span className="text-[8px] font-black uppercase tracking-widest">No matching assets</span>
@@ -1565,7 +1458,7 @@ function LiveInventorySelector({ onAdd, existingIds }: { onAdd: (ids: number[]) 
                             )}
                         </div>
                     </ScrollArea>
-                    <Button
+                    <Button 
                         disabled={selected.length === 0}
                         onClick={() => { onAdd(selected); setIsOpen(false); setSelected([]); }}
                         className="w-full bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] h-14 shadow-xl transition-all"
@@ -1580,4 +1473,3 @@ function LiveInventorySelector({ onAdd, existingIds }: { onAdd: (ids: number[]) 
         </Dialog>
     );
 }
-
