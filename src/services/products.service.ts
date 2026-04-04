@@ -59,6 +59,16 @@ export const productsService = {
         return response.data;
     },
 
+    getDraftBlindboxes: async (): Promise<any[]> => {
+        const response = await axiosInstance.get('/products/blindboxes/draft');
+        return response.data;
+    },
+
+    approveBlindbox: async (id: number): Promise<ApiResponse<any>> => {
+        const response = await axiosInstance.patch(`/products/blindboxes/${id}/approve`);
+        return response.data;
+    },
+
     // Generic Entity Methods for SmartSelect
     getEntities: async (entity: string): Promise<ApiResponse<any[]>> => {
         const response = await axiosInstance.get(`/${entity}`);

@@ -326,22 +326,43 @@ export default function VoucherEditPage() {
                                             control={form.control}
                                             name="apply_rank_code"
                                             render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Customer Rank Required</FormLabel>
+                                                <FormItem className="col-span-full">
+                                                    <FormLabel className="text-base font-semibold">Đối tượng áp dụng</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value || "ALL"}>
                                                         <FormControl>
                                                             <SelectTrigger>
-                                                                <SelectValue placeholder="Any Rank" />
+                                                                <SelectValue placeholder="Chọn hạng khách hàng" />
                                                             </SelectTrigger>
                                                         </FormControl>
                                                         <SelectContent>
-                                                            <SelectItem value="ALL">All Customers</SelectItem>
-                                                            <SelectItem value="BRONZE">Bronze</SelectItem>
-                                                            <SelectItem value="SILVER">Silver</SelectItem>
-                                                            <SelectItem value="GOLD">Gold</SelectItem>
-                                                            <SelectItem value="DIAMOND">Diamond</SelectItem>
+                                                            <SelectItem value="ALL">
+                                                                <span className="flex items-center gap-2">👥 Tất cả khách hàng</span>
+                                                            </SelectItem>
+                                                            <SelectItem value="BRONZE">
+                                                                <span className="flex items-center gap-2">🥉 Hạng Đồng (Bronze)</span>
+                                                            </SelectItem>
+                                                            <SelectItem value="SILVER">
+                                                                <span className="flex items-center gap-2">🥈 Hạng Bạc (Silver)</span>
+                                                            </SelectItem>
+                                                            <SelectItem value="GOLD">
+                                                                <span className="flex items-center gap-2">🥇 Hạng Vàng (Gold)</span>
+                                                            </SelectItem>
+                                                            <SelectItem value="DIAMOND">
+                                                                <span className="flex items-center gap-2">💎 Hạng Kim Cương (Diamond)</span>
+                                                            </SelectItem>
                                                         </SelectContent>
                                                     </Select>
+                                                    <FormDescription>
+                                                        Nếu chọn hạng cụ thể, hệ thống sẽ tự động gửi email thông báo có voucher đến các khách hàng thuộc hạng này.
+                                                    </FormDescription>
+                                                    {field.value && field.value !== 'ALL' && (
+                                                        <div className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-1">
+                                                            <span className="text-amber-600 mt-0.5">📧</span>
+                                                            <span className="text-amber-800">
+                                                                Email thông báo sẽ được gửi tự động đến tất cả khách hàng hạng <strong>{field.value}</strong> ngay khi voucher được tạo.
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                     <FormMessage />
                                                 </FormItem>
                                             )}

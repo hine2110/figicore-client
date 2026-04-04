@@ -282,7 +282,7 @@ export default function CustomerHome() {
                                         {[
                                             { label: "My Collection", path: "/customer/profile?tab=orders", icon: Package },
                                             { label: "Wallet & Points", path: "/customer/wallet", icon: Wallet },
-                                            { label: "Vouchers", path: "/customer/wallet", icon: Ticket },
+                                            { label: "Vouchers", path: "/customer/profile?tab=vouchers", icon: Ticket },
                                             { label: "Live Auctions", path: "/customer/auctions", icon: Gavel },
                                         ].map((item, i) => (
                                             <button key={i} onClick={() => navigate(item.path)} className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-white text-slate-600 hover:text-blue-600 transition-all group font-medium text-sm hover:shadow-md border border-transparent hover:border-white/50">

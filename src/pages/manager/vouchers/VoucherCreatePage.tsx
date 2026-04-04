@@ -21,7 +21,7 @@ const formatNumberStr = (val: string | number | undefined) => {
     if (val === undefined || val === null || val === '') return '';
     const numericStr = String(val).replace(/\D/g, '');
     if (!numericStr) return '';
-    return new Intl.NumberFormat('vi-VN').format(Number(numericStr));
+    return new Intl.NumberFormat('en-US').format(Number(numericStr));
 };
 
 const parseNumberStr = (val: string) => {
@@ -87,6 +87,8 @@ export default function VoucherCreatePage() {
             is_public: true,
         },
     });
+
+    const minDateTime = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
     const watchType = form.watch('voucher_type');
     const isFreeShip = watchType === 'FREE_SHIP';
@@ -245,7 +247,7 @@ export default function VoucherCreatePage() {
                                         <FormItem>
                                             <FormLabel>Start Date <span className="text-red-500">*</span></FormLabel>
                                             <FormControl>
-                                                <Input type="datetime-local" {...field} />
+                                                <Input type="datetime-local" min={minDateTime} {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -258,7 +260,7 @@ export default function VoucherCreatePage() {
                                         <FormItem>
                                             <FormLabel>End Date <span className="text-red-500">*</span></FormLabel>
                                             <FormControl>
-                                                <Input type="datetime-local" {...field} />
+                                                <Input type="datetime-local" min={form.watch('start_date') || minDateTime} {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -274,22 +276,43 @@ export default function VoucherCreatePage() {
                                         control={form.control}
                                         name="apply_rank_code"
                                         render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Customer Rank Required</FormLabel>
+                                            <FormItem className="col-span-full">
+                                                <FormLabel className="text-base font-semibold">Target Audience</FormLabel>
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <FormControl>
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder="Any Rank" />
+                                                            <SelectValue placeholder="Select customer rank" />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value="ALL">All Customers</SelectItem>
-                                                        <SelectItem value="BRONZE">Bronze</SelectItem>
-                                                        <SelectItem value="SILVER">Silver</SelectItem>
-                                                        <SelectItem value="GOLD">Gold</SelectItem>
-                                                        <SelectItem value="DIAMOND">Diamond</SelectItem>
+                                                        <SelectItem value="ALL">
+                                                            <span className="flex items-center gap-2">👥 All Customers</span>
+                                                        </SelectItem>
+                                                        <SelectItem value="BRONZE">
+                                                            <span className="flex items-center gap-2">🥉 Bronze Rank</span>
+                                                        </SelectItem>
+                                                        <SelectItem value="SILVER">
+                                                            <span className="flex items-center gap-2">🥈 Silver Rank</span>
+                                                        </SelectItem>
+                                                        <SelectItem value="GOLD">
+                                                            <span className="flex items-center gap-2">🥇 Gold Rank</span>
+                                                        </SelectItem>
+                                                        <SelectItem value="DIAMOND">
+                                                            <span className="flex items-center gap-2">💎 Diamond Rank</span>
+                                                        </SelectItem>
                                                     </SelectContent>
                                                 </Select>
+                                                <FormDescription>
+                                                    If a specific rank is selected, the system will automatically send an email notification to all customers in that rank.
+                                                </FormDescription>
+                                                {field.value && field.value !== 'ALL' && (
+                                                    <div className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-1">
+                                                        <span className="text-amber-600 mt-0.5">📧</span>
+                                                        <span className="text-amber-800">
+                                                            An automated notification email will be sent to all <strong>{field.value}</strong> rank customers immediately upon creation.
+                                                        </span>
+                                                    </div>
+                                                )}
                                                 <FormMessage />
                                             </FormItem>
                                         )}
