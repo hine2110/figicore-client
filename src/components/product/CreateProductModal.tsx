@@ -124,8 +124,8 @@ const auctionSchema = baseSchema.extend({
     type_code: z.literal("AUCTION"),
     variants: z.array(z.object({
         option_name: z.string().min(1, "Option Name is required"),
-        cost_price: z.coerce.number().min(0),
-        price: z.coerce.number().min(0, "Price can be 0 for auctions"),
+        cost_price: z.coerce.number().min(0).optional(),
+        price: z.coerce.number().min(0, "Price can be 0 for auctions").optional(),
         sku: z.string().min(1, "SKU is required"),
 
         media_assets: z.array(mediaItemSchema).optional(),
@@ -1009,11 +1009,29 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
             };
 
             if (data.type_code === "RETAIL" || data.type_code === "AUCTION") {
-                payload.variants = data.variants.map((v: any) => ({
-                    option_name: v.option_name, price: v.price, cost_price: v.cost_price || 0, sku: v.sku, media_assets: v.media_assets, description: v.description, stock_available: 0,
-                    weight_g: v.weight_g, length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm,
-                    scale: v.scale, material: v.material, included_items: v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : []
-                }));
+                payload.variants = data.variants.map((v: any) => {
+                    const variant: any = {
+                        option_name: v.option_name,
+                        price: v.price || 0,
+                        sku: v.sku,
+                        media_assets: v.media_assets,
+                        description: v.description,
+                        stock_available: 0,
+                        weight_g: v.weight_g,
+                        length_cm: v.length_cm,
+                        width_cm: v.width_cm,
+                        height_cm: v.height_cm,
+                        scale: v.scale,
+                        material: v.material,
+                        included_items: v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : []
+                    };
+
+                    if (data.type_code === "RETAIL") {
+                        variant.cost_price = v.cost_price || 0;
+                    }
+
+                    return variant;
+                });
             } else if (data.type_code === "BLINDBOX") {
                 payload.blindbox = {
                     price: data.price, min_value_allow: data.min_value_allow, max_value_allow: data.max_value_allow,
