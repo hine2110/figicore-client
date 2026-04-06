@@ -37,9 +37,18 @@ export default function Cart() {
             }, 0);
     }, [items, selectedItemIds]);
 
+    // ── RETAIL-ONLY VOUCHER CALCULATION ─────────────────────────────────────
+    const getTypeCode = (item: any) => item.product_variants?.products?.type_code || item.type_code;
+
+    const retailTotal = useMemo(() => {
+        return items
+            .filter(item => selectedItemIds.includes(item.id) && getTypeCode(item) === 'RETAIL')
+            .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    }, [items, selectedItemIds]);
+
     // --- AUTO-SELECT BEST VOUCHERS ---
     useEffect(() => {
-        if (!myVouchers || myVouchers.length === 0 || totalAmount === 0) {
+        if (!myVouchers || myVouchers.length === 0 || totalAmount === 0 || retailTotal === 0) {
             setSelectedDiscountCode(null);
             setSelectedFreeShipCode(null);
             return;
@@ -62,8 +71,8 @@ export default function Cart() {
             const isNotExpired = !endDate || endDate > now;
             const isDateValid = isStarted && isNotExpired;
 
-            // Check condition AND date validity
-            if (isDateValid && (!promo.min_order_value || totalAmount >= promo.min_order_value)) {
+            // Check condition AND date validity (Retail-only check)
+            if (isDateValid && (!promo.min_order_value || retailTotal >= Number(promo.min_order_value))) {
                 if (promo.discount_type === 'FREE_SHIP') {
                     if (DEFAULT_SHIPPING_FEE > maxFreeShipAmount) {
                         maxFreeShipAmount = DEFAULT_SHIPPING_FEE;
@@ -73,9 +82,9 @@ export default function Cart() {
                     // Discount Voucher
                     let currentDiscount = 0;
                     if (promo.discount_type === 'PERCENTAGE') {
-                        currentDiscount = (totalAmount * (promo.discount_value || 0)) / 100;
+                        currentDiscount = (retailTotal * (promo.discount_value || 0)) / 100;
                     } else {
-                        currentDiscount = promo.discount_value || 0;
+                        currentDiscount = Number(promo.discount_value) || 0;
                     }
 
                     if (currentDiscount > maxDiscountAmount) {
@@ -88,7 +97,74 @@ export default function Cart() {
 
         setSelectedDiscountCode(bestDiscountVoucher ? bestDiscountVoucher.code! : null);
         setSelectedFreeShipCode(bestFreeShipVoucher ? bestFreeShipVoucher.code! : null);
-    }, [myVouchers, totalAmount]);
+    }, [myVouchers, totalAmount, retailTotal]);
+
+    // --- REAL-TIME PROMOTION WATCHER ---
+    // Automatically re-fetch cart when any promotion window starts or ends
+    useEffect(() => {
+        if (items.length === 0) return;
+
+        const calculateNextEvent = () => {
+            const now = new Date();
+            let minDelay = Infinity;
+
+            items.forEach(item => {
+                const promo = item.promotion;
+                if (!promo || !promo.is_active) return;
+
+                const startStr = promo.start_time || "00:00";
+                const endStr = promo.end_time || "23:59";
+
+                const parseTime = (timeStr: string, date: Date) => {
+                    const [hh, mm] = timeStr.split(':').map(Number);
+                    const d = new Date(date);
+                    d.setHours(hh, mm, 0, 0);
+                    return d;
+                };
+
+                const promoStart = parseTime(startStr, now);
+                const promoEnd = parseTime(endStr, now);
+                promoEnd.setSeconds(59, 999); // Inclusion margin
+
+                // 1. If currently BEFORE start -> find delay to Start
+                if (now < promoStart) {
+                    minDelay = Math.min(minDelay, promoStart.getTime() - now.getTime());
+                }
+                // 2. If currently INSIDE window -> find delay to End
+                else if (now >= promoStart && now <= promoEnd) {
+                    minDelay = Math.min(minDelay, promoEnd.getTime() - now.getTime());
+                }
+                // 3. If AFTER end -> find delay to Start of TOMORROW (for recurring)
+                else if (promo.is_recurring) {
+                    const tomorrowStart = new Date(promoStart);
+                    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+                    minDelay = Math.min(minDelay, tomorrowStart.getTime() - now.getTime());
+                }
+            });
+
+            return minDelay;
+        };
+
+        // Precision Timer (based on next event)
+        const delay = calculateNextEvent();
+        let precisionTimer: NodeJS.Timeout | null = null;
+        
+        if (delay > 0 && delay < 24 * 3600 * 1000) {
+            // Buffer with +1.5s to ensure server clock caught up
+            precisionTimer = setTimeout(() => {
+                console.log("🔔 [Real-time] Promotion window changed. Syncing cart...");
+                fetchCart();
+            }, delay + 1500);
+        }
+
+        // Fallback Polling (Sync every 60s just in case)
+        const fallbackInterval = setInterval(() => fetchCart(), 60000);
+
+        return () => {
+            if (precisionTimer) clearTimeout(precisionTimer);
+            clearInterval(fallbackInterval);
+        };
+    }, [items, fetchCart]);
 
     // --- CHECKOUT LOGIC ---
     const handleProceed = async () => {
@@ -154,7 +230,7 @@ export default function Cart() {
                     return {
                         variant_id: Number(realVariantId),
                         quantity: Number(i.quantity),
-                        price: calculateFinalPrice(i.price, i.promotion), // Send discounted price
+                        price: i.price, // Send discounted price
                         payment_option: (i as any).payment_option || (i as any).paymentOption || 'DEPOSIT', // Fix: Send explicit option
                         livestreamId: (i as any).livestream_id || undefined, // Live pricing context
                     };
@@ -194,8 +270,8 @@ export default function Cart() {
             console.error("Proceed Error:", error);
 
             const errorMsg = error.response?.data?.message || error.message || "Failed to initiate order.";
-            const isLimitError = errorMsg.includes('limit reached') || errorMsg.includes('max_qty');
-            const isPriceChanged = errorMsg.includes('PRICE_CHANGED');
+            const isLimitError = errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('max_qty');
+            const isPriceChanged = errorMsg.toLowerCase().includes('price') && errorMsg.toLowerCase().includes('changed');
 
             if (isPriceChanged) {
                 // Auto refresh cart to get the new prices
@@ -203,7 +279,7 @@ export default function Cart() {
                 toast({
                     variant: "destructive",
                     title: "Giỏ hàng đã cập nhật giá",
-                    description: errorMsg.replace('PRICE_CHANGED: ', ''),
+                    description: errorMsg,
                     duration: 6000,
                 });
             } else {
@@ -251,9 +327,9 @@ export default function Cart() {
             const v = myVouchers.find(mv => mv.promotions.code === selectedDiscountCode)?.promotions;
             if (v) {
                 if (v.discount_type === 'PERCENTAGE') {
-                    discount = (totalAmount * (v.discount_value || 0)) / 100;
+                    discount = (retailTotal * (Number(v.discount_value) || 0)) / 100;
                 } else {
-                    discount = v.discount_value || 0;
+                    discount = Number(v.discount_value) || 0;
                 }
             }
         }
@@ -263,14 +339,9 @@ export default function Cart() {
         }
 
         return { discount, freeship };
-    }, [selectedDiscountCode, selectedFreeShipCode, myVouchers, totalAmount]);
+    }, [selectedDiscountCode, selectedFreeShipCode, myVouchers, retailTotal]);
 
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
-
-    // --- GROUPING LOGIC ---
-    // --- GROUPING LOGIC ---
-    // Fix: Check both nested and flat type_code
-    const getTypeCode = (item: any) => item.product_variants?.products?.type_code || item.type_code;
 
     const groupA = items.filter(i => {
         const type = getTypeCode(i);
@@ -557,8 +628,8 @@ export default function Cart() {
                                                                             const isStarted = !startDate || startDate <= now;
                                                                             const isNotExpired = !endDate || endDate > now;
 
-                                                                            const meetsMinOrder = !mv.promotions.min_order_value || totalAmount >= mv.promotions.min_order_value;
-                                                                            const isAvailableForThisOrder = meetsMinOrder && isStarted && isNotExpired;
+                                                                            const meetsMinOrder = !mv.promotions.min_order_value || retailTotal >= Number(mv.promotions.min_order_value);
+                                                                            const isAvailableForThisOrder = meetsMinOrder && isStarted && isNotExpired && retailTotal > 0;
                                                                             const isSelected = selectedDiscountCode === mv.promotions.code;
 
                                                                             return (
@@ -573,7 +644,7 @@ export default function Cart() {
                                                                                         ? (isSelected ? 'border-orange-500 bg-orange-50' : 'border-white bg-white hover:border-orange-200')
                                                                                         : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'}`}
                                                                                 >
-                                                                                    <div>
+                                                                                    <div className="flex-1">
                                                                                         <div className="font-bold text-lg text-slate-900">
                                                                                             {mv.promotions.discount_type === 'PERCENTAGE'
                                                                                                 ? `${mv.promotions.discount_value}% OFF`
@@ -583,21 +654,26 @@ export default function Cart() {
                                                                                             Code: <span className="font-mono font-bold">{mv.promotions.code}</span>
                                                                                         </div>
                                                                                         <div className="text-xs text-slate-400 mt-1">
-                                                                                            {mv.promotions.min_order_value ? `Min order: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'No minimum condition'}
+                                                                                            {mv.promotions.min_order_value ? `Giá trị Retail tối thiểu: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'Không giới hạn chi tiêu'}
                                                                                         </div>
+                                                                                        {retailTotal === 0 && (
+                                                                                            <div className="text-[10px] text-amber-600 font-bold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 inline-block uppercase">
+                                                                                                Chỉ áp dụng cho hàng Retail
+                                                                                            </div>
+                                                                                        )}
                                                                                         {(!isStarted || !isNotExpired) && (
                                                                                             <div className="text-xs text-red-500 font-medium mt-1">
-                                                                                                {!isNotExpired ? 'Expired' : `Available from ${startDate?.toLocaleDateString()}`}
+                                                                                                {!isNotExpired ? 'Đã hết hạn' : `Kích hoạt từ ngày ${startDate?.toLocaleDateString()}`}
                                                                                             </div>
                                                                                         )}
                                                                                     </div>
-                                                                                    <div className="shrink-0">
+                                                                                    <div className="shrink-0 ml-4">
                                                                                         {isSelected && (
                                                                                             <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
                                                                                         )}
                                                                                         {!isAvailableForThisOrder && (
                                                                                             <span className="text-xs font-bold text-red-400">
-                                                                                                {!meetsMinOrder ? 'Not Eligible' : (!isNotExpired ? 'Expired' : 'Upcoming')}
+                                                                                                {retailTotal === 0 ? 'Retail Only' : (!meetsMinOrder ? 'Không đủ điều kiện' : (!isNotExpired ? 'Hết hạn' : 'Sắp tới'))}
                                                                                             </span>
                                                                                         )}
                                                                                     </div>
@@ -629,8 +705,8 @@ export default function Cart() {
                                                                             const isStarted = !startDate || startDate <= now;
                                                                             const isNotExpired = !endDate || endDate > now;
 
-                                                                            const meetsMinOrder = !mv.promotions.min_order_value || totalAmount >= mv.promotions.min_order_value;
-                                                                            const isAvailableForThisOrder = meetsMinOrder && isStarted && isNotExpired;
+                                                                            const meetsMinOrder = !mv.promotions.min_order_value || retailTotal >= Number(mv.promotions.min_order_value);
+                                                                            const isAvailableForThisOrder = meetsMinOrder && isStarted && isNotExpired && retailTotal > 0;
                                                                             const isSelected = selectedFreeShipCode === mv.promotions.code;
 
                                                                             return (
@@ -645,29 +721,34 @@ export default function Cart() {
                                                                                         ? (isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-white bg-white hover:border-emerald-200')
                                                                                         : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'}`}
                                                                                 >
-                                                                                    <div>
-                                                                                        <div className="font-bold text-lg text-emerald-700">
-                                                                                            FREE SHIPPING
+                                                                                    <div className="flex-1">
+                                                                                        <div className="font-bold text-lg text-emerald-700 uppercase">
+                                                                                            MIỄN PHÍ VẬN CHUYỂN
                                                                                         </div>
                                                                                         <div className="text-sm text-slate-500">
                                                                                             Code: <span className="font-mono font-bold">{mv.promotions.code}</span>
                                                                                         </div>
                                                                                         <div className="text-xs text-slate-400 mt-1">
-                                                                                            {mv.promotions.min_order_value ? `Min order: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'No minimum condition'}
+                                                                                            {mv.promotions.min_order_value ? `Giá trị Retail tối thiểu: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'Không giới hạn chi tiêu'}
                                                                                         </div>
+                                                                                        {retailTotal === 0 && (
+                                                                                            <div className="text-[10px] text-amber-600 font-bold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 inline-block uppercase">
+                                                                                                Chỉ áp dụng cho hàng Retail
+                                                                                            </div>
+                                                                                        )}
                                                                                         {(!isStarted || !isNotExpired) && (
                                                                                             <div className="text-xs text-red-500 font-medium mt-1">
-                                                                                                {!isNotExpired ? 'Expired' : `Available from ${startDate?.toLocaleDateString()}`}
+                                                                                                {!isNotExpired ? 'Đã hết hạn' : `Kích hoạt từ ngày ${startDate?.toLocaleDateString()}`}
                                                                                             </div>
                                                                                         )}
                                                                                     </div>
-                                                                                    <div className="shrink-0">
+                                                                                    <div className="shrink-0 ml-4">
                                                                                         {isSelected && (
                                                                                             <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
                                                                                         )}
                                                                                         {!isAvailableForThisOrder && (
                                                                                             <span className="text-xs font-bold text-red-400">
-                                                                                                {!meetsMinOrder ? 'Not Eligible' : (!isNotExpired ? 'Expired' : 'Upcoming')}
+                                                                                                {retailTotal === 0 ? 'Retail Only' : (!meetsMinOrder ? 'Không đủ điều kiện' : (!isNotExpired ? 'Hết hạn' : 'Sắp tới'))}
                                                                                             </span>
                                                                                         )}
                                                                                     </div>

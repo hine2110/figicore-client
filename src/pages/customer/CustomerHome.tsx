@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { productsService } from '@/services/products.service';
 import { customersService } from '@/services/customers.service';
 import { calculateFinalPrice } from '@/lib/utils';
@@ -60,8 +60,20 @@ export default function CustomerHome() {
                     return arr;
                 };
 
-                setRetailProducts(shuffle(getList(retailData)).slice(0, 6));
-                setPreorderProducts(shuffle(getList(preorderData)).slice(0, 4));
+                const getPrioritizedList = (data: any, maxCount: number) => {
+                    const items = getList(data);
+                    // Lấy riêng các sp đang Sale (đã được Backend ưu tiên vị trí)
+                    const onSaleItems = items.filter((p: any) => p.product_variants?.some((v: any) => v.is_on_sale) || p.product_promotions);
+                    // Lọc các sp không Sale
+                    const normalItems = items.filter((p: any) => !p.product_variants?.some((v: any) => v.is_on_sale) && !p.product_promotions);
+                    
+                    // Ghép: Giữ nguyên Sale ở đầu, Shuffle mảng còn lại
+                    // Nếu muốn Sale cũng shuffle thì bọc shuffle(onSaleItems)
+                    return [...onSaleItems, ...shuffle(normalItems)].slice(0, maxCount);
+                };
+
+                setRetailProducts(getPrioritizedList(retailData, 6));
+                setPreorderProducts(getPrioritizedList(preorderData, 4));
                 setLiveSessions(Array.isArray(liveData) ? liveData : []);
                 if (statsData) setStats(statsData);
                 if (Array.isArray(flashData)) setFlashSaleItems(flashData);
@@ -75,26 +87,44 @@ export default function CustomerHome() {
         loadData();
     }, []);
 
+    // ⚡ Real-time Flash Sale: re-fetch active flash sales (used for polling + onExpire)
+    const refreshFlashSales = useCallback(async () => {
+        try {
+            const data = await PromotionsService.getActiveFlashSales();
+            setFlashSaleItems(Array.isArray(data) ? data : []);
+        } catch {
+            // silently fail — don't clear existing data on network error
+        }
+    }, []);
+
+    // Poll every 60 seconds to update sold/quota counts and detect new/ended sales
+    useEffect(() => {
+        const id = setInterval(refreshFlashSales, 60_000);
+        return () => clearInterval(id);
+    }, [refreshFlashSales]);
+
     // Helpers
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
-        const basePrice = Number(product.product_variants?.[0]?.price || 0);
+        const variant = product.product_variants?.[0] || {};
+        const basePrice = Number(variant.price || 0);
         if (isNaN(basePrice)) return 'Contact';
 
-        const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
-        const finalPrice = calculateFinalPrice(basePrice, promo);
+        const finalPrice = Number(variant.final_price || basePrice);
+        const isOnSale = variant.is_on_sale;
+        const discountPercentage = variant.discount_percentage;
 
-        if (finalPrice < basePrice) {
+        if (isOnSale && finalPrice < basePrice) {
             return (
                 <div className="flex flex-col items-start leading-none gap-1">
                     <div className="flex items-center gap-2">
                         <span className="text-red-600 font-bold text-lg">
                             {formatPrice(finalPrice)}
                         </span>
-                        {promo?.type_code === 'PERCENTAGE' && (
+                        {discountPercentage > 0 && (
                             <span className="bg-red-100/80 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
-                                -{Number(promo.value)}%
+                                -{discountPercentage}%
                             </span>
                         )}
                     </div>
@@ -343,6 +373,7 @@ export default function CustomerHome() {
                                 <FlashSaleSection
                                     items={flashSaleItems}
                                     endTime={flashSaleItems[0]?.end_time}
+                                    onExpire={refreshFlashSales}
                                 />
                             )}
                             {/* New Arrivals */}

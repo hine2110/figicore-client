@@ -102,6 +102,11 @@ export const PromotionsService = {
         return response.data;
     },
 
+    resume: async (id: number) => {
+        const response = await api.patch(`/product-promotions/${id}/resume`);
+        return response.data;
+    },
+
     previewByPriceRange: async (id: number, range: { minPrice: number, maxPrice: number }): Promise<PromotionPreviewResult> => {
         const response = await api.post<PromotionPreviewResult>(`/product-promotions/${id}/preview-range`, range);
         return response.data;

@@ -8,6 +8,7 @@ interface FlashSaleSectionProps {
     items: FlashSaleItem[];
     endTime: string;  // ISO string — shared end_time for the flash sale event
     title?: string;
+    onExpire?: () => void; // called when the countdown reaches 0 → parent can re-fetch
 }
 
 /**
@@ -20,6 +21,7 @@ export default function FlashSaleSection({
     items,
     endTime,
     title = 'FLASH SALE',
+    onExpire,
 }: FlashSaleSectionProps) {
     const navigate = useNavigate();
 
@@ -67,7 +69,7 @@ export default function FlashSaleSection({
                             <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">
                                 Ends in
                             </span>
-                            <CountdownTimer endTime={endTime} />
+                            <CountdownTimer endTime={endTime} onExpire={onExpire} />
                         </div>
                         <button
                             onClick={() => navigate('/customer/retail?filter=flash_sale')}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 
@@ -23,16 +23,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+
 import { toast } from 'sonner';
 
 // ──────────────────────────────────────────────────────────
@@ -106,10 +97,6 @@ export default function VoucherListPage() {
     const [viewPromo, setViewPromo] = useState<PromotionDetail | null>(null);
     const [viewPromoLoading, setViewPromoLoading] = useState(false);
 
-    // ── Delete state ──────────────────────────────────────
-    const [deleteVoucherTarget, setDeleteVoucherTarget] = useState<Voucher | null>(null);
-    const [deletePromoTarget, setDeletePromoTarget] = useState<Promotion | null>(null);
-
     // ── Handlers ──────────────────────────────────────────
     const handleViewVoucher = async (v: Voucher) => {
         setViewVoucherLoading(true);
@@ -135,29 +122,10 @@ export default function VoucherListPage() {
         }
     };
 
-    // ── Delete mutations ───────────────────────────────────
-    const deleteVoucherMutation = useMutation({
-        mutationFn: (id: number) => VouchersService.delete(id),
-        onSuccess: () => {
-            toast.success('Voucher deleted successfully.');
-            queryClient.invalidateQueries({ queryKey: ['vouchers'] });
-            setDeleteVoucherTarget(null);
-        },
-        onError: () => toast.error('Failed to delete voucher.'),
-    });
-
-    const deletePromoMutation = useMutation({
-        mutationFn: (id: number) => PromotionsService.delete(id),
-        onSuccess: () => {
-            toast.success('Promotion deleted successfully.');
-            queryClient.invalidateQueries({ queryKey: ['promotions'] });
-            setDeletePromoTarget(null);
-        },
-        onError: () => toast.error('Failed to delete promotion.'),
-    });
 
     // ── Status helpers ─────────────────────────────────────
     const getVoucherStatusObj = (v: any) => {
+        if (!v.is_active) return 'EXPIRED';
         const now = new Date();
         const startDate = v.start_date ? new Date(v.start_date) : new Date();
         const endDate = v.end_date ? new Date(v.end_date) : null;
@@ -169,7 +137,7 @@ export default function VoucherListPage() {
     };
 
     const getPromoStatusObj = (p: any) => {
-        if (!p.is_active) return 'INACTIVE';
+        if (!p.is_active) return 'EXPIRED';
         const now = new Date();
         const buildDateTime = (dateStr: string | null, timeStr: string, fallbackDate: Date): Date => {
             const base = dateStr ? new Date(dateStr) : new Date(fallbackDate);
@@ -206,8 +174,8 @@ export default function VoucherListPage() {
 
         const promoStart = buildDateTime(p.start_date, p.start_time, now);
         const promoEnd = buildDateTime(p.end_date || p.start_date, p.end_time, now);
-        // Remove 59s grace period to match backend's gt: timeStr
-        if (now > promoEnd) return 'INACTIVE';
+        
+        if (now > promoEnd) return 'EXPIRED';
         if (now >= promoStart && now <= promoEnd) return 'ACTIVE';
         return 'SCHEDULED';
     };
@@ -365,12 +333,6 @@ export default function VoucherListPage() {
                                                             <Button variant="ghost" size="icon" title="Edit voucher" onClick={() => navigate(`/manager/vouchers/${v.promotion_id}/edit`)} disabled={!canWrite}>
                                                                 <Edit className="w-4 h-4" />
                                                             </Button>
-                                                            {/* Delete */}
-                                                            {canWrite && (
-                                                                <Button variant="ghost" size="icon" title="Delete voucher" onClick={() => setDeleteVoucherTarget(v)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </Button>
-                                                            )}
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -402,15 +364,13 @@ export default function VoucherListPage() {
                                         <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Status" /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="ALL">All Status</SelectItem>
-                                            <SelectItem value="ACTIVE">Active</SelectItem>
-                                            <SelectItem value="COMING_SOON">Coming Soon</SelectItem>
+                                            <SelectItem value="ACTIVE">Active Now</SelectItem>
+                                            <SelectItem value="SCHEDULED">Scheduled</SelectItem>
                                             <SelectItem value="EXPIRED">Expired</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                             </div>
-
-
 
                             <div className="border rounded-lg bg-white overflow-hidden shadow-sm">
                                 <Table>
@@ -459,10 +419,9 @@ export default function VoucherListPage() {
                                                                 if (maxSave <= 0) return <span className="text-muted-foreground text-xs italic">By product</span>;
 
                                                                 return (
-                                                                    <Badge className="bg-green-100 text-green-800 border-green-300 flex flex-col items-center justify-center p-1.5 h-auto w-fit gap-0.5">
-                                                                        <span>-{formatCurrency(maxSave)}</span>
-                                                                        <span className="text-xs font-normal">({maxPct}%)</span>
-                                                                    </Badge>
+                                                                    <span className="font-bold text-green-700">
+                                                                        {maxPct}%
+                                                                    </span>
                                                                 );
                                                             })()
                                                             : promo.type_code === 'PERCENTAGE' 
@@ -496,7 +455,7 @@ export default function VoucherListPage() {
                                                     <TableCell>
                                                         {(() => {
                                                             const status = getPromoStatusObj(promo);
-                                                            if (status === 'INACTIVE') return <Badge variant="secondary">Inactive</Badge>;
+                                                            if (status === 'EXPIRED') return <Badge variant="secondary" className="bg-slate-100 text-slate-500">Expired</Badge>;
                                                             if (status === 'SCHEDULED') return <Badge className="bg-blue-500 text-white hover:bg-blue-600">Scheduled</Badge>;
                                                             return <Badge className="bg-green-500 hover:bg-green-600">Active Now</Badge>;
                                                         })()}
@@ -520,12 +479,6 @@ export default function VoucherListPage() {
                                                             >
                                                                 <Edit className="h-4 w-4" />
                                                             </Button>
-                                                            {/* Delete */}
-                                                            {canWrite && (
-                                                                <Button variant="ghost" size="icon" title="Delete promotion" onClick={() => setDeletePromoTarget(promo)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            )}
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -605,7 +558,7 @@ export default function VoucherListPage() {
                             {viewPromo?.is_flash_sale && <Badge className="bg-red-500 text-white">⚡ Flash Sale</Badge>}
                         </DialogTitle>
                         <DialogDescription>
-                            {viewPromo?.type_code === 'PERCENTAGE' ? `${Number(viewPromo?.value)}% off` : formatCurrency(Number(viewPromo?.value))}
+                            {viewPromo?.type_code === 'PERCENTAGE' ? `${Number(viewPromo?.value)}% off` : (viewPromo?.is_flash_sale ? 'Dynamic Flash Sale' : formatCurrency(Number(viewPromo?.value)))}
                             {' · '}{viewPromo?.start_time} – {viewPromo?.end_time}
                         </DialogDescription>
                     </DialogHeader>
@@ -648,9 +601,9 @@ export default function VoucherListPage() {
                                                     {formatCurrency(flashPrice)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge className="bg-green-100 text-green-800 border-green-300">
-                                                        -{formatCurrency(savings)} ({savingsPct}%)
-                                                    </Badge>
+                                                    <span className="font-bold text-green-700">
+                                                        {savingsPct}%
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell>{item.quota}</TableCell>
                                                 <TableCell>
@@ -703,9 +656,9 @@ export default function VoucherListPage() {
                                                         {formatCurrency(Math.max(afterDiscount, 0))}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Badge className="bg-green-100 text-green-800 border-green-300">
-                                                            -{formatCurrency(savings)} ({savingsPct}%)
-                                                        </Badge>
+                                                        <span className="font-bold text-green-700">
+                                                            {savingsPct}%
+                                                        </span>
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -738,71 +691,9 @@ export default function VoucherListPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* ════ DELETE CONFIRM: VOUCHER ════ */}
-            <AlertDialog open={!!deleteVoucherTarget} onOpenChange={(open) => !open && setDeleteVoucherTarget(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-red-600">
-                            <Trash2 className="h-5 w-5" /> Delete voucher?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-2">
-                            <p>
-                                Are you sure you want to delete voucher{' '}
-                                <span className="font-semibold font-mono text-foreground">"{deleteVoucherTarget?.code}"</span>?
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                This voucher will be <strong>permanently deleted</strong>. Customers who have already collected it will still be able to use it.
-                            </p>
-                            <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-blue-800 text-xs mt-2">
-                                ℹ️ The system now <strong>marks vouchers as EXPIRED automatically</strong> but preserves them for your records. Use this button only if you want to permanently remove it.
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-red-600 hover:bg-red-700"
-                            onClick={() => deleteVoucherTarget && deleteVoucherMutation.mutate(deleteVoucherTarget.promotion_id)}
-                            disabled={deleteVoucherMutation.isPending}
-                        >
-                            {deleteVoucherMutation.isPending ? 'Deleting...' : 'Delete permanently'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
 
-            {/* ════ DELETE CONFIRM: PRODUCT PROMOTION ════ */}
-            <AlertDialog open={!!deletePromoTarget} onOpenChange={(open) => !open && setDeletePromoTarget(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-red-600">
-                            <Trash2 className="h-5 w-5" /> Delete product promotion?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-2">
-                            <p>
-                                Are you sure you want to delete the promotion{' '}
-                                <span className="font-semibold text-foreground">"{deletePromoTarget?.name}"</span>?
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                The promotion will be disabled and all applied products will automatically revert to their previous promotions.
-                            </p>
-                            <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-blue-800 text-xs mt-2">
-                                ℹ️ Expired promotions are <strong>automatically deactivated and preserved</strong> in the system. Use this button to permanently delete this record.
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-red-600 hover:bg-red-700"
-                            onClick={() => deletePromoTarget && deletePromoMutation.mutate(deletePromoTarget.promotion_id)}
-                            disabled={deletePromoMutation.isPending}
-                        >
-                            {deletePromoMutation.isPending ? 'Deleting...' : 'Delete'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+
+
         </div>
     );
 }

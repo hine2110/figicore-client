@@ -15,6 +15,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 import {
     Collapsible,
     CollapsibleContent,
@@ -240,8 +241,12 @@ export default function WarehouseLayout() {
                 {/* Header (Optional, mostly for title/breadcrumbs) */}
                 <header className="bg-white border-b border-neutral-200 h-14 flex items-center px-8 justify-between lg:justify-end">
                     <div className="lg:hidden w-8"></div> {/* Spacer for toggle button */}
-                    <div className="text-sm text-neutral-500">
-                        Section: <span className="font-semibold text-orange-600">Warehouse Ops</span>
+                    
+                    <div className="flex items-center gap-4">
+                        <NotificationBell />
+                        <div className="text-sm text-neutral-500">
+                            Section: <span className="font-semibold text-orange-600">Warehouse Ops</span>
+                        </div>
                     </div>
                 </header>
 

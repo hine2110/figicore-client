@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PromotionsService } from '@/services/promotions.service';
 import { productsService } from '@/services/products.service';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useGetOpexConfig } from '@/hooks/useOpexSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
@@ -27,6 +28,8 @@ import {
 } from '@/components/ui/dialog';
 
 // ── Zod Schema (Flash Sale ONLY) ─────────────────────────────────────────────
+const opexRef = { current: 0 };
+
 const flashSaleSchema = z.object({
     name: z.string().optional(),
     start_datetime: z.string().min(1, 'Start date & time is required'),
@@ -51,7 +54,11 @@ const flashSaleSchema = z.object({
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Exceeds available stock (${item.stock_available})`, path: [`items.${index}.quota`] });
         }
         if (item.flash_sale_price >= item.original_price) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Flash Sale price must be < original price (${item.original_price.toLocaleString()})`, path: [`items.${index}.flash_sale_price`] });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Flash Sale price must be < original price (${item.original_price.toLocaleString()})`, path: ['items', index, 'flash_sale_price'] });
+        }
+        const breakEvenPrice = item.cost_price * (1 + opexRef.current);
+        if (item.flash_sale_price < Math.ceil(breakEvenPrice)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Lỗ OPEX! Mức giá phải >= Break-even (${Math.ceil(breakEvenPrice).toLocaleString()})`, path: ['items', index, 'flash_sale_price'] });
         }
     });
 });
@@ -97,8 +104,12 @@ export default function FlashSaleEditPage() {
         enabled: !!id,
     });
 
+    // Detect AI-generated promotion — product list is locked (read-only)
+    const isAiPromotion = !!(promoData?.name?.startsWith('[AI Clearance]'));
+
     const form = useForm<FormValues>({
         resolver: zodResolver(flashSaleSchema) as any,
+        mode: 'onChange',
         defaultValues: {
             name: '',
             start_datetime: '',
@@ -107,6 +118,13 @@ export default function FlashSaleEditPage() {
             items: [],
         },
     });
+
+    const { data: opexConfig } = useGetOpexConfig();
+    useEffect(() => {
+        if (opexConfig) {
+            opexRef.current = Object.values(opexConfig).reduce((sum: number, val: any) => sum + Number(val), 0) / 100;
+        }
+    }, [opexConfig]);
 
     const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
 
@@ -146,7 +164,7 @@ export default function FlashSaleEditPage() {
 
     const handleSearchVariant = async () => {
         if (!searchTerm.trim()) {
-            toast({ variant: 'destructive', description: 'Please enter a product name to search' });
+            setSearchResults([]);
             return;
         }
         setIsSearching(true);
@@ -154,7 +172,6 @@ export default function FlashSaleEditPage() {
             const res = await productsService.getProducts({ search: searchTerm });
             const products = Array.isArray(res) ? res : (res as any)?.data;
             if (!products || products.length === 0) {
-                toast({ variant: 'destructive', description: 'No matching products found' });
                 setSearchResults([]);
                 return;
             }
@@ -173,6 +190,18 @@ export default function FlashSaleEditPage() {
             setIsSearching(false);
         }
     };
+
+    useEffect(() => {
+        const delaySearch = setTimeout(() => {
+            if (searchTerm.trim()) {
+                handleSearchVariant();
+            } else {
+                setSearchResults([]);
+            }
+        }, 300);
+        return () => clearTimeout(delaySearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchTerm]);
 
     const handleAddVariant = (variant: any) => {
         if (fields.some(f => f.variant_id === variant.variant_id)) {
@@ -194,18 +223,28 @@ export default function FlashSaleEditPage() {
         setSearchResults([]);
     };
 
-    const [batchPrice, setBatchPrice] = useState<string>('');
+    const [batchDiscountPct, setBatchDiscountPct] = useState<string>('');
     const [batchQuota, setBatchQuota] = useState<string>('');
 
     const applyBatchSettings = () => {
         const items = form.getValues('items');
         if (!items || items.length === 0) return;
-        const updatedItems = items.map(item => ({
-            ...item,
-            flash_sale_price: batchPrice ? Number(batchPrice) : item.flash_sale_price,
-            quota: batchQuota ? Number(batchQuota) : item.quota
-        }));
+        const updatedItems = items.map(item => {
+            let fsPrice = item.flash_sale_price;
+            if (batchDiscountPct) {
+                const pct = Number(batchDiscountPct);
+                if (pct > 0 && pct < 100) {
+                    fsPrice = item.original_price * (1 - pct/100);
+                }
+            }
+            return {
+                ...item,
+                flash_sale_price: fsPrice,
+                quota: batchQuota ? Number(batchQuota) : item.quota
+            };
+        });
         form.setValue('items', updatedItems, { shouldValidate: true, shouldDirty: true });
+        form.trigger();
         toast({ title: 'Batch apply successful', description: `Updated ${items.length} products.` });
     };
     const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
@@ -363,23 +402,43 @@ export default function FlashSaleEditPage() {
                             </div>
 
                             {/* RECURRING TOGGLE */}
-                            <FormField
-                                control={form.control}
-                                name="is_recurring"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-orange-200 bg-orange-50 p-4">
-                                        <div className="space-y-0.5">
-                                            <FormLabel className="text-base font-semibold text-orange-900">🔁 Repeat Daily</FormLabel>
-                                            <FormDescription className="text-orange-700">
-                                                ON — Flash Sale repeats every day in the same time window. OFF — Runs only within the selected date range.
-                                            </FormDescription>
-                                        </div>
-                                        <FormControl>
-                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
+                            {(() => {
+                                const watchedStart = form.watch('start_datetime');
+                                const watchedEnd = form.watch('end_datetime');
+                                const startT = watchedStart?.split('T')[1]?.slice(0, 5);
+                                const endT = watchedEnd?.split('T')[1]?.slice(0, 5);
+                                const isSameTime = !!(startT && endT && startT === endT);
+                                return (
+                                <FormField
+                                    control={form.control}
+                                    name="is_recurring"
+                                    render={({ field }) => (
+                                        <FormItem className={`flex flex-row items-center justify-between rounded-lg border p-4 ${isSameTime ? 'border-slate-200 bg-slate-50 opacity-60' : 'border-orange-200 bg-orange-50'}`}>
+                                            <div className="space-y-0.5">
+                                                <FormLabel className={`text-base font-semibold ${isSameTime ? 'text-slate-500' : 'text-orange-900'}`}>🔁 Repeat Daily</FormLabel>
+                                                <FormDescription className={isSameTime ? 'text-slate-400' : 'text-orange-700'}>
+                                                    ON — Flash Sale repeats every day in the same time window. OFF — Runs only within the selected date range.
+                                                </FormDescription>
+                                                {isSameTime && (
+                                                    <p className="text-xs text-red-600 font-medium pt-1">
+                                                        ⚠️ Start time and end time are the same ({startT}). Repeat Daily would run 24/7 — please use different times to enable this option.
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <FormControl>
+                                                <Switch
+                                                    checked={isSameTime ? false : field.value}
+                                                    onCheckedChange={isSameTime ? undefined : field.onChange}
+                                                    disabled={isSameTime}
+                                                    className={isSameTime ? 'cursor-not-allowed' : ''}
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                );
+                            })()}
+
 
                         </CardContent>
                     </Card>
@@ -393,29 +452,33 @@ export default function FlashSaleEditPage() {
                             <p className="text-sm text-red-700">Add products and configure individual Flash Sale prices & quota per item.</p>
                         </CardHeader>
                         <CardContent className="pt-4 space-y-4">
-                            {/* SEARCH */}
-                            <div className="flex items-center gap-2 max-w-xl">
+                            {/* AI LOCK BANNER */}
+                            {isAiPromotion && (
+                                <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                    <span className="text-xl leading-none shrink-0">🤖</span>
+                                    <div>
+                                        <p className="font-semibold">AI-Generated Promotion — Product List Locked</p>
+                                        <p className="text-amber-700 mt-0.5">This promotion was created by AI for a specific product. You can edit the price, quota, and schedule, but cannot add or remove products.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* SEARCH — hidden for AI promotions */}
+                            {!isAiPromotion && (
+                            <div className="flex items-center gap-2 max-w-xl relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <Input
                                     placeholder="Search product name to add..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearchVariant())}
-                                    className="bg-white"
+                                    className="bg-white pl-9"
                                 />
-                                <Button
-                                    type="button"
-                                    onClick={handleSearchVariant}
-                                    variant="outline"
-                                    className="border-red-200 hover:bg-red-50 text-red-700 shrink-0"
-                                    disabled={isSearching}
-                                >
-                                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Search className="w-4 h-4 mr-2" />}
-                                    Search
-                                </Button>
+                                {isSearching && <Loader2 className="w-5 h-5 animate-spin text-red-500 shrink-0" />}
                             </div>
+                            )}
 
-                            {/* SEARCH RESULTS */}
-                            {searchResults.length > 0 && (
+                            {/* SEARCH RESULTS — hidden for AI promotions */}
+                            {!isAiPromotion && searchResults.length > 0 && (
                                 <div className="border rounded-md shadow-sm bg-white overflow-hidden max-h-60 overflow-y-auto mb-4 border-red-200">
                                     <div className="bg-red-50 px-3 py-2 text-xs font-semibold text-red-800 border-b border-red-100 flex justify-between sticky top-0 z-10">
                                         <span>Search Results ({searchResults.length} variants)</span>
@@ -461,12 +524,13 @@ export default function FlashSaleEditPage() {
                             {fields.length > 0 && (
                                 <div className="flex flex-col sm:flex-row items-end gap-3 p-4 bg-orange-50/50 border border-orange-100 rounded-lg mb-4">
                                     <div className="flex-1 w-full space-y-1.5">
-                                        <label className="text-xs font-semibold text-orange-900 uppercase tracking-wider">Flash Sale Price (All)</label>
+                                        <label className="text-xs font-semibold text-orange-900 uppercase tracking-wider">Discount % (All)</label>
                                         <Input
                                             type="text"
-                                            placeholder="Ex: 50000"
-                                            value={batchPrice ? Number(batchPrice).toLocaleString('vi-VN') : ''}
-                                            onChange={(e) => setBatchPrice(e.target.value.replace(/\D/g, ''))}
+                                            placeholder="Ex: 10"
+                                            value={batchDiscountPct}
+                                            maxLength={2}
+                                            onChange={(e) => setBatchDiscountPct(e.target.value.replace(/\D/g, ''))}
                                             className="bg-white border-orange-200 focus-visible:ring-orange-500"
                                         />
                                     </div>
@@ -483,7 +547,7 @@ export default function FlashSaleEditPage() {
                                     <Button
                                         type="button"
                                         onClick={applyBatchSettings}
-                                        disabled={!batchPrice && !batchQuota}
+                                        disabled={!batchDiscountPct && !batchQuota}
                                         className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white shrink-0"
                                     >
                                         Apply to all
@@ -525,6 +589,7 @@ export default function FlashSaleEditPage() {
                                                         </TableCell>
                                                         <TableCell className="text-center text-slate-500">
                                                             {field.cost_price?.toLocaleString() || 0}đ
+                                                            <div className="text-[10px] text-slate-400 mt-1" title="Minimum price to avoid losing money based on OPEX setting">Break-even: {Math.ceil(field.cost_price * (1 + opexRef.current)).toLocaleString()}đ</div>
                                                         </TableCell>
                                                         <TableCell className="text-center font-medium text-slate-600">
                                                             {field.original_price.toLocaleString()}đ
@@ -535,9 +600,9 @@ export default function FlashSaleEditPage() {
                                                                 {field.stock_available === 0 && <span className="text-[10px] text-red-600 ml-1">Out</span>}
                                                             </span>
                                                         </TableCell>
-                                                        <TableCell>
-                                                            <FormField control={form.control} name={`items.${index}.flash_sale_price`} render={({ field: f }) => (
-                                                                <FormItem>
+                                                        <TableCell className="relative">
+                                                            <FormField control={form.control} name={`items.${index}.flash_sale_price`} render={({ field: f, fieldState }) => (
+                                                                <FormItem className="relative flex flex-col items-center justify-center space-y-0">
                                                                     <FormControl>
                                                                         <Input 
                                                                             type="text" 
@@ -546,16 +611,21 @@ export default function FlashSaleEditPage() {
                                                                                 const rawValue = e.target.value.replace(/\D/g, '');
                                                                                 f.onChange(rawValue ? Number(rawValue) : 0);
                                                                             }}
-                                                                            className="text-center border-orange-200" 
+                                                                            className={`text-center ${fieldState.error ? 'border-red-500 bg-red-50 text-red-600 focus-visible:ring-red-500' : 'border-orange-200'}`} 
                                                                         />
                                                                     </FormControl>
-                                                                    <FormMessage className="text-[10px]" />
+                                                                    {fieldState.error && (
+                                                                        <div className="absolute top-[calc(100%+4px)] left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-md pointer-events-none whitespace-nowrap">
+                                                                            {fieldState.error.message}
+                                                                            <div className="absolute -top-1 left-1/2 -translate-x-1/2 border-[3px] border-transparent border-b-red-600"></div>
+                                                                        </div>
+                                                                    )}
                                                                 </FormItem>
                                                             )} />
                                                         </TableCell>
                                                         <TableCell>
-                                                            <FormField control={form.control} name={`items.${index}.quota`} render={({ field: f }) => (
-                                                                <FormItem>
+                                                            <FormField control={form.control} name={`items.${index}.quota`} render={({ field: f, fieldState }) => (
+                                                                <FormItem className="relative flex flex-col items-center justify-center space-y-0">
                                                                     <FormControl>
                                                                         <Input
                                                                             type="text"
@@ -564,10 +634,10 @@ export default function FlashSaleEditPage() {
                                                                                 const rawValue = e.target.value.replace(/\D/g, '');
                                                                                 f.onChange(rawValue ? Number(rawValue) : 0);
                                                                             }}
-                                                                            className={`text-center font-bold ${isQuotaOver ? 'border-red-500 bg-red-50' : 'border-blue-200'}`}
+                                                                            className={`text-center font-bold ${fieldState.error || isQuotaOver ? 'border-red-500 bg-red-50 text-red-600 focus-visible:ring-red-500' : 'border-blue-200'}`}
+                                                                            title={fieldState.error?.message || (isQuotaOver ? "Exceeds available stock" : "")}
                                                                         />
                                                                     </FormControl>
-                                                                    <FormMessage className="text-[10px]" />
                                                                 </FormItem>
                                                             )} />
                                                         </TableCell>
@@ -575,23 +645,38 @@ export default function FlashSaleEditPage() {
                                                             {(() => {
                                                                 const fsPrice = form.watch(`items.${index}.flash_sale_price`) || 0;
                                                                 const original = field.original_price || 0;
-                                                                if (original === 0 || fsPrice === 0 || fsPrice >= original) return <span className="text-slate-400">-</span>;
-                                                                const percent = Math.round(((original - fsPrice) / original) * 100);
-                                                                const amountSaved = original - fsPrice;
+                                                                const percent = (original > 0 && fsPrice > 0 && fsPrice < original) 
+                                                                    ? Math.round(((original - fsPrice) / original) * 100) 
+                                                                    : '';
+                                                                const amountSaved = original > 0 && fsPrice > 0 ? (original - fsPrice) : 0;
                                                                 return (
                                                                     <div className="flex flex-col items-center">
-                                                                        <span className="font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded textxs">
-                                                                            -{percent}%
-                                                                        </span>
-                                                                        <span className="text-[10px] text-red-500 mt-0.5">-{amountSaved.toLocaleString()}đ</span>
+                                                                        <div className="relative w-[70px]">
+                                                                            <Input
+                                                                                type="text"
+                                                                                value={percent}
+                                                                                onChange={(e) => {
+                                                                                    let pct = Number(e.target.value.replace(/\D/g, ''));
+                                                                                    if (pct > 99) pct = 99;
+                                                                                    if (pct >= 0) {
+                                                                                        form.setValue(`items.${index}.flash_sale_price`, original * (1 - pct/100), { shouldValidate: true });
+                                                                                    }
+                                                                                }}
+                                                                                className="text-center font-bold text-red-600 bg-red-50 border-red-200 h-8 pr-4"
+                                                                                maxLength={2}
+                                                                            />
+                                                                            <span className="absolute right-2 top-2 text-xs font-bold text-red-500/70 select-none pointer-events-none">%</span>
+                                                                        </div>
                                                                     </div>
                                                                 );
                                                             })()}
                                                         </TableCell>
                                                         <TableCell>
+                                                            {!isAiPromotion && (
                                                             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="hover:bg-red-100 hover:text-red-600">
                                                                 <Trash2 className="w-4 h-4" />
                                                             </Button>
+                                                            )}
                                                         </TableCell>
                                                     </TableRow>
                                                 );
