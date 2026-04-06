@@ -13,7 +13,8 @@ import {
     ArrowUpDown,
     Camera,
     Sparkles,
-    X
+    X,
+    Zap,
 } from 'lucide-react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
@@ -34,8 +35,8 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BlindBoxPromoSection } from '@/components/customer/BlindBoxPromoSection';
-import CollectVoucherBlock from '@/components/CollectVoucherBlock';
 import { ImageUploadModal } from '@/components/customer/ImageUploadModal';
+import { PromotionsService } from '@/services/promotions.service';
 
 export default function RetailShop() {
     const navigate = useNavigate();
@@ -64,6 +65,7 @@ export default function RetailShop() {
     const selectedCategory = searchParams.get('category_id') || 'all';
     const selectedSeries = searchParams.get('series_id') || 'all';
     const selectedType = 'RETAIL'; // Hardcoded
+    const isFlashSaleFilter = searchParams.get('filter') === 'flash_sale';
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -118,13 +120,55 @@ export default function RetailShop() {
                 setLoading(true);
                 setProducts(location.state.visualSearchData);
                 setIsVisualSearch(true);
-                setIsExactMatch(location.state.isExactMatch ?? true); // Update isExactMatch from location state
+                setIsExactMatch(location.state.isExactMatch ?? true);
                 setLoading(false);
                 return;
             }
 
             setLoading(true);
             setIsVisualSearch(false);
+
+            // ⚡ Flash Sale Filter Mode — fetch only active flash sale products
+            if (isFlashSaleFilter) {
+                try {
+                    const flashItems = await PromotionsService.getActiveFlashSales();
+                    const flashList = Array.isArray(flashItems) ? flashItems : [];
+
+                    // Convert flash sale item shape → product card shape
+                    const mapped = flashList.map((item: any) => ({
+                        product_id: item.product_id,
+                        name: item.name,
+                        media_urls: item.image ? [item.image] : [],
+                        brands: { name: item.brand },
+                        status_code: 'ACTIVE',
+                        product_variants: [{
+                            variant_id: item.variant_id,
+                            price: item.original_price,
+                            final_price: item.flash_sale_price,
+                            is_on_sale: true,
+                            discount_percentage: Math.round(
+                                ((item.original_price - item.flash_sale_price) / item.original_price) * 100
+                            ),
+                            stock_available: item.quota - (item.sold ?? 0),
+                        }],
+                        _flash_meta: {
+                            promotion_name: item.promotion_name,
+                            end_time: item.end_time,
+                            sold: item.sold,
+                            quota: item.quota,
+                        }
+                    }));
+                    setProducts(mapped);
+                    setCurrentPage(1);
+                } catch (error) {
+                    console.error('Failed to fetch flash sale products', error);
+                    setProducts([]);
+                } finally {
+                    setLoading(false);
+                }
+                return;
+            }
+
             try {
                 const params: any = {
                     limit: 1000,
@@ -133,24 +177,30 @@ export default function RetailShop() {
                     brand_id: searchParams.get('brand_id') !== 'all' ? Number(searchParams.get('brand_id')) : undefined,
                     category_id: searchParams.get('category_id') !== 'all' ? Number(searchParams.get('category_id')) : undefined,
                     series_id: searchParams.get('series_id') !== 'all' ? Number(searchParams.get('series_id')) : undefined,
-                    type_code: selectedType, // Hardcoded
+                    type_code: selectedType,
                     min_price: searchParams.get('min_price') ? Number(searchParams.get('min_price')) : undefined,
                     max_price: searchParams.get('max_price') ? Number(searchParams.get('max_price')) : undefined,
                     color: searchParams.get('color') || undefined,
                 };
 
                 const res = await productsService.getProducts(params);
-                setProducts(Array.isArray(res) ? res : (res as any).data || []);
+                let loadedProducts = Array.isArray(res) ? res : (res as any).data || [];
+
+                // Prioritize sale items to the top
+                const onSaleItems = loadedProducts.filter((p: any) => p.product_variants?.some((v: any) => v.is_on_sale));
+                const normalItems = loadedProducts.filter((p: any) => !p.product_variants?.some((v: any) => v.is_on_sale));
+
+                setProducts([...onSaleItems, ...normalItems]);
                 setCurrentPage(1);
             } catch (error) {
-                console.error("Failed to fetch products", error);
+                console.error('Failed to fetch products', error);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchProducts();
-    }, [searchParams, location.state]);
+    }, [searchParams, location.state, isFlashSaleFilter]);
 
     // Update Filter Helper
     const updateFilter = (key: string, value: string) => {
@@ -177,54 +227,27 @@ export default function RetailShop() {
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
-        // 1. Determine Base Price (Min Price from Variants)
-        let basePrice = 0;
-        if (product.product_variants && product.product_variants.length > 0) {
-            const prices = product.product_variants.map((v: any) => Number(v.price));
-            basePrice = Math.min(...prices);
-        } else if (product.price) {
-            // Fallback if price is on root
-            basePrice = Number(product.price);
-        } else {
-            return 'Contact';
-        }
+        const variant = product.product_variants?.[0] || {};
+        const basePrice = Number(variant.price || product.price || 0);
 
-        // 2. Check for Promotions
-        const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
-        
-        // Strict Check Range
-        const minPrice = promo?.min_apply_price ? Number(promo.min_apply_price) : 0;
-        const maxPrice = promo?.max_apply_price ? Number(promo.max_apply_price) : Infinity;
+        if (isNaN(basePrice)) return 'Contact';
 
-        // Validation: Must be active AND within price range
-        const isValidPromo = promo && promo.is_active && basePrice >= minPrice && basePrice <= maxPrice;
+        const finalPrice = Number(variant.final_price || basePrice);
+        const isOnSale = variant.is_on_sale;
+        const discountPercentage = variant.discount_percentage;
 
-        let finalPrice = basePrice;
-
-        if (isValidPromo) {
-            const discountValue = Number(promo.value);
-            if (promo.type_code === 'PERCENTAGE') {
-                finalPrice = basePrice * (1 - discountValue / 100);
-            } else if (promo.type_code === 'FIXED_AMOUNT') {
-                finalPrice = basePrice - discountValue;
-            }
-        }
-
-        const hasDiscount = finalPrice < basePrice;
-        
-        // Optional: Check if multiple variants
         const hasMultiplePrices = product.product_variants && new Set(product.product_variants.map((v: any) => Number(v.price))).size > 1;
 
-        if (hasDiscount) {
+        if (isOnSale && finalPrice < basePrice) {
             return (
                 <div className="flex flex-col items-start leading-none gap-1">
                      <div className="flex items-center gap-2">
                         <span className="text-red-600 font-bold text-lg">
                             {formatPrice(finalPrice)}
                          </span>
-                         {promo?.type_code === 'PERCENTAGE' && (
+                         {discountPercentage > 0 && (
                             <span className="bg-red-100/80 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
-                                -{Number(promo.value)}%
+                                -{discountPercentage}%
                             </span>
                          )}
                      </div>
@@ -262,7 +285,7 @@ export default function RetailShop() {
         });
     };
 
-    const pageTitle = 'Retail Collection';
+    const pageTitle = isFlashSaleFilter ? '⚡ Flash Sale' : 'Retail Collection';
 
     return (
         <CustomerLayout activePage="products">
@@ -284,32 +307,48 @@ export default function RetailShop() {
 
                             {/* Title Section */}
                             <div className="flex items-center gap-4">
-                                <h1 className="text-2xl font-semibold tracking-tight text-slate-800 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
+                                <h1 className={`text-2xl font-semibold tracking-tight bg-clip-text text-transparent ${isFlashSaleFilter ? 'bg-gradient-to-r from-orange-500 to-red-600' : 'bg-gradient-to-r from-slate-900 to-slate-700'}`}>
                                     {pageTitle}
                                 </h1>
+                                {isFlashSaleFilter && (
+                                    <span className="text-xs font-bold text-white bg-gradient-to-r from-orange-500 to-red-600 px-3 py-1 rounded-full animate-pulse">
+                                        LIVE
+                                    </span>
+                                )}
                             </div>
 
                             {/* Toolbar */}
                             <div className="flex items-center gap-3 w-full md:w-auto">
-                                {/* Search */}
-                                <div className="relative flex-1 md:w-64">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search collection..."
-                                        value={searchText}
-                                        onChange={(e) => setSearchText(e.target.value)}
-                                        className="w-full h-11 pl-11 pr-12 rounded-2xl bg-slate-100/50 border-0 focus:ring-2 focus:ring-blue-500/20 text-sm transition-all hover:bg-white/80 focus:bg-white"
-                                    />
-                                    <button 
-                                        onClick={() => setIsImageModalOpen(true)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-200/50 text-slate-400 hover:text-indigo-500 transition-all"
-                                        title="Tìm kiếm bằng hình ảnh"
+                                {isFlashSaleFilter ? (
+                                    /* Flash Sale Mode: just show exit button */
+                                    <Button
+                                        onClick={() => navigate('/customer/retail')}
+                                        variant="ghost"
+                                        className="h-11 px-5 rounded-2xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 transition-all font-medium"
                                     >
-                                        <Camera className="w-4 h-4" />
-                                    </button>
-                                </div>
-
+                                        <X className="w-4 h-4 mr-2" />
+                                        Xem tất cả sản phẩm
+                                    </Button>
+                                ) : (
+                                    <>
+                                        {/* Search */}
+                                        <div className="relative flex-1 md:w-64">
+                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Search collection..."
+                                                value={searchText}
+                                                onChange={(e) => setSearchText(e.target.value)}
+                                                className="w-full h-11 pl-11 pr-12 rounded-2xl bg-slate-100/50 border-0 focus:ring-2 focus:ring-blue-500/20 text-sm transition-all hover:bg-white/80 focus:bg-white"
+                                            />
+                                            <button
+                                                onClick={() => setIsImageModalOpen(true)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-200/50 text-slate-400 hover:text-indigo-500 transition-all"
+                                                title="Tìm kiếm bằng hình ảnh"
+                                            >
+                                                <Camera className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                 {/* Filters Trigger */}
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -409,6 +448,8 @@ export default function RetailShop() {
                                         <DropdownMenuItem className="rounded-xl cursor-pointer" onClick={() => setSortBy('price_desc')}>Price: High to Low</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
+                                </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -416,11 +457,6 @@ export default function RetailShop() {
 
                 {/* MYSTERY HOOK SECTION */}
                 <BlindBoxPromoSection />
-
-                {/* VOUCHER BLOCK SECTION */}
-                <div className="container mx-auto px-4 max-w-7xl relative z-10 mt-4">
-                    <CollectVoucherBlock />
-                </div>
 
                 {/* --- PRODUCT GRID (Glass Cards) --- */}
                 <div className="container mx-auto px-4 relative z-10 max-w-7xl pt-4">
@@ -552,24 +588,11 @@ export default function RetailShop() {
 
                                                         {/* SALE BADGE */}
                                                         {(() => {
-                                                            const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
-                                                            // Determine Base Price (Min Price from Variants or Root)
-                                                            let basePrice = 0;
-                                                            if (product.product_variants && product.product_variants.length > 0) {
-                                                                const prices = product.product_variants.map((v: any) => Number(v.price));
-                                                                basePrice = Math.min(...prices);
-                                                            } else if (product.price) {
-                                                                basePrice = Number(product.price);
-                                                            }
-                                                            
-                                                            const minPrice = promo?.min_apply_price ? Number(promo.min_apply_price) : 0;
-                                                            const maxPrice = promo?.max_apply_price ? Number(promo.max_apply_price) : Infinity;
-                                                            const isValidPromo = promo && promo.is_active && basePrice >= minPrice && basePrice <= maxPrice;
-
-                                                            return isValidPromo ? (
+                                                            const variant = product.product_variants?.[0] || {};
+                                                            return variant.is_on_sale ? (
                                                                 <div className="absolute top-3 right-3 z-20">
                                                                     <div className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-md uppercase tracking-wider">
-                                                                        SALE {promo?.type_code === 'PERCENTAGE' ? `-${Number(promo.value)}%` : ''}
+                                                                        SALE {variant.discount_percentage ? `-${variant.discount_percentage}%` : ''}
                                                                     </div>
                                                                 </div>
                                                             ) : null;

@@ -55,6 +55,17 @@ const parseNumberStr = (val: string) => {
     return numericStr ? Number(numericStr) : undefined;
 };
 
+/**
+ * Convert a datetime-local string ("2026-04-05T23:01") to ISO-8601 UTC.
+ * Unlike `new Date(str).toISOString()` which treats the string as UTC,
+ * this function treats it as LOCAL time (correct for datetime-local inputs).
+ */
+const localDatetimeToISO = (datetimeLocalStr: string): string => {
+    if (!datetimeLocalStr) return '';
+    const d = new Date(datetimeLocalStr); // browsers parse datetime-local as LOCAL
+    return d.toISOString();
+};
+
 // Simplified form schema for editing.
 const formSchema = z.object({
     discount_type: z.enum(['RANK_PERCENTAGE', 'FREE_SHIP']),
@@ -125,13 +136,22 @@ export default function VoucherEditPage() {
                 dtype = 'PRODUCT_PERCENTAGE'; // (Fallback, shouldn't occur)
             }
 
+            // Convert UTC ISO string → local datetime-local string (YYYY-MM-DDTHH:mm)
+            const toLocalDatetimeStr = (isoStr: string | null | undefined): string => {
+                if (!isoStr) return '';
+                const d = new Date(isoStr);
+                if (isNaN(d.getTime())) return '';
+                const offset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+            };
+
             form.reset({
                 discount_type: dtype as any,
                 name: voucherData.name || "",
                 code: voucherData.code || "",
                 discount_value: voucherData.discount_value || 0,
-                start_date: voucherData.start_date ? voucherData.start_date.substring(0, 16) : "",
-                end_date: voucherData.end_date ? voucherData.end_date.substring(0, 16) : "",
+                start_date: toLocalDatetimeStr(voucherData.start_date),
+                end_date: toLocalDatetimeStr(voucherData.end_date),
                 min_order_value: voucherData.min_order_value || 0,
                 apply_rank_code: voucherData.apply_rank_code || "ALL",
                 max_quantity: voucherData.max_quantity || undefined,
@@ -163,8 +183,9 @@ export default function VoucherEditPage() {
                 apply_rank_code: values.apply_rank_code === 'ALL' ? undefined : values.apply_rank_code,
                 max_quantity: values.max_quantity || undefined,
                 is_public: values.is_public,
-                start_date: new Date(values.start_date!).toISOString(),
-                end_date: new Date(values.end_date!).toISOString(),
+                is_active: true, // preserve active state when updating
+                ...(values.start_date ? { start_date: localDatetimeToISO(values.start_date) } : {}),
+                ...(values.end_date   ? { end_date:   localDatetimeToISO(values.end_date)   } : {}),
             };
 
             await VouchersService.update(Number(id), payload);

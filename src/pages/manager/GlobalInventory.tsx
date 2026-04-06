@@ -23,6 +23,12 @@ export default function GlobalInventory() {
     const [restockDetailOpen, setRestockDetailOpen] = useState(false);
     const [selectedRestockItem, setSelectedRestockItem] = useState<any>(null);
 
+    // Filter, Search & Pagination state
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+
     const handleOpenDetail = (item: any) => {
         setSelectedItem(item);
         setDetailOpen(true);
@@ -36,6 +42,30 @@ export default function GlobalInventory() {
     // Phân loại đề xuất để hiển thị thành 2 cột
     const restockList = recommendations?.filter(r => r.type === 'RESTOCK') || [];
     const clearanceList = recommendations?.filter(r => r.type === 'CLEARANCE') || [];
+
+    // Lọc, Tìm kiếm và phân trang cho Total Stock Distribution
+    const filteredInventory = globalInventory?.filter(item => {
+        // 1. Lọc theo trạng thái
+        let statusMatch = true;
+        if (statusFilter === 'CRITICAL') statusMatch = item.stock <= 10;
+        else if (statusFilter === 'LOW_STOCK') statusMatch = item.stock > 10 && item.stock < 50;
+        else if (statusFilter === 'OPTIMIZED') statusMatch = item.stock >= 50;
+
+        // 2. Lọc theo từ khóa tìm kiếm
+        let searchMatch = true;
+        if (searchTerm.trim()) {
+            const lowerTerm = searchTerm.toLowerCase();
+            const nameMatch = item.name?.toLowerCase().includes(lowerTerm);
+            const skuMatch = item.sku?.toLowerCase().includes(lowerTerm);
+            searchMatch = Boolean(nameMatch || skuMatch);
+        }
+
+        return statusMatch && searchMatch;
+    }) || [];
+
+    const totalPages = Math.ceil(filteredInventory.length / ITEMS_PER_PAGE) || 1;
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const paginatedInventory = filteredInventory.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
     return (
         <div className="space-y-6 pb-12">
@@ -259,11 +289,30 @@ export default function GlobalInventory() {
                     <div className="flex gap-2">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                            <input type="text" placeholder="Search physical stock..." className="pl-9 pr-4 py-2 border rounded-lg text-sm bg-white shadow-sm" />
+                            <input 
+                                type="text" 
+                                placeholder="Search Name or SKU..." 
+                                className="pl-9 pr-4 py-2 border rounded-lg text-sm bg-white shadow-sm outline-none focus:ring-2 focus:ring-purple-500/20"
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setCurrentPage(1); // Reset trang khi search
+                                }}
+                            />
                         </div>
-                        <Button variant="outline" className="gap-2">
-                            <Filter className="w-4 h-4" /> Filter
-                        </Button>
+                        <select 
+                            className="border border-neutral-200 rounded-lg text-sm bg-white shadow-sm px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500/20 text-neutral-700 font-medium"
+                            value={statusFilter}
+                            onChange={(e) => {
+                                setStatusFilter(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                        >
+                            <option value="ALL">All Status</option>
+                            <option value="CRITICAL">Critical (≤10)</option>
+                            <option value="LOW_STOCK">Low Stock (&lt;50)</option>
+                            <option value="OPTIMIZED">Optimized (≥50)</option>
+                        </select>
                     </div>
                 </div>
 
@@ -282,8 +331,14 @@ export default function GlobalInventory() {
                                 [1, 2, 3].map(i => (
                                     <tr key={i}><td colSpan={4} className="px-6 py-4"><Skeleton className="h-6 w-full" /></td></tr>
                                 ))
+                            ) : paginatedInventory.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-8 text-center text-neutral-500 italic">
+                                        No items found matching the selected status.
+                                    </td>
+                                </tr>
                             ) : (
-                                globalInventory?.map(item => (
+                                paginatedInventory.map(item => (
                                     <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
                                         <td className="px-6 py-4 font-medium text-neutral-900">{item.name}</td>
                                         <td className="px-6 py-4 font-mono text-xs text-neutral-500">{item.sku}</td>
@@ -302,6 +357,33 @@ export default function GlobalInventory() {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="flex justify-between items-center pt-2">
+                    <span className="text-sm text-neutral-500">
+                        Showing {filteredInventory.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filteredInventory.length)} of {filteredInventory.length} entries
+                    </span>
+                    <div className="flex gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                            disabled={currentPage === 1}
+                            className="h-8"
+                        >
+                            Previous
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                            disabled={currentPage === totalPages}
+                            className="h-8"
+                        >
+                            Next
+                        </Button>
+                    </div>
                 </div>
             </div>
             

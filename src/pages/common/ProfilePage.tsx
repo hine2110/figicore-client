@@ -29,7 +29,7 @@ import { Shield } from "lucide-react";
 // Schema for Personal Information
 const personalSchema = z.object({
     full_name: z.string().min(2, "Name is required"),
-    phone: z.string().min(10, "Phone is required"),
+    phone: z.string().regex(/^0\d{9}$/, "Phone must be 10 digits starting with 0"),
     address: z.string().optional(),
     avatar_url: z.string().url("Invalid URL").optional().or(z.literal('')),
 });
@@ -268,6 +268,10 @@ export default function ProfilePage() {
     }
 
     const employeeInfo = profile.employees;
+    
+    // Define roles that cannot change their profile picture
+    const restrictedRoles = ['MANAGER', 'STAFF_POS', 'STAFF_INVENTORY'];
+    const isUploadDisabled = restrictedRoles.includes(profile.role_code);
 
     return (
         <div className="container mx-auto py-8">
@@ -282,6 +286,7 @@ export default function ProfilePage() {
                                 currentAvatarUrl={profile?.avatar_url}
                                 defaultFallback={profile?.full_name?.charAt(0)}
                                 onFileSelect={handleAvatarSelect}
+                                disableUpload={isUploadDisabled}
                             />
                             {uploading && (
                                 <p className="text-xs text-muted-foreground mt-2 animate-pulse flex flex-row items-center gap-2">

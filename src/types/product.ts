@@ -96,7 +96,10 @@ export interface Product {
         value: number | string;
         start_date: string;
         end_date: string;
+        start_time: string;
+        end_time: string;
         is_active: boolean;
+        is_recurring: boolean;
         min_apply_price?: number | string | null;
         max_apply_price?: number | string | null;
     };
@@ -109,6 +112,9 @@ export interface ProductPromotion {
     is_active?: boolean;
     start_date?: string;
     end_date?: string;
+    start_time?: string;
+    end_time?: string;
+    is_recurring?: boolean;
     min_apply_price?: number | string | null;
     max_apply_price?: number | string | null;
 }
