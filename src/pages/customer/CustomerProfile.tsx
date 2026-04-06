@@ -51,7 +51,7 @@ import {
 
 const profileSchema = z.object({
     full_name: z.string().min(2, "Full name must be at least 2 characters"),
-    phone: z.string().min(10, "Phone number is invalid").max(11, "Phone number is invalid"),
+    phone: z.string().regex(/^0\d{9}$/, "Phone must be 10 digits starting with 0"),
     dob: z.date().optional().nullable(),
 });
 

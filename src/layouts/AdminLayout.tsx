@@ -23,6 +23,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -176,43 +177,8 @@ export default function AdminLayout() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="icon" className="relative text-neutral-500 hover:text-neutral-900">
-                                <Bell className="w-5 h-5" />
-                                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                            </Button>
-                            <div className="h-6 w-px bg-neutral-200 mx-1"></div>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarImage src={user?.avatar_url || undefined} alt={user?.full_name || undefined} />
-                                            <AvatarFallback>{user?.full_name?.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-56" align="end" forceMount>
-                                    <DropdownMenuLabel className="font-normal">
-                                        <div className="flex flex-col space-y-1">
-                                            <p className="text-sm font-medium leading-none">{user?.full_name}</p>
-                                            <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-                                        </div>
-                                    </DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem asChild>
-                                        <Link to="/admin/profile" className="cursor-pointer font-medium">
-                                            <div className="flex items-center">
-                                                <span>My Profile</span>
-                                            </div>
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>Settings</DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => logout()} className="text-red-600 cursor-pointer">
-                                        Log out
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                        <div className="flex items-center gap-4 px-4">
+                            <NotificationBell />
                         </div>
                     </header>
                 )}

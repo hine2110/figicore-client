@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface TimeLeft {
     hours: number;
@@ -37,11 +37,16 @@ const Colon = () => (
  * CountdownTimer — optimised, client-only, no hydration mismatch.
  * Uses a stable 1-second interval. All heavy DOM work happens inside
  * individual Segment components so parent components needn't re-render.
+ * 
+ * @param onExpire  Optional callback fired once when the timer reaches 0.
+ *                  Use this to trigger a data re-fetch in the parent.
  */
-export default function CountdownTimer({ endTime }: { endTime: string }) {
+export default function CountdownTimer({ endTime, onExpire }: { endTime: string; onExpire?: () => void }) {
     // Defer first render to client so SSR-output matches initial client paint
     const [isMounted, setIsMounted] = useState(false);
     const [timeLeft, setTimeLeft] = useState<TimeLeft>(() => calcTimeLeft(endTime));
+    const onExpireRef = useRef(onExpire);
+    onExpireRef.current = onExpire; // always latest without re-running effect
 
     useEffect(() => {
         setIsMounted(true);
@@ -50,7 +55,11 @@ export default function CountdownTimer({ endTime }: { endTime: string }) {
         const id = setInterval(() => {
             const next = calcTimeLeft(endTime);
             setTimeLeft(next);
-            if (next.expired) clearInterval(id);
+            if (next.expired) {
+                clearInterval(id);
+                // Notify parent ~2 seconds after expiry so UI can show "Sale Ended" briefly
+                setTimeout(() => onExpireRef.current?.(), 2_000);
+            }
         }, 1_000);
 
         return () => clearInterval(id);
