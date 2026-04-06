@@ -137,7 +137,7 @@ export default function Checkout() {
             // Fetch Wallet Balance + My Vouchers
             try {
                 const [walletRes, voucherRes] = await Promise.all([
-                    api.get('/wallet'),
+                    api.get('/wallets/my-wallet'),
                     VouchersService.getMyVouchers().catch(() => []),
                 ]);
                 setWalletBalance(Number(walletRes.data.balance_available) || 0);
