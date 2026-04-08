@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Loader2, Camera } from "lucide-react";
+import { Loader2, Camera, Wallet, QrCode, Upload } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -31,12 +31,23 @@ const passwordSchema = z.object({
     path: ["confirmPassword"],
 });
 
+// Schema for Bank Information (No admin approval needed)
+const bankSchema = z.object({
+    bank_name: z.string().optional(),
+    bank_account_no: z.string().optional(),
+    bank_account_name: z.string().optional(),
+    bank_qr_code_url: z.string().optional(),
+});
+
 export default function ProfilePage() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<any>(null);
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const qrFileInputRef = useRef<HTMLInputElement>(null);
+    const [qrUploading, setQrUploading] = useState(false);
 
     const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +70,11 @@ export default function ProfilePage() {
         },
     });
 
+    const bankForm = useForm<z.infer<typeof bankSchema>>({
+        resolver: zodResolver(bankSchema),
+        defaultValues: { bank_name: "", bank_account_no: "", bank_account_name: "", bank_qr_code_url: "" },
+    });
+
     useEffect(() => {
         fetchProfile();
     }, []);
@@ -69,7 +85,7 @@ export default function ProfilePage() {
         try {
             const data: any = await userService.getProfile();
             setProfile(data);
-            
+
             // Set form values
             const defaultAddress = data.addresses?.find((a: any) => a.is_default)?.detail_address || "";
             form.reset({
@@ -77,6 +93,14 @@ export default function ProfilePage() {
                 phone: data.phone || "",
                 address: defaultAddress,
                 avatar_url: data.avatar_url || "",
+            });
+
+            // Set form values for Bank Info
+            bankForm.reset({
+                bank_name: data.bank_name || "",
+                bank_account_no: data.bank_account_no || "",
+                bank_account_name: data.bank_account_name || "",
+                bank_qr_code_url: data.bank_qr_code_url || "",
             });
         } catch (error) {
             console.error("Failed to load profile", error);
@@ -117,19 +141,50 @@ export default function ProfilePage() {
         try {
             const { url } = await userService.uploadAvatar(file);
             toast({ title: "Success", description: "Avatar uploaded successfully" });
-            
+
             // Optimistic Update
             setProfile((prev: any) => ({ ...prev, avatar_url: url }));
             // Also update form if needed, though profile state drives the UI
         } catch (error: any) {
-            toast({ 
-                variant: "destructive", 
-                title: "Error", 
-                description: error.response?.data?.message || "Failed to upload avatar" 
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: error.response?.data?.message || "Failed to upload avatar"
             });
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
+        }
+    };
+
+    const handleQrFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith("image/")) {
+            toast({ variant: "destructive", title: "Error", description: "Chỉ cho phép định dạng ảnh" });
+            return;
+        }
+
+        setQrUploading(true);
+        try {
+            // SỬ DỤNG API UPLOAD CHUNG CỦA HỆ THỐNG
+            // LƯU Ý: Thay '/upload' bằng API upload ảnh thật của bạn (trả về { url: '...' })
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await api.post('/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            // Lấy url từ response và set thẳng vào Form Ngân hàng
+            const uploadedUrl = res.data.url || res.data.secure_url;
+            bankForm.setValue('bank_qr_code_url', uploadedUrl);
+            toast({ title: "Success", description: "Đã tải ảnh QR lên thành công" });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error", description: "Lỗi tải ảnh lên" });
+        } finally {
+            setQrUploading(false);
+            if (qrFileInputRef.current) qrFileInputRef.current.value = "";
         }
     };
 
@@ -175,6 +230,19 @@ export default function ProfilePage() {
         }
     };
 
+    const onBankSubmit = async (values: z.infer<typeof bankSchema>) => {
+        try {
+            const payload = {
+                ...values,
+                bank_account_name: values.bank_account_name?.toUpperCase()
+            };
+            await api.patch("/users/profile/bank-info", payload);
+            toast({ title: "Success", description: "Cập nhật thông tin nhận lương thành công." });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error", description: error.response?.data?.message || "Lỗi cập nhật ngân hàng" });
+        }
+    };
+
     if (loading) {
         return <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin h-8 w-8" /></div>;
     }
@@ -203,19 +271,19 @@ export default function ProfilePage() {
                 <Card className="md:col-span-1 h-fit">
                     <CardHeader className="text-center">
                         <div className="flex justify-center mb-4 relative group">
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                className="hidden" 
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
                                 accept="image/*"
                                 onChange={handleFileChange}
                             />
-                            
-                            <div 
+
+                            <div
                                 className="relative group"
                                 title={profile.avatar_url ? "Ảnh đại diện cố định (Liên hệ Admin để reset)" : "Nhấn để tải lên ảnh đại diện (Chỉ 1 lần)"}
                             >
-                                <div 
+                                <div
                                     className={`relative overflow-hidden rounded-full w-32 h-32 border-4 border-white shadow-lg ${!profile.avatar_url ? 'cursor-pointer' : ''}`}
                                     onClick={handleAvatarClick}
                                 >
@@ -223,7 +291,7 @@ export default function ProfilePage() {
                                         <AvatarImage src={profile?.avatar_url} className="object-cover" />
                                         <AvatarFallback className="text-4xl">{profile?.full_name?.charAt(0)}</AvatarFallback>
                                     </Avatar>
-                                    
+
                                     {/* Overlay Loading */}
                                     {uploading && (
                                         <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20">
@@ -243,7 +311,7 @@ export default function ProfilePage() {
 
                         <CardTitle>{profile.full_name}</CardTitle>
                         <CardDescription>{profile.email}</CardDescription>
-    {/* ... rest of the component */}
+                        {/* ... rest of the component */}
                         <div className="mt-2">
                             <Badge variant={profile.role_code === 'SUPER_ADMIN' ? 'destructive' : 'default'}>
                                 {profile.role_code}
@@ -269,9 +337,10 @@ export default function ProfilePage() {
                 {/* Right Column: Tabs */}
                 <div className="md:col-span-2">
                     <Tabs defaultValue="personal" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className={`grid w-full ${employeeInfo ? 'grid-cols-4' : 'grid-cols-3'}`}>
                             <TabsTrigger value="personal">Personal Info</TabsTrigger>
                             <TabsTrigger value="work">Work Details</TabsTrigger>
+                            {employeeInfo && <TabsTrigger value="bank">Bank & Payroll</TabsTrigger>}
                             <TabsTrigger value="security">Security</TabsTrigger>
                         </TabsList>
 
@@ -372,7 +441,74 @@ export default function ProfilePage() {
                             </Card>
                         </TabsContent>
 
-                        {/* Tab 3: Security */}
+                        {/* Tab 3: Bank Details (Tự động duyệt) */}
+                        {employeeInfo && (
+                            <TabsContent value="bank">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2"><Wallet className="w-5 h-5 text-indigo-600" /> Bank Information</CardTitle>
+                                        <CardDescription>Update your bank details for payroll. These changes are saved instantly.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Form {...bankForm}>
+                                            <form onSubmit={bankForm.handleSubmit(onBankSubmit)} className="space-y-4">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <FormField control={bankForm.control} name="bank_name" render={({ field }) => (
+                                                        <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="VD: Vietcombank, MBBank..." {...field} /></FormControl><FormMessage /></FormItem>
+                                                    )} />
+                                                    <FormField control={bankForm.control} name="bank_account_no" render={({ field }) => (
+                                                        <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="Số tài khoản..." className="font-mono" {...field} /></FormControl><FormMessage /></FormItem>
+                                                    )} />
+                                                </div>
+                                                <FormField control={bankForm.control} name="bank_account_name" render={({ field }) => (
+                                                    <FormItem><FormLabel>Account Name</FormLabel><FormControl><Input placeholder="Tên in hoa không dấu (VD: NGUYEN VAN A)" {...field} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <FormField control={bankForm.control} name="bank_qr_code_url" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="flex items-center gap-2"><QrCode className="w-4 h-4" /> Ảnh Mã QR Nhận Lương</FormLabel>
+                                                        <FormControl>
+                                                            <div className="flex flex-col gap-3">
+                                                                <input type="file" ref={qrFileInputRef} className="hidden" accept="image/*" onChange={handleQrFileChange} />
+
+                                                                <div className="flex items-center gap-4">
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        onClick={() => qrFileInputRef.current?.click()}
+                                                                        disabled={qrUploading}
+                                                                        className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                                                    >
+                                                                        {qrUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                                                                        {field.value ? "Thay đổi ảnh QR" : "Tải ảnh QR lên"}
+                                                                    </Button>
+                                                                    {field.value && (
+                                                                        <Button type="button" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => bankForm.setValue('bank_qr_code_url', '')}>
+                                                                            Xóa ảnh
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+
+                                                                {field.value && (
+                                                                    <div className="p-3 border border-dashed border-indigo-200 rounded-lg bg-slate-50 w-fit relative group">
+                                                                        <img src={field.value} alt="QR Preview" className="max-h-40 object-contain rounded shadow-sm" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <Button type="submit" disabled={bankForm.formState.isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                                                    {bankForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Bank Details
+                                                </Button>
+                                            </form>
+                                        </Form>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        )}
+
+                        {/* Tab 4: Security */}
                         <TabsContent value="security">
                             <Card>
                                 <CardHeader>
