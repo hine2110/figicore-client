@@ -22,7 +22,7 @@ import {
     ChevronLeft,
     ChevronRight,
 } from 'lucide-react';
-import { getOrders, cancelOrder } from '@/services/posService';
+import { getOrders, cancelOrder, getOrderById } from '@/services/posService';
 import { useToast } from '@/components/ui/use-toast';
 import type { PosOrder } from '@/types/pos.types';
 import { format, addDays, subDays } from 'date-fns';
@@ -369,9 +369,24 @@ export default function OrderProcessing() {
                                         <TableRow
                                             key={order.order_id}
                                             className="group hover:bg-neutral-50/80 transition-all border-neutral-100 cursor-pointer"
-                                            onClick={() => {
-                                                setSelectedOrder(order);
-                                                setDetailsModalOpen(true);
+                                            onClick={async () => {
+                                                setLoading(true);
+                                                try {
+                                                    const response = await getOrderById(order.order_id);
+                                                    if (response.success && response.data) {
+                                                        setSelectedOrder(response.data);
+                                                        setDetailsModalOpen(true);
+                                                    }
+                                                } catch (error) {
+                                                    console.error("Failed to load order detail:", error);
+                                                    toast({
+                                                        title: 'Error',
+                                                        description: 'Failed to load full order details',
+                                                        variant: 'destructive',
+                                                    });
+                                                } finally {
+                                                    setLoading(false);
+                                                }
                                             }}
                                         >
                                             <TableCell className="pl-6 py-4">
@@ -426,10 +441,25 @@ export default function OrderProcessing() {
                                                     variant="ghost"
                                                     size="icon"
                                                     className="h-9 w-9 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                                                    onClick={(e) => {
+                                                    onClick={async (e) => {
                                                         e.stopPropagation();
-                                                        setSelectedOrder(order);
-                                                        setDetailsModalOpen(true);
+                                                        setLoading(true);
+                                                        try {
+                                                            const response = await getOrderById(order.order_id);
+                                                            if (response.success && response.data) {
+                                                                setSelectedOrder(response.data);
+                                                                setDetailsModalOpen(true);
+                                                            }
+                                                        } catch (error) {
+                                                            console.error("Failed to load order detail:", error);
+                                                            toast({
+                                                                title: 'Error',
+                                                                description: 'Failed to load full order details',
+                                                                variant: 'destructive',
+                                                            });
+                                                        } finally {
+                                                            setLoading(false);
+                                                        }
                                                     }}
                                                 >
                                                     <Eye className="w-5 h-5" />

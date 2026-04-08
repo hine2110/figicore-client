@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, Upload, Video, Image as ImageIcon, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import axios from "axios";
 
 export type MediaItem = {
@@ -17,8 +14,11 @@ interface VariantMediaManagerProps {
     onChange: (items: MediaItem[]) => void;
 }
 
-export function VariantMediaManager({ value = [], onChange }: VariantMediaManagerProps) {
+export function VariantMediaManager({ value, onChange }: VariantMediaManagerProps) {
     const [uploading, setUploading] = useState(false);
+    
+    // Defensive check: Ensure value is always an array
+    const safeValue = Array.isArray(value) ? value : [];
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
@@ -45,7 +45,7 @@ export function VariantMediaManager({ value = [], onChange }: VariantMediaManage
                 };
             });
 
-            onChange([...value, ...newMedia]);
+            onChange([...safeValue, ...newMedia]);
         } catch (error) {
             console.error("Upload failed", error);
             alert("Upload failed. Check console.");
@@ -55,7 +55,7 @@ export function VariantMediaManager({ value = [], onChange }: VariantMediaManage
     };
 
     const handleRemove = (index: number) => {
-        const next = [...value];
+        const next = [...safeValue];
         next.splice(index, 1);
         onChange(next);
     };
@@ -64,7 +64,7 @@ export function VariantMediaManager({ value = [], onChange }: VariantMediaManage
         <div className="space-y-4">
             {/* PREVIEW GRID */}
             <div className="grid grid-cols-4 gap-2">
-                {value.map((item, idx) => (
+                {safeValue.map((item, idx) => (
                     <div key={idx} className="relative aspect-square bg-neutral-100 rounded-md overflow-hidden border group">
                         {item.type === 'IMAGE' ? (
                             <img src={item.url} className="w-full h-full object-cover" />
@@ -88,7 +88,7 @@ export function VariantMediaManager({ value = [], onChange }: VariantMediaManage
                 ))}
 
                 {/* EMPTY STATE */}
-                {value.length === 0 && (
+                {safeValue.length === 0 && (
                     <div className="col-span-4 py-4 text-center text-sm text-neutral-400 border border-dashed rounded-md">
                         No media assets added.
                     </div>

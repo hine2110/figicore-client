@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 
 // Guards
 import ProtectedRoute from "@/guards/ProtectedRoute";
@@ -13,7 +13,9 @@ import PosLayout from "@/layouts/PosLayout";
 // Pages
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 
-import AccountManagement from "@/pages/admin/AccountManagement";
+import AccountManagement from "./pages/admin/AccountManagement";
+import LivestreamManagement from "./pages/admin/LivestreamManagement";
+import AdminLivestreamLive from "./pages/admin/AdminLivestreamLive";
 import ProfileApproval from "@/pages/admin/ProfileApproval";
 import ProductManagement from "@/pages/admin/ProductManagement";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
@@ -21,6 +23,7 @@ import OrderOversight from "@/pages/admin/OrderOversight";
 import ProfilePage from "@/pages/common/ProfilePage";
 import AuctionManagement from "@/pages/admin/AuctionManagement";
 import AdminAuctionDetail from "@/pages/admin/AdminAuctionDetail";
+import AdminAuctionLive from "@/pages/admin/AdminAuctionLive";
 import ManualRefund from "@/pages/admin/ManualRefund";
 import SystemSettings from "@/pages/admin/SystemSettings";
 import AuditLogs from "@/pages/admin/AuditLogs";
@@ -37,6 +40,8 @@ import CustomerFeedback from "@/pages/manager/CustomerFeedback";
 import PromotionListPage from "@/pages/manager/promotions/PromotionListPage";
 import PromotionCreatePage from "@/pages/manager/promotions/PromotionCreatePage";
 import PromotionEditPage from "@/pages/manager/promotions/PromotionEditPage";
+import FlashSaleCreatePage from "@/pages/manager/promotions/FlashSaleCreatePage";
+import FlashSaleEditPage from "@/pages/manager/promotions/FlashSaleEditPage";
 import VoucherListPage from "@/pages/manager/vouchers/VoucherListPage";
 import VoucherCreatePage from "@/pages/manager/vouchers/VoucherCreatePage";
 import VoucherEditPage from "@/pages/manager/vouchers/VoucherEditPage";
@@ -56,10 +61,12 @@ import CustomerWallet from "@/pages/customer/CustomerWallet";
 import CustomerProfile from "@/pages/customer/CustomerProfile";
 import CustomerAuctions from "@/pages/customer/Auctions";
 import CustomerAuctionRoom from "@/pages/customer/AuctionRoom";
+import CustomerLivestreamRoom from "@/pages/customer/CustomerLivestreamRoom";
 import CustomerProductDetail from "@/pages/customer/ProductDetail";
 import OrderDetail from "@/pages/customer/OrderDetail"; // New Import
 import PreOrderPayment from "@/pages/customer/PreOrderPayment";
 import OrderSuccess from "@/pages/customer/OrderSuccess";
+import CollectVoucher from "@/pages/customer/CollectVoucher";
 import ScrollToTop from "@/components/ScrollToTop";
 
 // Staff Pages
@@ -71,6 +78,7 @@ import ReturnInspection from "@/pages/warehouse/ReturnInspection";
 import WarehouseDashboard from "@/pages/warehouse/WarehouseDashboard";
 import WarehouseSchedule from "@/pages/warehouse/WarehouseSchedule";
 import WarehouseTimesheets from "@/pages/warehouse/WarehouseTimesheets";
+import MyPayrollWarehouse from "./pages/warehouse/MyPayroll";
 
 // POS Pages
 import OrderProcessing from "@/pages/pos/OrderProcessing";
@@ -81,6 +89,7 @@ import PosTimesheets from "@/pages/pos/PosTimesheets";
 import SessionManager from "@/pages/pos/SessionManager";
 import CustomerDetailPage from "@/pages/pos/CustomerDetailPage";
 import CustomerLookup from "@/pages/pos/CustomerLookup";
+import MyPayrollPos from "./pages/pos/MyPayroll";
 
 // Guest Pages
 import { GuestHome } from "@/pages/guest/GuestHome";
@@ -96,9 +105,8 @@ import ActivationPage from "@/pages/auth/ActivationPage";
 import { Toaster } from "@/components/ui/toaster";
 import LeaveApprovals from "./pages/manager/LeaveApprovals";
 import CorrectionApprovals from "./pages/manager/CorrectionApprovals";
-import MyPayrollWarehouse from "./pages/warehouse/MyPayroll";
-import MyPayrollPos from "./pages/pos/MyPayroll";
 import PayrollManagement from "./pages/manager/PayrollManagement";
+
 export default function App() {
     return (
         <BrowserRouter>
@@ -140,10 +148,13 @@ export default function App() {
                             <Route path="orders" element={<OrderOversight />} />
                             <Route path="auctions" element={<AuctionManagement />} />
                             <Route path="auctions/:id" element={<AdminAuctionDetail />} />
+                            <Route path="auctions/:id/live" element={<AdminAuctionLive />} />
                             <Route path="refunds" element={<ManualRefund />} />
                             <Route path="settings" element={<SystemSettings />} />
                             <Route path="logs" element={<AuditLogs />} />
                             <Route path="accounts" element={<AccountManagement />} />
+                            <Route path="livestreams" element={<LivestreamManagement />} />
+                            <Route path="livestreams/:id/live" element={<AdminLivestreamLive />} />
                             <Route path="profile" element={<ProfilePage />} />
                         </Route>
                     </Route>
@@ -166,7 +177,9 @@ export default function App() {
                             <Route path="profile" element={<ProfilePage />} />
                             <Route path="promotions" element={<PromotionListPage />} />
                             <Route path="promotions/new" element={<PromotionCreatePage />} />
+                            <Route path="promotions/flash-sale/new" element={<FlashSaleCreatePage />} />
                             <Route path="promotions/:id/edit" element={<PromotionEditPage />} />
+                            <Route path="promotions/flash-sale/:id/edit" element={<FlashSaleEditPage />} />
                             <Route path="vouchers" element={<VoucherListPage />} />
                             <Route path="vouchers/new" element={<VoucherCreatePage />} />
                             <Route path="payroll" element={<Payroll />} />
@@ -210,24 +223,26 @@ export default function App() {
 
                     {/* CUSTOMER Routes */}
                     <Route element={<RoleGuard allowedRoles={['CUSTOMER']} />}>
-                        <Route path="/customer">
+                        <Route path="/customer" element={<Outlet />}>
                             <Route index element={<Navigate to="/customer/home" replace />} />
                             <Route path="home" element={<CustomerHome />} />
-                            {/* <Route path="shop" element={<CustomerShop />} /> */}
                             <Route path="retail" element={<RetailShop />} />
                             <Route path="blindbox" element={<BlindBoxShop />} />
                             <Route path="preorder" element={<PreOrderShop />} />
                             <Route path="product/:id" element={<CustomerProductDetail />} />
                             <Route path="cart" element={<Cart />} />
                             <Route path="checkout" element={<Checkout />} />
+                            <Route path="vouchers" element={<Navigate to="/customer/profile?tab=vouchers" replace />} />
+                            <Route path="vouchers/collect/:promotionId" element={<CollectVoucher />} />
                             <Route path="order-success" element={<OrderSuccess />} />
 
-                            <Route path="orders/:id" element={<OrderDetail />} /> {/* New Route */}
+                            <Route path="orders/:id" element={<OrderDetail />} />
                             <Route path="preorders/:id/pay" element={<PreOrderPayment />} />
                             <Route path="wallet" element={<CustomerWallet />} />
                             <Route path="profile" element={<CustomerProfile />} />
                             <Route path="auctions" element={<CustomerAuctions />} />
                             <Route path="auctions/:id" element={<CustomerAuctionRoom />} />
+                            <Route path="live/:id" element={<CustomerLivestreamRoom />} />
                         </Route>
                     </Route>
 

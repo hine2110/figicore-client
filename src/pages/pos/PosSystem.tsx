@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, ShoppingCart, Trash2, CreditCard, Smartphone, DollarSign, Grid, AlertCircle, Filter, UserPlus, X, RotateCcw, Gift, Wallet } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, CreditCard, Smartphone, DollarSign, Grid, AlertCircle, Filter, UserPlus, X, RotateCcw, Gift, Wallet, Camera as LucideCamera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import CashPaymentModal from './components/CashPaymentModal';
 import QRPaymentModal from './components/QRPaymentModal';
 import { PosProductCard } from './components/PosProductCard';
 import { PosCartItem as CartItemComponent } from './components/PosCartItem';
+import BarcodeScannerModal from './components/BarcodeScannerModal';
 import type { PosOrder } from '@/types/pos.types';
 import {
     Popover,
@@ -72,12 +73,7 @@ export default function StaffPOS() {
     const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
     const [registerModalOpen, setRegisterModalOpen] = useState(false);
 
-    // VAT Mock State
-    const [isVatExport, setIsVatExport] = useState(false);
-    const [vatTaxNumber, setVatTaxNumber] = useState('');
-    const [vatCompanyName, setVatCompanyName] = useState('');
-    const [vatCompanyAddress, setVatCompanyAddress] = useState('');
-    const [vatInvoiceEmail, setVatInvoiceEmail] = useState('');
+
 
     // Success Modal State
     const [lastCreatedOrder, setLastCreatedOrder] = useState<PosOrder | null>(null);
@@ -87,6 +83,7 @@ export default function StaffPOS() {
     // QR Payment Modal State
     const [isQrModalOpen, setIsQrModalOpen] = useState(false);
     const [pendingQrOrder, setPendingQrOrder] = useState<{ orderId: number; paymentRef: string; amount: number } | null>(null);
+    const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
 
     const { toast } = useToast();
     const navigate = useNavigate();
@@ -146,8 +143,6 @@ export default function StaffPOS() {
                         price: Number(item.unit_price),
                         quantity: item.quantity,
                         thumbnail: thumbnail,
-                        tax_rate: Number(item.tax_rate || 0),
-                        tax_amount: Number(item.tax_amount || 0),
                     };
                 });
                 setCart(restoredCart);
@@ -329,8 +324,6 @@ export default function StaffPOS() {
                 price: variant.price,
                 quantity: 1,
                 thumbnail: variant.thumbnail || product.thumbnail,
-                tax_rate: (variant as any).tax_rate || 0, // Store Tax Rate
-                tax_amount: (variant.price * ((variant as any).tax_rate || 0)) / 100
             }];
         });
     };
@@ -420,13 +413,7 @@ export default function StaffPOS() {
     };
 
     const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    // Dynamic Tax Calculation
-    const taxAmount = cart.reduce((sum, item) => {
-        const itemTax = (item.price * item.quantity) * ((item.tax_rate || 0) / 100);
-        return sum + itemTax;
-    }, 0);
-
-    const finalTotal = cartTotal + taxAmount;
+    const finalTotal = cartTotal;
 
     const handleCheckout = async (paymentMethod: string, cashInfo?: { received: number, change: number }) => {
         if (!hasSession) {
@@ -454,11 +441,6 @@ export default function StaffPOS() {
                     items: cart.map(item => ({ variant_id: item.variant_id, quantity: item.quantity })),
                     payment_method_code: 'VIETQR',
                     user_id: selectedCustomer?.user_id || undefined,
-                    is_vat_export: isVatExport,
-                    vat_tax_number: isVatExport ? vatTaxNumber : undefined,
-                    vat_company_name: isVatExport ? vatCompanyName : undefined,
-                    vat_company_address: isVatExport ? vatCompanyAddress : undefined,
-                    vat_invoice_email: isVatExport ? vatInvoiceEmail : undefined,
                 };
                 const response = await createPosQrOrder(orderData);
                 setPendingQrOrder({
@@ -497,11 +479,6 @@ export default function StaffPOS() {
                 })),
                 payment_method_code: paymentMethod,
                 user_id: selectedCustomer?.user_id || undefined,
-                is_vat_export: isVatExport,
-                vat_tax_number: isVatExport ? vatTaxNumber : undefined,
-                vat_company_name: isVatExport ? vatCompanyName : undefined,
-                vat_company_address: isVatExport ? vatCompanyAddress : undefined,
-                vat_invoice_email: isVatExport ? vatInvoiceEmail : undefined,
                 cash_received: cashInfo?.received,
                 cash_change: cashInfo?.change,
             };
@@ -530,12 +507,6 @@ export default function StaffPOS() {
             });
         } finally {
             setCheckoutLoading(false);
-            // Reset VAT state after checkout
-            setIsVatExport(false);
-            setVatTaxNumber('');
-            setVatCompanyName('');
-            setVatCompanyAddress('');
-            setVatInvoiceEmail('');
         }
     };
 
@@ -599,6 +570,67 @@ export default function StaffPOS() {
 
     const handleRemoveCustomer = () => {
         setSelectedCustomer(null);
+    };
+
+    const handleBarcodeScan = async (term: string) => {
+        if (!term) return;
+        
+        const { dismiss } = toast({
+            title: "Đang tìm kiếm...",
+            description: `Đang đối soát mã: ${term}`,
+        });
+
+        try {
+            const res = await searchProducts({ q: term });
+            dismiss(); // Dismiss searching toast
+            
+            if (res.success && res.data.length > 0) {
+                // Find exact SKU/Barcode match first
+                let exactMatch: { p: PosProduct, v: PosProductVariant } | null = null;
+                for (const p of res.data) {
+                    for (const v of p.variants) {
+                        if (v.sku === term || v.barcode === term) {
+                            exactMatch = { p, v };
+                            break;
+                        }
+                    }
+                    if (exactMatch) break;
+                }
+
+                if (exactMatch) {
+                    addToCart(exactMatch.p, exactMatch.v);
+                    setSearchTerm('');
+                    toast({
+                        title: 'Đã thêm vào giỏ',
+                        description: `${exactMatch.p.product_name} - ${exactMatch.v.option_name}`,
+                        className: 'bg-cyan-600 text-white border-none'
+                    });
+                } else if (res.data.length === 1 && res.data[0].variants.length === 1) {
+                    // If only one product with one variant found, add it anyway
+                    addToCart(res.data[0], res.data[0].variants[0]);
+                    setSearchTerm('');
+                } else {
+                    // If multiple matches or no exact match, just keep the search term for manual selection
+                    toast({
+                        title: 'Nhiều kết quả',
+                        description: 'Vui lòng chọn thực tế sản phẩm từ danh sách bên dưới.',
+                    });
+                }
+            } else {
+                toast({
+                    title: 'Không tìm thấy',
+                    description: `Không có sản phẩm nào khớp với mã "${term}"`,
+                    variant: 'destructive'
+                });
+            }
+        } catch (err) {
+            console.error("Scan error", err);
+            toast({
+                title: 'Lỗi tìm kiếm',
+                description: 'Đã xảy ra lỗi khi tìm kiếm sản phẩm.',
+                variant: 'destructive'
+            });
+        }
     };
 
     const clearFilters = () => {
@@ -668,10 +700,24 @@ export default function StaffPOS() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                                 <Input
                                     placeholder="Scan barcode or search product name..."
-                                    className="pl-9 h-10 bg-neutral-50 border-neutral-200 focus:bg-white focus:ring-2 focus:ring-cyan-500/20"
+                                    className="pl-9 pr-12 h-10 bg-neutral-50 border-neutral-200 focus:bg-white focus:ring-2 focus:ring-cyan-500/20"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyDown={async (e) => {
+                                        if (e.key === 'Enter') {
+                                            const term = searchTerm.trim();
+                                            handleBarcodeScan(term);
+                                        }
+                                    }}
                                 />
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => setIsScannerModalOpen(true)}
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-neutral-400 hover:text-cyan-500 hover:bg-cyan-50"
+                                >
+                                    <LucideCamera className="w-5 h-5" />
+                                </Button>
                             </div>
                             <div className="flex gap-2 min-w-0 max-w-[60%]">
                                 <div className="flex gap-2 items-center">
@@ -972,91 +1018,14 @@ export default function StaffPOS() {
                     </div>
 
                     <div className="bg-white/80 backdrop-blur-xl border-t border-neutral-200 p-4 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-20 rounded-t-3xl mx-1 mb-1">
-                        {/* VAT Toggle & Form */}
-                        <Card className="p-4 mb-4 border-indigo-100 bg-indigo-50/30">
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                    <ReceiptText className="w-4 h-4 text-indigo-600" />
-                                    <Label className="text-sm font-bold text-neutral-900 cursor-pointer" htmlFor="vat-toggle">
-                                        Export VAT Invoice
-                                    </Label>
-                                </div>
-                                <Switch
-                                    id="vat-toggle"
-                                    checked={isVatExport}
-                                    onCheckedChange={setIsVatExport}
-                                />
-                            </div>
-                            <p className="text-[10px] text-neutral-500 mb-3">Enable this to provide company details for an official VAT invoice.</p>
 
-                            {isVatExport && (
-                                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <div className="space-y-1.5">
-                                        <div className="relative">
-                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
-                                                <AlertCircle className="w-3.5 h-3.5" />
-                                            </div>
-                                            <Input
-                                                placeholder="Tax Identification Number (MST)"
-                                                className="pl-9 h-9 bg-white border-neutral-200 text-sm focus:ring-indigo-500/20"
-                                                value={vatTaxNumber}
-                                                onChange={(e) => setVatTaxNumber(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <div className="relative">
-                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
-                                                <Building2 className="w-3.5 h-3.5" />
-                                            </div>
-                                            <Input
-                                                placeholder="Company Name"
-                                                className="pl-9 h-9 bg-white border-neutral-200 text-sm focus:ring-indigo-500/20"
-                                                value={vatCompanyName}
-                                                onChange={(e) => setVatCompanyName(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <div className="relative">
-                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
-                                                <MapPin className="w-3.5 h-3.5" />
-                                            </div>
-                                            <Input
-                                                placeholder="Company Registered Address"
-                                                className="pl-9 h-9 bg-white border-neutral-200 text-sm focus:ring-indigo-500/20"
-                                                value={vatCompanyAddress}
-                                                onChange={(e) => setVatCompanyAddress(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <div className="relative">
-                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
-                                                <Mail className="w-3.5 h-3.5" />
-                                            </div>
-                                            <Input
-                                                type="email"
-                                                placeholder="Email to receive invoice"
-                                                className="pl-9 h-9 bg-white border-neutral-200 text-sm focus:ring-indigo-500/20"
-                                                value={vatInvoiceEmail}
-                                                onChange={(e) => setVatInvoiceEmail(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </Card>
 
                         <div className="space-y-2 mb-4">
                             <div className="flex justify-between text-neutral-600 text-sm">
                                 <span>Subtotal</span>
                                 <span className="font-medium text-neutral-900">{cartTotal.toLocaleString('vi-VN')}₫</span>
                             </div>
-                            <div className="flex justify-between text-neutral-600 text-sm">
-                                <span>Tax (VAT)</span>
-                                <span>{taxAmount.toLocaleString('vi-VN')}₫</span>
-                            </div>
+
                             <Separator className="my-1.5 bg-neutral-200/60" />
                             <div className="flex justify-between items-end">
                                 <span className="font-bold text-neutral-900">Total</span>
@@ -1066,8 +1035,7 @@ export default function StaffPOS() {
                                 </div>
                             </div>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div className="grid grid-cols-2 gap-2 mb-2 mt-2">
                             <Button
                                 variant="outline"
                                 className="h-10 rounded-xl border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300 text-neutral-700 font-medium"
@@ -1075,17 +1043,9 @@ export default function StaffPOS() {
                                 onClick={() => handleCheckout('CASH')}
                             >
                                 <DollarSign className="w-4 h-4 mr-1.5 text-green-600" />
-                                Cash
+                                Cash Payment
                             </Button>
-                            <Button
-                                variant="outline"
-                                className="h-10 rounded-xl border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300 text-neutral-700 font-medium"
-                                disabled={cart.length === 0 || checkoutLoading}
-                                onClick={() => handleCheckout('WALLET')}
-                            >
-                                <Smartphone className="w-4 h-4 mr-1.5 text-purple-600" />
-                                Wallet
-                            </Button>
+                            {/* Wallet button removed per user request */}
                         </div>
                         <Button
                             className="w-full h-12 text-base font-bold bg-neutral-900 hover:bg-cyan-600 shadow-lg shadow-neutral-900/20 transition-all active:scale-[0.98]"
@@ -1166,6 +1126,13 @@ export default function StaffPOS() {
                     }}
                 />
             )}
+            <BarcodeScannerModal 
+                open={isScannerModalOpen}
+                onClose={() => setIsScannerModalOpen(false)}
+                onScanSuccess={(decodedText) => {
+                    handleBarcodeScan(decodedText);
+                }}
+            />
         </div>
     );
 }

@@ -31,10 +31,10 @@ import { MagicWriteDialog } from "./MagicWriteDialog";
 const baseSchema = z.object({
     name: z.string().min(2, "Product Name is required"),
     description: z.string().optional(),
-    media_items: z.array(z.any()).optional(),
+    media_items: z.array(z.any()).min(1, "At least one product image is required"),
     brand_id: z.coerce.number().min(1, "Brand is required"),
     category_id: z.coerce.number().min(1, "Category is required"),
-    series_id: z.coerce.number().optional(),
+    series_id: z.coerce.number().min(1, "Series is required"),
     type_code: z.enum(["RETAIL", "BLINDBOX", "PREORDER", "AUCTION"]),
 });
 
@@ -48,19 +48,31 @@ const retailSchema = baseSchema.extend({
     type_code: z.literal("RETAIL"),
     variants: z.array(z.object({
         option_name: z.string().min(1, "Option Name is required"),
+        cost_price: z.coerce.number().min(0, "Cost Price must be positive"),
         price: z.coerce.number().min(1000, "Price must be at least 1,000 VND"),
         sku: z.string().min(1, "SKU is required"),
 
-        media_assets: z.array(mediaItemSchema).optional(),
-        description: z.string().optional(),
-        weight_g: z.coerce.number().min(0).optional(),
-        length_cm: z.coerce.number().min(0).optional(),
-        width_cm: z.coerce.number().min(0).optional(),
-        height_cm: z.coerce.number().min(0).optional(),
-        scale: z.string().optional(),
-        material: z.string().optional(),
-        included_items: z.string().optional(),
-    })).min(1, "At least one variant is required"),
+        media_assets: z.array(mediaItemSchema).min(1, "Variant image is required"),
+        description: z.string().min(10, "Variant description is required"),
+        weight_g: z.coerce.number().min(1, "Weight is required"),
+        length_cm: z.coerce.number().min(1, "Length is required"),
+        width_cm: z.coerce.number().min(1, "Width is required"),
+        height_cm: z.coerce.number().min(1, "Height is required"),
+        scale: z.string().min(1, "Scale is required"),
+        material: z.string().min(1, "Material is required"),
+        included_items: z.string().min(1, "Included items are required"),
+    }).refine(
+        (data) => {
+            const cost = Number(data.cost_price) || 0;
+            const retail = Number(data.price) || 0;
+            if (data.cost_price === undefined || data.price === undefined) return true;
+            return retail > cost;
+        },
+        {
+            message: "Retail price must be greater than cost price",
+            path: ["price"],
+        }
+    )).min(1, "At least one variant is required"),
 });
 
 const blindboxSchema = baseSchema.extend({
@@ -73,6 +85,9 @@ const blindboxSchema = baseSchema.extend({
     included_items: z.string().optional(),
     start_date: z.string().min(1, "Start Date is required"),
     end_date: z.string().min(1, "End Date is required"),
+}).refine(data => new Date(data.start_date) <= new Date(data.end_date), {
+    message: "Start Date must be before or equal to End Date",
+    path: ["start_date"]
 });
 
 const preorderSchema = baseSchema.extend({
@@ -81,6 +96,7 @@ const preorderSchema = baseSchema.extend({
 
     variants: z.array(z.object({
         option_name: z.string().min(1, "Option Name is required"),
+        cost_price: z.coerce.number().min(0).optional(),
         price: z.coerce.number().min(1000, "Full Price must be at least 1,000 VND"),
         deposit_amount: z.coerce.number().min(1000, "Deposit must be at least 1,000 VND"),
         slot_limit: z.coerce.number().min(0, "Slots must be positive").default(0), // Maps to preorder_slot_limit
@@ -108,7 +124,8 @@ const auctionSchema = baseSchema.extend({
     type_code: z.literal("AUCTION"),
     variants: z.array(z.object({
         option_name: z.string().min(1, "Option Name is required"),
-        price: z.coerce.number().min(0, "Price can be 0 for auctions"),
+        cost_price: z.coerce.number().min(0).optional(),
+        price: z.coerce.number().min(0, "Price can be 0 for auctions").optional(),
         sku: z.string().min(1, "SKU is required"),
 
         media_assets: z.array(mediaItemSchema).optional(),
@@ -120,7 +137,19 @@ const auctionSchema = baseSchema.extend({
         scale: z.string().optional(),
         material: z.string().optional(),
         included_items: z.string().optional(),
-    })).min(1, "At least one variant is required"),
+    }).refine(
+        (data) => {
+            const cost = Number(data.cost_price) || 0;
+            const retail = Number(data.price) || 0;
+            if (data.cost_price === undefined || data.price === undefined) return true;
+            if (retail === 0 && cost === 0) return true;
+            return retail > cost;
+        },
+        {
+            message: "Retail price must be greater than cost price (unless both are 0)",
+            path: ["price"],
+        }
+    )).min(1, "At least one variant is required"),
 });
 
 const formSchema = z.discriminatedUnion("type_code", [
@@ -145,13 +174,38 @@ const getTypeGradient = (type: string) => {
     }
 };
 
+const StrictNumericInput = ({ field, ...props }: { field: any } & React.ComponentProps<typeof Input>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value.replace(/[^0-9]/g, '');
+        field.onChange(val);
+    };
+
+    return (
+        <Input
+            {...props}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={field.value ?? ""}
+            onChange={handleChange}
+            onKeyDown={(e) => {
+                if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+            }}
+        />
+    );
+};
+
 const FormattedNumberInput = ({ field, placeholder = "0" }: { field: any, placeholder?: string }) => (
     <div className="space-y-1">
         <div className="relative">
-            <Input type="number" min={0} placeholder={placeholder} {...field} className="font-mono" />
-            <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">VND</span>
+            <StrictNumericInput
+                field={field}
+                placeholder={placeholder}
+                className="font-mono pr-12"
+            />
+            <span className="absolute right-3 top-2.5 text-xs text-muted-foreground pointer-events-none">VND</span>
         </div>
-        {field.value > 0 && <div className="text-xs font-medium text-blue-600">{formatPrice(field.value)}</div>}
+        {Number(field.value) > 0 && <div className="text-xs font-medium text-blue-600">{formatPrice(Number(field.value))}</div>}
     </div>
 );
 
@@ -240,7 +294,7 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
     const isBlindbox = product.type_code === 'BLINDBOX';
     const isPreorder = product.type_code === 'PREORDER';
     const isAuction = product.type_code === 'AUCTION';
-    const bb = product.product_blindboxes?.[0];
+    const bb = product.product_blindboxes;
     const pre = product.product_variants?.[0]?.product_preorder_configs;
 
     return (
@@ -523,24 +577,57 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                                     <div>
                                         <h4 className="font-bold text-purple-900">Blindbox Configuration</h4>
                                         <div className="text-xs text-purple-600 mt-1 flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" /> Active Campaign
+                                            <Calendar className="w-3 h-3" /> Sale Period: {bb.start_time ? new Date(bb.start_time).toLocaleDateString() : 'N/A'} - {bb.end_time ? new Date(bb.end_time).toLocaleDateString() : 'N/A'}
                                         </div>
                                     </div>
-                                    <Badge className="bg-white text-purple-700 hover:bg-white border-purple-200 shadow-sm">{bb.target_margin}% Margin</Badge>
+                                    <Badge className="bg-white text-purple-700 hover:bg-white border-purple-200 shadow-sm">{bb.target_margin || 0}% Target Margin</Badge>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 bg-white/60 p-3 rounded-lg border border-purple-100/50">
+                                <div className="grid grid-cols-2 gap-4 bg-white/60 p-3 rounded-lg border border-purple-100/50 shadow-inner">
                                     <div>
                                         <label className="text-[10px] uppercase font-bold text-purple-400">Ticket Price</label>
                                         <div className="text-2xl font-bold text-purple-900">{formatPrice(Number(bb.price))}</div>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] uppercase font-bold text-purple-400">Value Range</label>
-                                        <div className="text-sm font-medium text-purple-800 mt-1">
-                                            {formatPrice(Number(bb.min_value_allow))} - {formatPrice(Number(bb.max_value_allow))}
+                                        <label className="text-[10px] uppercase font-bold text-purple-400">Total Pool Value Range</label>
+                                        <div className="text-sm font-bold text-purple-800 mt-1">
+                                            {formatPrice(Number(bb.min_value))} - {formatPrice(Number(bb.max_value))}
                                         </div>
                                     </div>
                                 </div>
+
+                                {bb.tier_config && (
+                                    <div className="bg-white/80 rounded-lg border border-purple-100 overflow-hidden text-[11px]">
+                                        <Table>
+                                            <TableHeader className="bg-purple-100/50">
+                                                <TableRow className="h-8 hover:bg-transparent">
+                                                    <TableHead className="h-8 py-0 font-bold text-purple-900">Zone / Tier Name</TableHead>
+                                                    <TableHead className="h-8 py-0 font-bold text-purple-900">Chance</TableHead>
+                                                    <TableHead className="h-8 py-0 font-bold text-purple-900 text-center">In Stock</TableHead>
+                                                    <TableHead className="h-8 py-0 font-bold text-purple-900">Value Range</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {(() => {
+                                                    const displayTiers = typeof bb.tier_config === 'string' ? JSON.parse(bb.tier_config) : bb.tier_config;
+
+                                                    return (displayTiers || []).map((tier: any, idx: number) => (
+                                                        <TableRow key={idx} className="h-8 border-purple-50">
+                                                            <TableCell className="py-1 font-semibold">{tier.name || `Zone ${idx + 1}`}</TableCell>
+                                                            <TableCell className="py-1 text-purple-700 font-bold whitespace-nowrap">{tier.probability}%</TableCell>
+                                                            <TableCell className="py-1 text-center font-bold text-blue-600">
+                                                                {tier.stock_count ?? 0}
+                                                            </TableCell>
+                                                            <TableCell className="py-1">
+                                                                {formatPrice(tier.min || tier.value_min)} - {formatPrice(tier.max || tier.value_max)}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ));
+                                                })()}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -603,10 +690,11 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
     const form = useForm<any>({
         resolver: zodResolver(formSchema),
+        mode: "onTouched",
         defaultValues: {
             name: "", description: "", media_items: [], type_code: "RETAIL",
 
-            variants: [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" }],
+            variants: [{ option_name: "Standard", cost_price: 0, price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" }],
             price: 0, min_value_allow: 0, max_value_allow: 0, target_margin: 20, start_date: "", end_date: "",
             full_price: 0, deposit_amount: 0, release_date: "", max_slots: 100,
         },
@@ -614,6 +702,28 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
     const { fields, append, remove, update } = useFieldArray({ control: form.control, name: "variants" });
     const watchedType = form.watch("type_code");
+    const watchedStartDate = form.watch("start_date");
+    const watchedEndDate = form.watch("end_date");
+
+    // --- BLINDBOX DATE AUTO-CORRECTION ---
+    useEffect(() => {
+        if (watchedType === "BLINDBOX" && watchedStartDate && watchedEndDate) {
+            const start = new Date(watchedStartDate);
+            const end = new Date(watchedEndDate);
+
+            if (start > end) {
+                // Swap dates
+                form.setValue("start_date", watchedEndDate);
+                form.setValue("end_date", watchedStartDate);
+
+                toast({
+                    title: "Dates Adjusted",
+                    description: "The sale start date was after the end date, so they have been automatically swapped to ensure a valid range.",
+                    variant: "default",
+                });
+            }
+        }
+    }, [watchedType, watchedStartDate, watchedEndDate, form, toast]);
 
     // Fetch Options
     useEffect(() => {
@@ -650,16 +760,18 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
             if (p.type_code === 'RETAIL' || p.type_code === 'AUCTION') {
                 formValues.variants = p.product_variants?.map((v: any) => ({
-                    option_name: v.option_name, price: Number(v.price), sku: v.sku, media_assets: v.media_assets || [], description: v.description || "",
+                    option_name: v.option_name, price: Number(v.price), cost_price: Number(v.cost_price || 0), sku: v.sku, media_assets: v.media_assets || [], description: v.description || "",
                     weight_g: v.weight_g || 200, length_cm: v.length_cm || 10, width_cm: v.width_cm || 10, height_cm: v.height_cm || 10
-                })) || [{ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }];
+                })) || [{ option_name: "Standard", price: 0, cost_price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }];
             } else if (p.type_code === 'BLINDBOX') {
                 const bb = p.product_blindboxes?.[0];
                 if (bb) {
                     formValues.price = Number(bb.price);
-                    formValues.min_value_allow = Number(bb.min_value_allow);
-                    formValues.max_value_allow = Number(bb.max_value_allow);
+                    formValues.min_value_allow = Number(bb.min_value);
+                    formValues.max_value_allow = Number(bb.max_value);
                     formValues.target_margin = Number(bb.target_margin);
+                    formValues.start_date = bb.start_time ? new Date(bb.start_time).toISOString().split('T')[0] : "";
+                    formValues.end_date = bb.end_time ? new Date(bb.end_time).toISOString().split('T')[0] : "";
                 }
             } else if (p.type_code === 'PREORDER') {
                 const pre = p.product_variants?.[0]?.product_preorder_configs;
@@ -715,7 +827,6 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
     };
 
     // --- AI GENERATION LOGIC ---
-    // --- AI GENERATION LOGIC ---
     const [magicWriteState, setMagicWriteState] = useState<{
         isOpen: boolean;
         target: 'MAIN' | 'VARIANT';
@@ -725,9 +836,49 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         richContext?: any; // <--- Added Rich Context
     }>({ isOpen: false, target: 'MAIN' });
 
+    // --- AI BLINDBOX PRICING ---
+    const [isAnalyzingPrice, setIsAnalyzingPrice] = useState(false);
+    const [pricingSuggestion, setPricingSuggestion] = useState<any>(null);
+
+    const handleSuggestBlindboxPrice = async () => {
+        const minValue = form.getValues('min_value_allow');
+        const maxValue = form.getValues('max_value_allow');
+        const currentPrice = form.getValues('price');
+
+        if (!minValue || !maxValue || Number(minValue) >= Number(maxValue)) {
+            return toast({
+                title: "Lỗi Nhập liệu",
+                description: "Vui lòng nhập Min/Max hợp lệ (Min phải nhỏ hơn Max).",
+                variant: "destructive"
+            });
+        }
+
+        setIsAnalyzingPrice(true);
+        try {
+            const { inventoryAnalyticsService } = await import('@/services/inventory-analytics.service');
+            const res = await inventoryAnalyticsService.analyzeBlindboxRisk({
+                minValue: Number(minValue),
+                maxValue: Number(maxValue),
+                suggestedPrice: Number(currentPrice) || undefined
+            });
+            if (res.success && res.data) {
+                setPricingSuggestion(res.data);
+                // Cập nhật giá vé theo đề xuất AI
+                form.setValue('price', res.data.recommendedTicketPrice);
+                toast({ title: "Phân tích Rủi ro Xong", description: "Đã cập nhật giá bán vé theo chuyên gia AI!" });
+            }
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Lỗi Phân tích", description: "Hệ thống AI đang quá tải, vui lòng thử lại sau.", variant: "destructive" });
+        } finally {
+            setIsAnalyzingPrice(false);
+        }
+    };
+
 
 
     const [generatingIndex, setGeneratingIndex] = useState<number | null>(null); // Track which variant is generating
+    const [loadingAI, setLoadingAI] = useState(false); // Track global AI generation (for non-variant fields)
     const [scaleSuggestions, setScaleSuggestions] = useState<string[]>([]);
     const [materialSuggestions, setMaterialSuggestions] = useState<string[]>([]);
 
@@ -799,6 +950,44 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         }
     };
 
+    // 2.5 Auto-Generate for Blindbox Description
+    const handleAutoGenerateBlindboxDescription = async () => {
+        const values = form.getValues();
+        const name = values.name;
+        const mainImage = values.media_items?.[0]?.url;
+
+        if (!name) {
+            return toast({ title: "Validation Error", description: "Product Name is required.", variant: "destructive" });
+        }
+
+        const brandName = brands.find(b => b.value === values.brand_id)?.label;
+        const catName = categories.find(c => c.value === values.category_id)?.label;
+        const seriesName = series.find(s => s.value === values.series_id)?.label;
+
+        setLoadingAI(true);
+        try {
+            const text = await productsService.generateAiDescription({
+                productName: name,
+                imageUrl: mainImage,
+                richContext: {
+                    type: "Blindbox / Mystery Box",
+                    brand: brandName,
+                    category: catName,
+                    series: seriesName,
+                    price: formatPrice(Number(values.price || 0)),
+                    value_range: `${formatPrice(Number(values.min_value_allow || 0))} - ${formatPrice(Number(values.max_value_allow || 0))}`,
+                }
+            });
+            form.setValue("description", text);
+            toast({ title: "Magic Write", description: "Blindbox description generated!" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Failed to generate description.", variant: "destructive" });
+        } finally {
+            setLoadingAI(false);
+        }
+    };
+
     // 3. Handle Success from Dialog
     const handleMagicWriteSuccess = (text: string) => {
         if (magicWriteState.target === 'MAIN') {
@@ -808,23 +997,41 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
         }
     };
 
-    const onSubmit = async (data: ProductFormValues) => {
+    const onSubmit = async (data: ProductFormValues, targetStatus: string = 'ACTIVE') => {
         setLoading(true);
         try {
             const mediaUrlsAsString = data.media_items?.map((m: MediaItem) => m.url) || [];
             let payload: any = {
-                name: data.name, description: data.description,
+                name: data.name, description: data.description || "",
                 media_urls: mediaUrlsAsString,
                 brand_id: data.brand_id, category_id: data.category_id, series_id: data.series_id,
-                type_code: data.type_code, status_code: 'ACTIVE'
+                type_code: data.type_code, status_code: targetStatus
             };
 
             if (data.type_code === "RETAIL" || data.type_code === "AUCTION") {
-                payload.variants = data.variants.map((v: any) => ({
-                    option_name: v.option_name, price: v.price, sku: v.sku, media_assets: v.media_assets, description: v.description, stock_available: 0,
-                    weight_g: v.weight_g, length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm,
-                    scale: v.scale, material: v.material, included_items: v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : []
-                }));
+                payload.variants = data.variants.map((v: any) => {
+                    const variant: any = {
+                        option_name: v.option_name,
+                        price: v.price || 0,
+                        sku: v.sku,
+                        media_assets: v.media_assets,
+                        description: v.description,
+                        stock_available: 0,
+                        weight_g: v.weight_g,
+                        length_cm: v.length_cm,
+                        width_cm: v.width_cm,
+                        height_cm: v.height_cm,
+                        scale: v.scale,
+                        material: v.material,
+                        included_items: v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : []
+                    };
+
+                    if (data.type_code === "RETAIL") {
+                        variant.cost_price = v.cost_price || 0;
+                    }
+
+                    return variant;
+                });
             } else if (data.type_code === "BLINDBOX") {
                 payload.blindbox = {
                     price: data.price, min_value_allow: data.min_value_allow, max_value_allow: data.max_value_allow,
@@ -905,29 +1112,36 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
                         <div className="p-6 flex-1 overflow-y-auto space-y-8">
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                                <form onSubmit={form.handleSubmit((data) => onSubmit(data))} className="space-y-8">
 
                                     {/* SECTION 1: BASIC INFO */}
-                                    <Card>
-                                        <CardHeader className="pb-3 border-b bg-neutral-50/50 rounded-t-lg">
-                                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-neutral-900">1. Basic Information</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-4">
+                                    <div className="bg-gradient-to-br from-blue-50/40 to-indigo-50/40 p-6 rounded-xl border border-blue-100/50 space-y-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                                <Info className="w-4 h-4 text-blue-600" />
+                                            </div>
+                                            <h3 className="text-sm font-bold uppercase tracking-wider text-blue-900">1. Core Identity</h3>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                                            <div className="md:col-span-12">
                                                 <FormField control={form.control} name="name" render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Product Name <span className="text-red-500">*</span></FormLabel>
-                                                        <FormControl><Input placeholder="E.g. Gundam RX-78-2 Ver.Ka" {...field} className="text-base" /></FormControl>
+                                                    <FormItem className="bg-white p-4 rounded-lg border shadow-sm border-blue-100">
+                                                        <FormLabel className="text-[10px] uppercase font-bold tracking-wider text-blue-800">Product Name <span className="text-red-500">*</span></FormLabel>
+                                                        <FormControl><Input placeholder="E.g. Gundam RX-78-2 Ver.Ka" {...field} className="text-base font-semibold border-none bg-transparent p-0 h-auto focus-visible:ring-0" /></FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )} />
-
                                             </div>
 
-                                            <div>
+                                            {/* Media Items Restored */}
+                                            <div className="md:col-span-12">
                                                 <FormField control={form.control} name="media_items" render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Cover Media (Max 1)</FormLabel>
+                                                    <FormItem className="bg-white p-4 rounded-lg border shadow-sm border-blue-100">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <FormLabel className="text-[10px] uppercase font-bold tracking-wider text-blue-800">Primary Product Image <span className="text-red-500">*</span></FormLabel>
+                                                            <span className="text-[10px] text-neutral-400">Recommended size: 1000x1000px</span>
+                                                        </div>
                                                         <FormControl>
                                                             <VariantMediaManager value={field.value} onChange={(vals) => {
                                                                 if (vals.length > 1) { field.onChange([vals[vals.length - 1]]); } else { field.onChange(vals); }
@@ -937,51 +1151,58 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                     </FormItem>
                                                 )} />
                                             </div>
-                                        </CardContent>
-                                    </Card>
+                                        </div>
+                                    </div>
 
                                     {/* SECTION 2: CLASSIFICATION */}
-                                    <Card>
-                                        <CardHeader className="pb-3 border-b bg-neutral-50/50 rounded-t-lg">
-                                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-neutral-900">2. Classification</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="bg-gradient-to-br from-emerald-50/40 to-teal-50/40 p-6 rounded-xl border border-emerald-100/50 space-y-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                                                <Layers className="w-4 h-4 text-emerald-600" />
+                                            </div>
+                                            <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-900">2. Classification</h3>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <FormField control={form.control} name="brand_id" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Brand <span className="text-red-500">*</span></FormLabel>
+                                                <FormItem className="bg-white p-4 rounded-lg border shadow-sm border-emerald-100">
+                                                    <FormLabel className="text-[10px] uppercase font-bold tracking-wider text-emerald-800">Brand <span className="text-red-500">*</span></FormLabel>
                                                     <SmartCreatableSelect options={brands} value={field.value} onChange={field.onChange} onCreate={handleCreateBrand} label="Brand" />
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
                                             <FormField control={form.control} name="category_id" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Category <span className="text-red-500">*</span></FormLabel>
+                                                <FormItem className="bg-white p-4 rounded-lg border shadow-sm border-emerald-100">
+                                                    <FormLabel className="text-[10px] uppercase font-bold tracking-wider text-emerald-800">Category <span className="text-red-500">*</span></FormLabel>
                                                     <SmartCreatableSelect options={categories} value={field.value} onChange={field.onChange} onCreate={handleCreateCategory} label="Category" />
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
                                             <FormField control={form.control} name="series_id" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Series (Optional)</FormLabel>
+                                                <FormItem className="bg-white p-4 rounded-lg border shadow-sm border-emerald-100">
+                                                    <FormLabel className="text-[10px] uppercase font-bold tracking-wider text-emerald-800">Series <span className="text-red-500">*</span></FormLabel>
                                                     <SmartCreatableSelect options={series} value={field.value} onChange={field.onChange} onCreate={handleCreateSeries} label="Series" />
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
-                                        </CardContent>
-                                    </Card>
+                                        </div>
+                                    </div>
 
                                     {/* SECTION 3: TYPE & DETAILS */}
-                                    <Card>
-                                        <CardHeader className="pb-3 border-b bg-neutral-50/50 rounded-t-lg">
-                                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-neutral-900">3. Product Details</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="pt-6 space-y-6">
+                                    <div className="bg-neutral-50/50 p-6 rounded-xl border border-neutral-200/50 space-y-6">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center">
+                                                <Layers className="w-4 h-4 text-neutral-600" />
+                                            </div>
+                                            <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900">3. Product Configuration</h3>
+                                        </div>
 
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                                             <FormField control={form.control} name="type_code" render={({ field }) => (
-                                                <FormItem className="md:w-1/3">
-                                                    <FormLabel>Product Type <span className="text-red-500">*</span></FormLabel>
+                                                <FormItem className="md:col-span-12 bg-white p-4 rounded-lg border shadow-sm border-neutral-200">
+                                                    <FormLabel className="text-[10px] uppercase font-bold tracking-wider text-neutral-800">Product Offering Type <span className="text-red-500">*</span></FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditMode}>
-                                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                        <FormControl><SelectTrigger className="border-none shadow-none p-0 h-auto focus:ring-0 text-base font-semibold"><SelectValue /></SelectTrigger></FormControl>
                                                         <SelectContent>
                                                             <SelectItem value="RETAIL">Retail Product</SelectItem>
                                                             <SelectItem value="BLINDBOX">Blind Box Set</SelectItem>
@@ -992,101 +1213,63 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
+                                        </div>
 
+                                        {/* DYNAMIC FIELDS based on Type */}
+                                        <div className="space-y-6">
+
+                                            {/* (MOVED TO BOTTOM) BLINDBOX DESCRIPTION FIELD */}
+
+                                            {/* RETAIL OR AUCTION VARIANTS */}
+                                            {/* RETAIL VARIANTS */}
                                             {watchedType === "RETAIL" && (
-                                                <div className="w-fit space-y-1.5 pt-2">
-                                                    <FormLabel className="text-[11px] font-semibold text-neutral-500 uppercase tracking-tight">Tax Rate</FormLabel>
-                                                    <div className="h-9 px-3 flex items-center bg-neutral-50 border border-neutral-200 rounded-md text-sm text-neutral-700 cursor-default">
-                                                        <span>1% GTGT, 0,5% TNCN (Phân phối, cung cấp hàng hóa)</span>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* DYNAMIC FIELDS based on Type */}
-                                            <div className="space-y-6">
-
-                                                {/* COMMON DESCRIPTION FIELD FOR BLINDBOX ONLY (Others use per-variant description) */}
-                                                {watchedType === "BLINDBOX" && (
-                                                    <FormField control={form.control} name="description" render={({ field }) => (
-                                                        <FormItem>
-                                                            <div className="flex justify-between items-center mb-1">
-                                                                <FormLabel>Product Description</FormLabel>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-6 text-purple-600 gap-1 hover:bg-purple-50"
-                                                                    onClick={() => {
-                                                                        const values = form.getValues();
-                                                                        // Construct Context for Blindbox
-                                                                        const context = {
-                                                                            type: "Blindbox / Mystery Box",
-                                                                            brand: brands.find(b => b.value === values.brand_id)?.label,
-                                                                            category: categories.find(c => c.value === values.category_id)?.label,
-                                                                            series: series.find(s => s.value === values.series_id)?.label,
-                                                                            price: formatPrice(Number(values.price || 0)),
-                                                                            value_range: `${formatPrice(Number(values.min_value_allow || 0))} - ${formatPrice(Number(values.max_value_allow || 0))}`,
-                                                                            target_margin: `${values.target_margin || 0}%`,
-                                                                            start_date: values.start_date ? new Date(values.start_date).toLocaleDateString() : "TBA",
-                                                                        };
-
-                                                                        setMagicWriteState({
-                                                                            isOpen: true,
-                                                                            target: 'MAIN',
-                                                                            targetName: values.name,
-                                                                            imageUrl: values.media_items?.[0]?.url,
-                                                                            richContext: context
-                                                                        });
-                                                                    }}
-                                                                >
-                                                                    <Sparkles className="w-3 h-3" />
-                                                                    <span className="text-xs">Magic Write</span>
-                                                                </Button>
+                                                <div className="space-y-5 bg-gradient-to-br from-amber-50/30 to-orange-50/30 p-6 rounded-xl border border-amber-100/50">
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                                                                <Layers className="w-4 h-4 text-amber-600" />
                                                             </div>
-                                                            <FormControl>
-                                                                <Textarea placeholder="Describe the product series, rules, or details..." {...field} className="min-h-[120px]" />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )} />
-                                                )}
-
-                                                {/* RETAIL OR AUCTION VARIANTS */}
-                                                {(watchedType === "RETAIL" || watchedType === "AUCTION") && (
-                                                    <div className="space-y-5">
-                                                        <div className="flex justify-between items-center">
-                                                            <h4 className="font-semibold text-sm">{watchedType === "RETAIL" ? "Retail Variants" : "Auction Base Variants"}</h4>
-                                                            <Button type="button" size="sm" variant="outline" onClick={() => append({ option_name: "", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add Variant</Button>
+                                                            <h4 className="font-bold text-sm uppercase tracking-wider text-amber-900">Retail Variants</h4>
                                                         </div>
-                                                        <div className="space-y-4">
-                                                            {fields.map((field, index) => (
-                                                                <div key={field.id} className="bg-white p-4 rounded-lg border shadow-sm relative group">
-                                                                    <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-neutral-400 hover:text-red-500" onClick={() => remove(index)}><Trash2 className="w-4 h-4" /></Button>
+                                                        <Button type="button" size="sm" variant="outline" className="bg-white border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => append({ option_name: "", price: 0, cost_price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add Variant</Button>
+                                                    </div>
+                                                    <div className="space-y-6">
+                                                        {fields.map((field, index) => (
+                                                            <div key={field.id} className="bg-white p-5 rounded-lg border shadow-sm border-amber-100 relative group overflow-hidden">
+                                                                {/* Accent Strip */}
+                                                                <div className="absolute top-0 left-0 w-1 h-full bg-amber-400" />
 
-                                                                    <div className="grid grid-cols-12 gap-4">
-                                                                        {/* Row 1: Basic Stats */}
-                                                                        <div className="col-span-4">
-                                                                            <FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Name</FormLabel><FormControl><Input placeholder="Variant Name" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                                        </div>
-                                                                        <div className="col-span-3">
-                                                                            <FormField control={form.control} name={`variants.${index}.price`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Retail Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                                        </div>
-                                                                        <div className="col-span-3">
-                                                                            <FormField control={form.control} name={`variants.${index}.sku`} render={({ field }) => (
-                                                                                <FormItem>
-                                                                                    <FormLabel className="text-xs text-neutral-500">SKU</FormLabel>
-                                                                                    <div className="flex gap-1">
-                                                                                        <FormControl><Input placeholder="SKU" {...field} readOnly className="bg-neutral-100 font-mono text-xs" /></FormControl>
-                                                                                        <Button type="button" variant="outline" size="icon" onClick={() => handleGenSku(index)}><RefreshCw className="w-3 h-3" /></Button>
-                                                                                    </div>
-                                                                                </FormItem>
-                                                                            )} />
-                                                                        </div>
-                                                                        <div className="col-span-2 flex items-end">
+                                                                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors" onClick={() => remove(index)}><Trash2 className="w-4 h-4" /></Button>
+
+                                                                <div className="grid grid-cols-12 gap-4">
+                                                                    {/* Row 1: Basic Stats */}
+                                                                    <div className="col-span-3">
+                                                                        <FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500 font-bold">Variant Name <span className="text-red-500">*</span></FormLabel><FormControl><Input placeholder="Variant Name" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                    </div>
+                                                                    <div className="col-span-2">
+                                                                        <FormField control={form.control} name={`variants.${index}.cost_price`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500 font-bold">Cost Price <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                    </div>
+                                                                    <div className="col-span-2">
+                                                                        <FormField control={form.control} name={`variants.${index}.price`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500 font-bold">Retail Price <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                    </div>
+                                                                    <div className="col-span-3">
+                                                                        <FormField control={form.control} name={`variants.${index}.sku`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormLabel className="text-xs text-neutral-500">SKU</FormLabel>
+                                                                                <div className="flex gap-1">
+                                                                                    <FormControl><Input placeholder="SKU" {...field} readOnly className="bg-neutral-100 font-mono text-xs" /></FormControl>
+                                                                                    <Button type="button" variant="outline" size="icon" onClick={() => handleGenSku(index)}><RefreshCw className="w-3 h-3" /></Button>
+                                                                                </div>
+                                                                            </FormItem>
+                                                                        )} />
+                                                                    </div>
+                                                                    <div className="col-span-2">
+                                                                        <FormItem>
+                                                                            <FormLabel className="text-xs text-neutral-500 font-bold opacity-0">&nbsp;</FormLabel>
                                                                             <Popover>
                                                                                 <PopoverTrigger asChild>
-                                                                                    <Button variant="outline" className="w-full relative overflow-hidden">
-                                                                                        <ImageIcon className="w-4 h-4 mr-2" /> Media
+                                                                                    <Button variant="outline" className="w-full relative overflow-hidden font-bold">
+                                                                                        <ImageIcon className="w-4 h-4 mr-2" /> Media <span className="text-red-500">*</span>
                                                                                         {form.watch(`variants.${index}.media_assets`)?.length > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full" />}
                                                                                     </Button>
                                                                                 </PopoverTrigger>
@@ -1096,70 +1279,310 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                                     )} />
                                                                                 </PopoverContent>
                                                                             </Popover>
+                                                                        </FormItem>
+                                                                    </div>
+
+
+
+                                                                    <div className="col-span-12 grid grid-cols-4 gap-4 bg-amber-50/40 p-4 rounded-lg border border-amber-100/50">
+                                                                        <FormField control={form.control} name={`variants.${index}.weight_g`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-amber-800 font-bold tracking-tighter">Weight (g) <span className="text-red-500">*</span></FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-amber-200 focus:ring-amber-500" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                                                                        <FormField control={form.control} name={`variants.${index}.length_cm`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-amber-800 font-bold tracking-tighter">Length (cm) <span className="text-red-500">*</span></FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-amber-200 focus:ring-amber-500" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                                                                        <FormField control={form.control} name={`variants.${index}.width_cm`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-amber-800 font-bold tracking-tighter">Width (cm) <span className="text-red-500">*</span></FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-amber-200 focus:ring-amber-500" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                                                                        <FormField control={form.control} name={`variants.${index}.height_cm`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-amber-800 font-bold tracking-tighter">Height (cm) <span className="text-red-500">*</span></FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-amber-200 focus:ring-amber-500" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                                                                    </div>
+
+                                                                    {/* Row 3: Extra Info */}
+                                                                    <div className="col-span-12 grid grid-cols-3 gap-4">
+                                                                        <FormField control={form.control} name={`variants.${index}.scale`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormLabel className="text-xs text-neutral-500 font-bold">Scale <span className="text-red-500">*</span></FormLabel>
+                                                                                <FormControl>
+                                                                                    <SmartCreatableStringSelect
+                                                                                        options={scaleSuggestions}
+                                                                                        value={field.value}
+                                                                                        onChange={field.onChange}
+                                                                                        placeholder="1/144"
+                                                                                        label="Scale"
+                                                                                    />
+                                                                                </FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
+                                                                        <FormField control={form.control} name={`variants.${index}.material`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormLabel className="text-xs text-neutral-500 font-bold">Material <span className="text-red-500">*</span></FormLabel>
+                                                                                <FormControl>
+                                                                                    <SmartCreatableStringSelect
+                                                                                        options={materialSuggestions}
+                                                                                        value={field.value}
+                                                                                        onChange={field.onChange}
+                                                                                        placeholder="PVC, ABS"
+                                                                                        label="Material"
+                                                                                    />
+                                                                                </FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
+                                                                        <FormField control={form.control} name={`variants.${index}.included_items`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500 font-bold">Included Items <span className="text-red-500">*</span></FormLabel><FormControl><Input placeholder="Base, Weapon..." {...field} className="h-8 text-xs bg-white" /></FormControl><FormMessage /></FormItem>)} />
+                                                                    </div>
+
+                                                                    {/* Variant Description (Moved to Bottom) */}
+                                                                    <div className="col-span-12 mt-2">
+                                                                        <FormField control={form.control} name={`variants.${index}.description`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <div className="flex justify-between items-center mb-1">
+                                                                                    <FormLabel className="text-xs text-neutral-500 font-bold">Variant Description <span className="text-red-500">*</span></FormLabel>
+                                                                                    <Button
+                                                                                        type="button"
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="h-6 text-purple-600 gap-1 hover:bg-purple-50"
+                                                                                        onClick={() => handleAutoGenerateVariantDescription(index)}
+                                                                                        disabled={generatingIndex === index}
+                                                                                    >
+                                                                                        {generatingIndex === index ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                                                                        <span className="text-xs">Auto-Generate</span>
+                                                                                    </Button>
+                                                                                </div>
+                                                                                <FormControl><Textarea placeholder="Generated description based on details..." {...field} value={field.value || ""} className="min-h-[80px] text-xs bg-neutral-50" /></FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                </div>
+                                            )}
+
+                                            {/* BLINDBOX FIELDS */}
+                                            {watchedType === "BLINDBOX" && (
+                                                <div className="space-y-6 bg-gradient-to-br from-purple-50/30 to-pink-50/30 p-6 rounded-xl border border-purple-100/50">
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        {/* 1. Ticket Price */}
+                                                        <div className="bg-white p-4 rounded-lg border shadow-sm border-purple-100 flex flex-col justify-center">
+                                                            <div className="flex items-center gap-2 mb-4">
+                                                                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                                                                    <Tag className="w-4 h-4 text-purple-600" />
+                                                                </div>
+                                                                <h4 className="text-[10px] uppercase font-bold tracking-wider text-purple-900">Pricing Configuration</h4>
+                                                            </div>
+                                                            <FormField control={form.control} name="price" render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel className="text-xs font-bold">Ticket Price <span className="text-red-500">*</span></FormLabel>
+                                                                    <FormControl><FormattedNumberInput field={field} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )} />
+                                                        </div>
+
+                                                        {/* 2. Value Ranges */}
+                                                        <div className="bg-white p-4 rounded-lg border shadow-sm border-purple-100">
+                                                            <div className="flex items-center justify-between mb-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                                                        <Layers className="w-4 h-4 text-blue-600" />
+                                                                    </div>
+                                                                    <h4 className="text-[10px] uppercase font-bold tracking-wider text-blue-900">Value Specs (Probabilities)</h4>
+                                                                </div>
+                                                                <Button 
+                                                                    type="button" 
+                                                                    onClick={handleSuggestBlindboxPrice}
+                                                                    disabled={isAnalyzingPrice}
+                                                                    className="h-8 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-md shadow-pink-500/20 gap-1 rounded-xl text-xs px-3"
+                                                                >
+                                                                    {isAnalyzingPrice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-yellow-300" />}
+                                                                    AI Analyze & Suggest Price
+                                                                </Button>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <FormField control={form.control} name="min_value_allow" render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold">Min Value (Common) <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                <FormField control={form.control} name="max_value_allow" render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold">Max Value (Secret) <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                            </div>
+
+                                                            {/* AI Risk Output Box */}
+                                                            {pricingSuggestion && (
+                                                                <div className="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4 animate-in fade-in slide-in-from-top-2">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <div>
+                                                                            <h5 className="text-[11px] uppercase font-bold text-indigo-800 flex items-center gap-1"><Sparkles className="w-3 h-3"/> Chuyên gia Định giá (AI Actuary)</h5>
+                                                                            <p className="text-xs text-indigo-600 mt-1">{pricingSuggestion.explanation}</p>
+                                                                        </div>
+                                                                        <div className="text-right ml-4 shrink-0">
+                                                                            <p className="text-[10px] text-indigo-400">Kỳ Vọng Toán Học (EV)</p>
+                                                                            <p className="font-bold text-indigo-900">{formatPrice(pricingSuggestion.expectedValue)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                                                                        <div className="bg-white p-2 rounded border border-indigo-50 flex items-center justify-between">
+                                                                            <span className="text-neutral-500">Break-even (Hòa Vốn):</span>
+                                                                            <span className="font-medium text-amber-600">{formatPrice(pricingSuggestion.breakEvenPoint)}</span>
+                                                                        </div>
+                                                                        <div className="bg-white p-2 rounded border border-indigo-50 flex items-center justify-between">
+                                                                            <span className="text-neutral-500">Khuyến nghị Giá vé:</span>
+                                                                            <span className="font-medium text-green-600">{formatPrice(pricingSuggestion.recommendedTicketPrice)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {/* Campaign Schedule */}
+                                                    <div className="bg-white p-4 rounded-lg border shadow-sm border-purple-100">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                                                                    <Info className="w-4 h-4 text-purple-600" />
+                                                                </div>
+                                                                <FormLabel className="text-xs font-bold">Blindbox Description <span className="text-red-500">*</span></FormLabel>
+                                                            </div>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-6 text-purple-600 gap-1 hover:bg-purple-50"
+                                                                onClick={() => handleAutoGenerateBlindboxDescription()}
+                                                                disabled={loadingAI}
+                                                            >
+                                                                {loadingAI ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                                                <span className="text-xs font-bold">Smart Write</span>
+                                                            </Button>
+                                                        </div>
+                                                        <FormField control={form.control} name="description" render={({ field }) => (
+                                                            <FormControl><Textarea placeholder="Describe your blindbox set, theme, and potential rewards..." {...field} className="min-h-[100px] text-xs bg-neutral-50 border-none focus-visible:ring-0 p-0" /></FormControl>
+                                                        )} />
+                                                        <FormMessage />
+                                                    </div>
+
+                                                    <div className="bg-white p-4 rounded-lg border shadow-sm border-purple-100">
+                                                        <div className="flex items-center gap-2 mb-4">
+                                                            <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                                                                <Calendar className="w-4 h-4 text-pink-600" />
+                                                            </div>
+                                                            <h4 className="text-[10px] uppercase font-bold tracking-wider text-pink-900">Campaign Schedule</h4>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-6">
+                                                            <FormField control={form.control} name="start_date" render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold">Sale Start <span className="text-red-500">*</span></FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                            <FormField control={form.control} name="end_date" render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold">Sale End <span className="text-red-500">*</span></FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            )}
+
+                                            {/* PREORDER FIELDS */}
+                                            {watchedType === "PREORDER" && (
+                                                <div className="space-y-6 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 p-6 rounded-xl border border-blue-100/50">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                                                        <FormField control={form.control} name="release_date" render={({ field }) => (
+                                                            <FormItem className="bg-white p-4 rounded-lg border shadow-sm border-blue-100">
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <Calendar className="w-4 h-4 text-blue-600" />
+                                                                    <FormLabel className="text-[10px] uppercase font-bold tracking-wider text-blue-800">Target Release Date</FormLabel>
+                                                                </div>
+                                                                <FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} className="border-none shadow-none p-0 h-auto focus-visible:ring-0 text-base font-semibold" /></FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )} />
+
+                                                        <div className="bg-blue-100/50 p-4 rounded-lg border border-blue-200 shadow-inner flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                                                    <Box className="w-4 h-4 text-blue-600" />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] uppercase font-bold tracking-wider text-blue-900 leading-tight">Pre-order Hub</p>
+                                                                    <p className="text-xs text-blue-700 font-medium">Manage versions & deposits</p>
+                                                                </div>
+                                                            </div>
+                                                            <Button type="button" size="sm" variant="outline" className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm" onClick={() => append({ option_name: "", price: 0, deposit_amount: 0, slot_limit: 50, max_qty_per_user: 2, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" })}><Plus className="w-4 h-4 mr-2" />Add Version</Button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-6">
+                                                        <div className="space-y-6">
+                                                            {fields.map((field, index) => (
+                                                                <div key={field.id} className="bg-white p-5 rounded-lg border shadow-sm border-blue-100 relative group overflow-hidden">
+                                                                    {/* Accent Strip */}
+                                                                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-400" />
+
+                                                                    <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors z-10" onClick={() => remove(index)}><Trash2 className="w-4 h-4" /></Button>
+
+                                                                    <div className="space-y-4">
+                                                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                                                            <div className="md:col-span-12">
+                                                                                <FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (
+                                                                                    <FormItem className="bg-neutral-50/50 p-4 rounded-lg border border-neutral-100">
+                                                                                        <FormLabel className="text-[10px] uppercase font-bold tracking-wider text-neutral-500">Version Name <span className="text-red-500">*</span></FormLabel>
+                                                                                        <FormControl><Input placeholder="e.g. Deluxe Edition" {...field} className="text-base font-semibold border-none bg-transparent p-0 h-auto focus-visible:ring-0" /></FormControl>
+                                                                                        <FormMessage />
+                                                                                    </FormItem>
+                                                                                )} />
+                                                                            </div>
                                                                         </div>
 
-
-
-                                                                        {/* Row 2: Physical Specs */}
-                                                                        <div className="col-span-12 grid grid-cols-4 gap-4 bg-neutral-50 p-3 rounded-md">
-                                                                            <FormField control={form.control} name={`variants.${index}.weight_g`} render={({ field }) => (<FormItem className="space-y-0"><FormLabel className="text-[10px] uppercase text-neutral-500">Weight (g)</FormLabel><FormControl><Input type="number" min={0} {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
-                                                                            <FormField control={form.control} name={`variants.${index}.length_cm`} render={({ field }) => (<FormItem className="space-y-0"><FormLabel className="text-[10px] uppercase text-neutral-500">Length (cm)</FormLabel><FormControl><Input type="number" min={0} {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
-                                                                            <FormField control={form.control} name={`variants.${index}.width_cm`} render={({ field }) => (<FormItem className="space-y-0"><FormLabel className="text-[10px] uppercase text-neutral-500">Width (cm)</FormLabel><FormControl><Input type="number" min={0} {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
-                                                                            <FormField control={form.control} name={`variants.${index}.height_cm`} render={({ field }) => (<FormItem className="space-y-0"><FormLabel className="text-[10px] uppercase text-neutral-500">Height (cm)</FormLabel><FormControl><Input type="number" min={0} {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
+                                                                        <div className="grid grid-cols-12 gap-4">
+                                                                            <div className="col-span-6">
+                                                                                <FormField control={form.control} name={`variants.${index}.sku`} render={({ field }) => (
+                                                                                    <FormItem className="bg-neutral-50/30 p-3 rounded-lg border border-dashed border-neutral-200">
+                                                                                        <FormLabel className="text-[9px] uppercase font-bold text-neutral-400">SKU Reference</FormLabel>
+                                                                                        <div className="flex gap-2">
+                                                                                            <FormControl><Input placeholder="SKU" {...field} readOnly className="border-none shadow-none p-0 h-auto focus-visible:ring-0 font-mono text-xs bg-transparent" /></FormControl>
+                                                                                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-neutral-400" onClick={() => handleGenSku(index)}><RefreshCw className="w-3 h-3" /></Button>
+                                                                                        </div>
+                                                                                    </FormItem>
+                                                                                )} />
+                                                                            </div>
+                                                                            <div className="col-span-6 flex items-center justify-end">
+                                                                                <Popover>
+                                                                                    <PopoverTrigger asChild>
+                                                                                        <Button variant="outline" size="sm" className="relative font-bold border-blue-200 text-blue-700 hover:bg-blue-50">
+                                                                                            <ImageIcon className="w-4 h-4 mr-2" /> Variant Media <span className="text-red-500 ml-1">*</span>
+                                                                                            {form.watch(`variants.${index}.media_assets`)?.length > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />}
+                                                                                        </Button>
+                                                                                    </PopoverTrigger>
+                                                                                    <PopoverContent className="w-[400px]" align="end">
+                                                                                        <FormField control={form.control} name={`variants.${index}.media_assets`} render={({ field }) => (<VariantMediaManager value={field.value} onChange={field.onChange} />)} />
+                                                                                    </PopoverContent>
+                                                                                </Popover>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-blue-50/40 p-4 rounded-lg border border-blue-100/50">
+                                                                            <FormField control={form.control} name={`variants.${index}.price`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase font-bold text-blue-800">Full Price <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.deposit_amount`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase font-bold text-blue-800">Deposit <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.slot_limit`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase font-bold text-neutral-500">Slots <span className="text-red-500">*</span></FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs" /></FormControl><FormMessage /></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.max_qty_per_user`} render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase font-bold text-neutral-500">Max/User <span className="text-red-500">*</span></FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs" /></FormControl><FormMessage /></FormItem>)} />
                                                                         </div>
 
-                                                                        {/* Row 3: Extra Info */}
-                                                                        <div className="col-span-12 grid grid-cols-3 gap-4">
-                                                                            <FormField control={form.control} name={`variants.${index}.scale`} render={({ field }) => (
-                                                                                <FormItem>
-                                                                                    <FormLabel className="text-xs text-neutral-500">Scale</FormLabel>
-                                                                                    <FormControl>
-                                                                                        <SmartCreatableStringSelect
-                                                                                            options={scaleSuggestions}
-                                                                                            value={field.value}
-                                                                                            onChange={field.onChange}
-                                                                                            placeholder="1/144"
-                                                                                            label="Scale"
-                                                                                        />
-                                                                                    </FormControl>
-                                                                                </FormItem>
-                                                                            )} />
-                                                                            <FormField control={form.control} name={`variants.${index}.material`} render={({ field }) => (
-                                                                                <FormItem>
-                                                                                    <FormLabel className="text-xs text-neutral-500">Material</FormLabel>
-                                                                                    <FormControl>
-                                                                                        <SmartCreatableStringSelect
-                                                                                            options={materialSuggestions}
-                                                                                            value={field.value}
-                                                                                            onChange={field.onChange}
-                                                                                            placeholder="PVC, ABS"
-                                                                                            label="Material"
-                                                                                        />
-                                                                                    </FormControl>
-                                                                                </FormItem>
-                                                                            )} />
-                                                                            <FormField control={form.control} name={`variants.${index}.included_items`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Included Items (comma separated)</FormLabel><FormControl><Input placeholder="Base, Weapon..." {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
+                                                                        <div className="grid grid-cols-4 gap-4 bg-blue-50/40 p-4 rounded-lg border border-blue-100/50">
+                                                                            <FormField control={form.control} name={`variants.${index}.weight_g`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-blue-800 font-bold tracking-tighter">Weight (g) <span className="text-red-500">*</span></FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-blue-200 focus:ring-blue-500" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.length_cm`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-blue-800 font-bold tracking-tighter">Length (cm) <span className="text-red-500">*</span></FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-blue-200 focus:ring-blue-500" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.width_cm`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-blue-800 font-bold tracking-tighter">Width (cm) <span className="text-red-500">*</span></FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-blue-200 focus:ring-blue-500" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                                                                            <FormField control={form.control} name={`variants.${index}.height_cm`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-blue-800 font-bold tracking-tighter">Height (cm) <span className="text-red-500">*</span></FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-blue-200 focus:ring-blue-500" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
                                                                         </div>
 
-                                                                        {/* Variant Description (Moved to Bottom) */}
-                                                                        <div className="col-span-12 mt-2">
+                                                                        <div className="grid grid-cols-12 gap-4">
+                                                                            <div className="col-span-12 grid grid-cols-3 gap-4">
+                                                                                <FormField control={form.control} name={`variants.${index}.scale`} render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold text-neutral-500">Scale <span className="text-red-500">*</span></FormLabel><FormControl><SmartCreatableStringSelect options={scaleSuggestions} value={field.value} onChange={field.onChange} placeholder="1/144" label="Scale" /></FormControl><FormMessage /></FormItem>)} />
+                                                                                <FormField control={form.control} name={`variants.${index}.material`} render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold text-neutral-500">Material <span className="text-red-500">*</span></FormLabel><FormControl><SmartCreatableStringSelect options={materialSuggestions} value={field.value} onChange={field.onChange} placeholder="PVC, ABS" label="Material" /></FormControl><FormMessage /></FormItem>)} />
+                                                                                <FormField control={form.control} name={`variants.${index}.included_items`} render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold text-neutral-500">Included <span className="text-red-500">*</span></FormLabel><FormControl><Input placeholder="Base..." {...field} className="h-8 text-xs" /></FormControl><FormMessage /></FormItem>)} />
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="col-span-12">
                                                                             <FormField control={form.control} name={`variants.${index}.description`} render={({ field }) => (
-                                                                                <FormItem>
+                                                                                <FormItem className="bg-neutral-50 p-3 rounded-lg border border-neutral-100">
                                                                                     <div className="flex justify-between items-center mb-1">
-                                                                                        <FormLabel className="text-xs text-neutral-500">Variant Description</FormLabel>
-                                                                                        <Button
-                                                                                            type="button"
-                                                                                            variant="ghost"
-                                                                                            size="sm"
-                                                                                            className="h-6 text-purple-600 gap-1 hover:bg-purple-50"
-                                                                                            onClick={() => handleAutoGenerateVariantDescription(index)}
-                                                                                            disabled={generatingIndex === index}
-                                                                                        >
+                                                                                        <FormLabel className="text-[10px] uppercase font-bold text-neutral-500">Description <span className="text-red-500">*</span></FormLabel>
+                                                                                        <Button type="button" variant="ghost" size="sm" className="h-6 text-blue-600 gap-1 hover:bg-blue-50" onClick={() => handleAutoGenerateVariantDescription(index)} disabled={generatingIndex === index}>
                                                                                             {generatingIndex === index ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                                                                            <span className="text-xs">Auto-Generate</span>
+                                                                                            <span className="text-[10px] font-bold">Smart Write</span>
                                                                                         </Button>
                                                                                     </div>
-                                                                                    <FormControl><Textarea placeholder="Generated description based on details..." {...field} className="min-h-[80px] text-xs bg-neutral-50" /></FormControl>
+                                                                                    <FormControl><Textarea placeholder="Details..." {...field} value={field.value || ""} className="min-h-[60px] text-xs bg-transparent border-none focus-visible:ring-0 p-0" /></FormControl>
                                                                                     <FormMessage />
                                                                                 </FormItem>
                                                                             )} />
@@ -1168,165 +1591,169 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                 </div>
                                                             ))}
                                                         </div>
-
                                                     </div>
-                                                )}
+                                                </div>
+                                            )}
 
-                                                {/* BLINDBOX FIELDS */}
-                                                {watchedType === "BLINDBOX" && (
-                                                    <div className="space-y-6">
-                                                        <div className="grid grid-cols-2 gap-6">
-                                                            <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Ticket Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-6 p-4 bg-white rounded-lg border">
-                                                            <FormField control={form.control} name="min_value_allow" render={({ field }) => (<FormItem><FormLabel>Min Value (Common)</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                            <FormField control={form.control} name="max_value_allow" render={({ field }) => (<FormItem><FormLabel>Max Value (Secret)</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-6">
-                                                            <FormField control={form.control} name="start_date" render={({ field }) => (<FormItem><FormLabel>Sale Start</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                            <FormField control={form.control} name="end_date" render={({ field }) => (<FormItem><FormLabel>Sale End</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        </div>
+                                            {/* AUCTION FIELDS (Specialized from Retail) */}
+                                            {watchedType === "AUCTION" && (
+                                                <div className="space-y-6 bg-gradient-to-br from-teal-50/30 to-emerald-50/30 p-6 rounded-xl border border-teal-100/50">
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
+                                                                <Layers className="w-4 h-4 text-teal-600" />
+                                                            </div>
+                                                            <h4 className="font-bold text-sm uppercase tracking-wider text-teal-900">Auction Base Variants</h4>
+                                                        </div>                                                        <Button type="button" size="sm" variant="outline" className="bg-white border-teal-200 text-teal-700 hover:bg-teal-50" onClick={() => append({ option_name: "Standard", price: 0, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" })}><Plus className="w-4 h-4 mr-2" />Add Variant</Button>
                                                     </div>
-                                                )}
-
-                                                {/* PREORDER FIELDS */}
-                                                {watchedType === "PREORDER" && (
                                                     <div className="space-y-6">
-                                                        <FormField control={form.control} name="release_date" render={({ field }) => (<FormItem className="md:w-1/2"><FormLabel>Target Release Date</FormLabel><FormControl><Input type="date" min={new Date().toISOString().split("T")[0]} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                        {fields.map((field, index) => (
+                                                            <div key={field.id} className="bg-white p-5 rounded-lg border shadow-sm border-teal-100 relative group overflow-hidden">
+                                                                <div className="absolute top-0 left-0 w-1 h-full bg-teal-400" />
+                                                                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors z-10" onClick={() => remove(index)}><Trash2 className="w-4 h-4" /></Button>
 
-                                                        <div className="space-y-4">
-                                                            <div className="flex justify-between items-center bg-orange-50 p-3 rounded-lg border border-orange-100">
-                                                                <div>
-                                                                    <h4 className="font-bold text-orange-900 text-sm">Pre-order Options</h4>
-                                                                    <p className="text-xs text-orange-700">Define versions (e.g. Standard, Deluxe) with separate deposit rules.</p>
+                                                                <div className="grid grid-cols-12 gap-4">
+                                                                    <div className="col-span-6">
+                                                                        <FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500 font-bold">Variant Name <span className="text-red-500">*</span></FormLabel><FormControl><Input placeholder="Variant Name" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                    </div>
+                                                                    <div className="col-span-4">
+                                                                        <FormField control={form.control} name={`variants.${index}.sku`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormLabel className="text-xs text-neutral-500">SKU Reference</FormLabel>
+                                                                                <div className="flex gap-1">
+                                                                                    <FormControl><Input placeholder="SKU" {...field} readOnly className="bg-neutral-100 font-mono text-xs" /></FormControl>
+                                                                                    <Button type="button" variant="outline" size="icon" onClick={() => handleGenSku(index)}><RefreshCw className="w-3 h-3" /></Button>
+                                                                                </div>
+                                                                            </FormItem>
+                                                                        )} />
+                                                                    </div>
+                                                                    <div className="col-span-2">
+                                                                        <FormItem>
+                                                                            <FormLabel className="text-xs text-neutral-500 font-bold opacity-0">&nbsp;</FormLabel>
+                                                                            <Popover>
+                                                                                <PopoverTrigger asChild>
+                                                                                    <Button variant="outline" className="w-full relative overflow-hidden font-bold border-teal-200 text-teal-700 hover:bg-teal-50">
+                                                                                        <ImageIcon className="w-4 h-4 mr-2" /> Media <span className="text-red-500">*</span>
+                                                                                        {form.watch(`variants.${index}.media_assets`)?.length > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full" />}
+                                                                                    </Button>
+                                                                                </PopoverTrigger>
+                                                                                <PopoverContent className="w-[400px]" align="end">
+                                                                                    <FormField control={form.control} name={`variants.${index}.media_assets`} render={({ field }) => (<VariantMediaManager value={field.value} onChange={field.onChange} />)} />
+                                                                                </PopoverContent>
+                                                                            </Popover>
+                                                                        </FormItem>
+                                                                    </div>
+
+                                                                    <div className="col-span-12 grid grid-cols-4 gap-4 bg-teal-50/40 p-4 rounded-lg border border-teal-100/50">
+                                                                        <FormField control={form.control} name={`variants.${index}.weight_g`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-teal-800 font-bold tracking-tighter">Weight (g)</FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-teal-200 focus:ring-teal-500" /></FormControl></FormItem>)} />
+                                                                        <FormField control={form.control} name={`variants.${index}.length_cm`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-teal-800 font-bold tracking-tighter">Length (cm)</FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-teal-200 focus:ring-teal-500" /></FormControl></FormItem>)} />
+                                                                        <FormField control={form.control} name={`variants.${index}.width_cm`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-teal-800 font-bold tracking-tighter">Width (cm)</FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-teal-200 focus:ring-teal-500" /></FormControl></FormItem>)} />
+                                                                        <FormField control={form.control} name={`variants.${index}.height_cm`} render={({ field }) => (<FormItem className="space-y-0 text-center"><FormLabel className="text-[9px] uppercase text-teal-800 font-bold tracking-tighter">Height (cm)</FormLabel><FormControl><StrictNumericInput field={field} className="h-8 text-xs bg-white text-center border-teal-200 focus:ring-teal-500" /></FormControl></FormItem>)} />
+                                                                    </div>
+
+                                                                    {/* Row 3: Extra Info (Consistency with RETAIL) */}
+                                                                    <div className="col-span-12 grid grid-cols-3 gap-4">
+                                                                        <FormField control={form.control} name={`variants.${index}.scale`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormLabel className="text-xs text-neutral-500 font-bold">Scale</FormLabel>
+                                                                                <FormControl>
+                                                                                    <SmartCreatableStringSelect
+                                                                                        options={scaleSuggestions}
+                                                                                        value={field.value}
+                                                                                        onChange={field.onChange}
+                                                                                        placeholder="1/144"
+                                                                                        label="Scale"
+                                                                                    />
+                                                                                </FormControl>
+                                                                            </FormItem>
+                                                                        )} />
+                                                                        <FormField control={form.control} name={`variants.${index}.material`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormLabel className="text-xs text-neutral-500 font-bold">Material</FormLabel>
+                                                                                <FormControl>
+                                                                                    <SmartCreatableStringSelect
+                                                                                        options={materialSuggestions}
+                                                                                        value={field.value}
+                                                                                        onChange={field.onChange}
+                                                                                        placeholder="PVC, ABS"
+                                                                                        label="Material"
+                                                                                    />
+                                                                                </FormControl>
+                                                                            </FormItem>
+                                                                        )} />
+                                                                        <FormField control={form.control} name={`variants.${index}.included_items`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500 font-bold">Included Items</FormLabel><FormControl><Input placeholder="Base, Weapon..." {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
+                                                                    </div>
+
+                                                                    {/* Variant Description */}
+                                                                    <div className="col-span-12 mt-2">
+
+                                                                        <FormField control={form.control} name={`variants.${index}.description`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <div className="flex justify-between items-center mb-1">
+                                                                                    <FormLabel className="text-xs text-neutral-500 font-bold">Variant Description <span className="text-red-500">*</span></FormLabel>
+                                                                                    <Button
+                                                                                        type="button"
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="h-6 text-purple-600 gap-1 hover:bg-purple-50"
+                                                                                        onClick={() => handleAutoGenerateVariantDescription(index)}
+                                                                                        disabled={generatingIndex === index}
+                                                                                    >
+                                                                                        {generatingIndex === index ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                                                                        <span className="text-xs">Smart Write</span>
+                                                                                    </Button>
+                                                                                </div>
+                                                                                <FormControl><Textarea placeholder="Details..." {...field} className="min-h-[80px] text-xs bg-neutral-50" /></FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
+                                                                    </div>
                                                                 </div>
-                                                                <Button type="button" size="sm" variant="outline" className="bg-white border-orange-200 text-orange-700 hover:bg-orange-100" onClick={() => append({ option_name: "", price: 0, deposit_amount: 0, slot_limit: 50, max_qty_per_user: 2, sku: `SKU-${Date.now()}-${Math.floor(Math.random() * 100)}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 })}><Plus className="w-4 h-4 mr-2" />Add Version</Button>
                                                             </div>
-
-                                                            <div className="space-y-4">
-                                                                {fields.map((field, index) => (
-                                                                    <Card key={field.id} className="relative group overflow-hidden border border-orange-200 shadow-sm">
-                                                                        <div className="absolute top-0 left-0 w-1 h-full bg-orange-500" />
-                                                                        <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-neutral-400 hover:text-red-500 z-10" onClick={() => remove(index)}><Trash2 className="w-4 h-4" /></Button>
-
-                                                                        <CardContent className="p-4 space-y-4">
-
-                                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                                                                                <div className="md:col-span-2">
-                                                                                    <FormField control={form.control} name={`variants.${index}.option_name`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Version Name</FormLabel><FormControl><Input placeholder="e.g. Deluxe Edition" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                                                </div>
-                                                                                <FormField control={form.control} name={`variants.${index}.sku`} render={({ field }) => (
-                                                                                    <FormItem>
-                                                                                        <FormLabel className="text-xs text-neutral-500">SKU</FormLabel>
-                                                                                        <div className="flex gap-1">
-                                                                                            <FormControl><Input placeholder="SKU" {...field} readOnly className="bg-neutral-100 font-mono text-xs" /></FormControl>
-                                                                                            <Button type="button" variant="outline" size="icon" onClick={() => handleGenSku(index)}><RefreshCw className="w-3 h-3" /></Button>
-                                                                                        </div>
-                                                                                    </FormItem>
-                                                                                )} />
-                                                                                <div className="md:col-span-1 pt-6 text-right">
-                                                                                    {/* Media Trigger */}
-                                                                                    <Popover>
-                                                                                        <PopoverTrigger asChild>
-                                                                                            <Button variant="outline" size="sm" className="relative">
-                                                                                                <ImageIcon className="w-4 h-4 mr-2" /> Media
-                                                                                                {form.watch(`variants.${index}.media_assets`)?.length > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />}
-                                                                                            </Button>
-                                                                                        </PopoverTrigger>
-                                                                                        <PopoverContent className="w-[400px]" align="end">
-                                                                                            <FormField control={form.control} name={`variants.${index}.media_assets`} render={({ field }) => (<VariantMediaManager value={field.value} onChange={field.onChange} />)} />
-                                                                                        </PopoverContent>
-                                                                                    </Popover>
-                                                                                </div>
-                                                                            </div>
-
-
-
-                                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-orange-50/50 p-4 rounded-lg border border-orange-100">
-                                                                                <FormField control={form.control} name={`variants.${index}.price`} render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold text-orange-800">Full Price</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                                                <FormField control={form.control} name={`variants.${index}.deposit_amount`} render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold text-orange-800">Deposit</FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
-                                                                                <FormField control={form.control} name={`variants.${index}.slot_limit`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Total Slots</FormLabel><FormControl><Input type="number" {...field} className="font-mono" /></FormControl></FormItem>)} />
-                                                                                <FormField control={form.control} name={`variants.${index}.max_qty_per_user`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Max / User</FormLabel><FormControl><Input type="number" {...field} className="font-mono" /></FormControl></FormItem>)} />
-                                                                            </div>
-
-                                                                            <div className="grid grid-cols-3 gap-4 mt-4">
-                                                                                <FormField control={form.control} name={`variants.${index}.scale`} render={({ field }) => (
-                                                                                    <FormItem>
-                                                                                        <FormLabel className="text-xs text-neutral-500">Scale</FormLabel>
-                                                                                        <FormControl>
-                                                                                            <SmartCreatableStringSelect
-                                                                                                options={scaleSuggestions}
-                                                                                                value={field.value}
-                                                                                                onChange={field.onChange}
-                                                                                                placeholder="1/144"
-                                                                                                label="Scale"
-                                                                                            />
-                                                                                        </FormControl>
-                                                                                    </FormItem>
-                                                                                )} />
-                                                                                <FormField control={form.control} name={`variants.${index}.material`} render={({ field }) => (
-                                                                                    <FormItem>
-                                                                                        <FormLabel className="text-xs text-neutral-500">Material</FormLabel>
-                                                                                        <FormControl>
-                                                                                            <SmartCreatableStringSelect
-                                                                                                options={materialSuggestions}
-                                                                                                value={field.value}
-                                                                                                onChange={field.onChange}
-                                                                                                placeholder="PVC, ABS"
-                                                                                                label="Material"
-                                                                                            />
-                                                                                        </FormControl>
-                                                                                    </FormItem>
-                                                                                )} />
-                                                                                <FormField control={form.control} name={`variants.${index}.included_items`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-neutral-500">Included Items</FormLabel><FormControl><Input placeholder="Base, Weapon..." {...field} className="h-8 text-xs bg-white" /></FormControl></FormItem>)} />
-                                                                            </div>
-
-
-                                                                            <div className="col-span-12 mt-2">
-                                                                                <FormField
-                                                                                    control={form.control}
-                                                                                    name={`variants.${index}.description`}
-                                                                                    render={({ field }) => (
-                                                                                        <FormItem>
-                                                                                            <div className="flex justify-between items-center mb-1">
-                                                                                                <FormLabel className="text-xs text-neutral-500">Variant Description</FormLabel>
-                                                                                                <Button
-                                                                                                    type="button"
-                                                                                                    variant="ghost"
-                                                                                                    size="sm"
-                                                                                                    className="h-6 text-purple-600 gap-1 hover:bg-purple-50"
-                                                                                                    onClick={() => handleAutoGenerateVariantDescription(index)}
-                                                                                                    disabled={generatingIndex === index}
-                                                                                                >
-                                                                                                    {generatingIndex === index ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                                                                                    <span className="text-xs">Auto-Generate</span>
-                                                                                                </Button>
-                                                                                            </div>
-                                                                                            <FormControl>
-                                                                                                <Textarea placeholder="Generated description based on details..." {...field} className="min-h-[80px] text-xs bg-neutral-50" />
-                                                                                            </FormControl>
-                                                                                            <FormMessage />
-                                                                                        </FormItem>
-                                                                                    )}
-                                                                                />
-                                                                            </div>
-                                                                        </CardContent>
-                                                                    </Card>
-                                                                ))}
-                                                            </div>
-                                                        </div>
+                                                        ))}
                                                     </div>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
 
-                                        </CardContent>
-                                    </Card>
 
                                     {/* FOOTER ACTIONS */}
                                     <div className="p-4 border-t bg-neutral-50 flex justify-end gap-3 shrink-0">
                                         <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
-                                        <Button type="button" onClick={form.handleSubmit(onSubmit)} disabled={loading} className="min-w-[120px]">
-                                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isEditMode ? "Update Product" : "Create Product")}
+                                        
+                                        {watchedType === "BLINDBOX" && !isEditMode && (
+                                            <Button
+                                                type="button"
+                                                onClick={() => {
+                                                    form.handleSubmit((d) => onSubmit(Math.random() > 10 ? d : d, 'DRAFT'), (errors) => {
+                                                        const firstError = Object.values(errors)[0] as any;
+                                                        toast({ title: "Validation Error", description: firstError?.message || "Please check the form.", variant: "destructive" });
+                                                    })();
+                                                }}
+                                                disabled={loading}
+                                                className="min-w-[120px] bg-purple-600 hover:bg-purple-700"
+                                            >
+                                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Accept & Save Draft"}
+                                            </Button>
+                                        )}
+
+                                        <Button
+                                            type="button"
+                                            onClick={() => {
+                                                form.handleSubmit((d) => onSubmit(d, 'ACTIVE'), (errors) => {
+                                                    const firstError = Object.values(errors)[0] as any;
+                                                    toast({
+                                                        title: "Validation Error",
+                                                        description: firstError?.message || "Please check the form for missing required fields.",
+                                                        variant: "destructive"
+                                                    });
+                                                })();
+                                            }}
+                                            disabled={loading}
+                                            className="min-w-[120px]"
+                                        >
+                                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isEditMode ? "Update Product" : "Publish Active")}
                                         </Button>
                                     </div>
                                 </form>

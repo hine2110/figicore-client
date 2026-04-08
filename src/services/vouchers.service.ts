@@ -11,6 +11,7 @@ export interface Voucher {
     max_quantity?: number;
     collected_quantity?: number;
     is_public?: boolean;
+    is_active?: boolean;
     start_date?: string;
     end_date?: string;
     created_at?: string;
@@ -26,7 +27,9 @@ export interface MyVoucher {
     id: number;
     user_id: number;
     promotion_id: number;
-    is_used: boolean;
+    status: 'COLLECTED' | 'USED' | 'EXPIRED';
+    collected_at: string;
+    used_at?: string | null;
     created_at: string;
     promotions: Voucher;
 }
@@ -39,6 +42,7 @@ export interface CreateVoucherDto {
     apply_rank_code?: string;
     max_quantity?: number;
     is_public?: boolean;
+    is_active?: boolean;
     start_date?: string;
     end_date?: string;
 }
@@ -67,6 +71,11 @@ export const VouchersService = {
 
     delete: async (id: number) => {
         const response = await api.delete(`/promotions/${id}`);
+        return response.data;
+    },
+
+    resume: async (id: number) => {
+        const response = await api.patch(`/promotions/${id}/resume`);
         return response.data;
     },
 

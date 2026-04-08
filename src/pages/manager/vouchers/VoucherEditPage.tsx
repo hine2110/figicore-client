@@ -26,27 +26,27 @@ const formatNumberStr = (val: string | number | undefined) => {
 };
 
 const VIETNAMESE_HOLIDAYS: Record<string, string> = {
-    "01/01": "Tết Dương lịch (Siêu Sale 1.1)",
-    "02/02": "Siêu Sale 2.2",
-    "03/03": "Siêu Sale 3.3",
-    "04/04": "Siêu Sale 4.4",
-    "05/05": "Siêu Sale 5.5",
-    "06/06": "Siêu Sale 6.6",
-    "07/07": "Siêu Sale 7.7",
-    "08/08": "Siêu Sale 8.8",
-    "09/09": "Siêu Sale 9.9",
-    "10/10": "Siêu Sale 10.10",
-    "11/11": "Siêu Sale 11.11",
-    "12/12": "Siêu Sale 12.12",
-    "14/02": "Valentine",
-    "08/03": "Quốc tế Phụ nữ",
-    "30/04": "Giải phóng miền Nam",
-    "01/05": "Quốc tế Lao động",
-    "01/06": "Quốc tế Thiếu nhi",
-    "02/09": "Quốc khánh",
-    "20/10": "Phụ nữ Việt Nam",
-    "20/11": "Nhà giáo Việt Nam",
-    "24/12": "Giáng sinh",
+    "01/01": "New Year's Day (1.1 Mega Sale)",
+    "02/02": "2.2 Mega Sale",
+    "03/03": "3.3 Mega Sale",
+    "04/04": "4.4 Mega Sale",
+    "05/05": "5.5 Mega Sale",
+    "06/06": "6.6 Mega Sale",
+    "07/07": "7.7 Mega Sale",
+    "08/08": "8.8 Mega Sale",
+    "09/09": "9.9 Mega Sale",
+    "10/10": "10.10 Mega Sale",
+    "11/11": "11.11 Mega Sale",
+    "12/12": "12.12 Mega Sale",
+    "14/02": "Valentine's Day",
+    "08/03": "International Women's Day",
+    "30/04": "Reunification Day",
+    "01/05": "Labor Day",
+    "01/06": "Children's Day",
+    "02/09": "National Day",
+    "20/10": "Vietnamese Women's Day",
+    "20/11": "Vietnamese Teacher's Day",
+    "24/12": "Christmas",
     "26/11": "Black Friday"
 };
 
@@ -55,56 +55,38 @@ const parseNumberStr = (val: string) => {
     return numericStr ? Number(numericStr) : undefined;
 };
 
-// Simplified form schema for editing. Usually type and code/name shouldn't be heavily edited or we adjust validation.
-// For vouchers, type is usually already set, but we use the same schema.
+/**
+ * Convert a datetime-local string ("2026-04-05T23:01") to ISO-8601 UTC.
+ * Unlike `new Date(str).toISOString()` which treats the string as UTC,
+ * this function treats it as LOCAL time (correct for datetime-local inputs).
+ */
+const localDatetimeToISO = (datetimeLocalStr: string): string => {
+    if (!datetimeLocalStr) return '';
+    const d = new Date(datetimeLocalStr); // browsers parse datetime-local as LOCAL
+    return d.toISOString();
+};
+
+// Simplified form schema for editing.
 const formSchema = z.object({
-    discount_type: z.enum(['PRODUCT_PERCENTAGE', 'RANK_PERCENTAGE', 'FREE_SHIP']),
+    discount_type: z.enum(['RANK_PERCENTAGE', 'FREE_SHIP']),
     name: z.string().optional(),
     code: z.string().optional(),
     discount_value: z.coerce.number().min(0, "Value must be positive").optional(),
-
-    // Voucher fields
     start_date: z.string().optional(),
     end_date: z.string().optional(),
-
-    // Promotion (Flash Sale) fields
-    start_time: z.string().optional(),
-    end_time: z.string().optional(),
-    is_recurring: z.boolean().default(false),
-
-    // For Vouchers
     min_order_value: z.coerce.number().min(0).optional(),
     apply_rank_code: z.string().optional(),
     max_quantity: z.coerce.number().min(1, "Must have at least 1").optional(),
     is_public: z.boolean().default(true),
-
-    // For Promotions
-    min_price: z.number().optional().default(0),
-    max_price: z.number().optional(),
 }).superRefine((data, ctx) => {
-    if (data.discount_type === 'PRODUCT_PERCENTAGE') {
-        if (data.start_time && data.end_time && data.start_time >= data.end_time) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End time must be after start time", path: ["end_time"] });
-        }
-        if (data.name && data.name.length < 2) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Program name must be at least 2 characters if provided", path: ["name"] });
-        }
-        if (data.discount_value === undefined || data.discount_value <= 0) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Discount value required", path: ["discount_value"] });
-        }
-        if (data.max_price !== undefined && data.min_price !== undefined && data.max_price <= data.min_price) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Must be > Minimum price", path: ["max_price"] });
-        }
-    } else {
-        if (data.start_date && data.end_date && new Date(data.start_date) >= new Date(data.end_date)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End date must be after start date", path: ["end_date"] });
-        }
-        if (data.code && data.code.length > 0 && data.code.length < 3) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Voucher code must be at least 3 characters if provided", path: ["code"] });
-        }
-        if (data.discount_type === 'RANK_PERCENTAGE' && (data.discount_value === undefined || data.discount_value <= 0)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Discount value required", path: ["discount_value"] });
-        }
+    if (data.start_date && data.end_date && new Date(data.start_date) >= new Date(data.end_date)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End date must be after start date", path: ["end_date"] });
+    }
+    if (data.code && data.code.length > 0 && data.code.length < 3) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Voucher code must be at least 3 characters if provided", path: ["code"] });
+    }
+    if (data.discount_type === 'RANK_PERCENTAGE' && (data.discount_value === undefined || data.discount_value <= 0)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Discount value required", path: ["discount_value"] });
     }
 });
 
@@ -123,24 +105,11 @@ export default function VoucherEditPage() {
         }
     }, [user, navigate]);
 
-    const [searchParams] = useSearchParams();
-    const type = searchParams.get('type') || 'voucher'; // 'promotion' or 'voucher'
-
-    // Fetch existing data
-    const { data: voucherData, isLoading: isLoadingVoucher, isError: isErrorVoucher } = useQuery({
+    const { data: voucherData, isLoading, isError } = useQuery({
         queryKey: ['voucher', id],
         queryFn: () => VouchersService.getById(Number(id)),
-        enabled: !!id && type === 'voucher'
+        enabled: !!id
     });
-
-    const { data: promoData, isLoading: isLoadingPromo, isError: isErrorPromo } = useQuery({
-        queryKey: ['promotion', id],
-        queryFn: () => PromotionsService.getById(Number(id)),
-        enabled: !!id && type === 'promotion'
-    });
-
-    const isLoading = type === 'voucher' ? isLoadingVoucher : isLoadingPromo;
-    const isError = type === 'voucher' ? isErrorVoucher : isErrorPromo;
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema) as any,
@@ -151,122 +120,80 @@ export default function VoucherEditPage() {
             discount_value: 0,
             start_date: "",
             end_date: "",
-            start_time: "",
-            end_time: "",
-            is_recurring: false,
             min_order_value: 0,
             apply_rank_code: "ALL",
             max_quantity: undefined,
             is_public: true,
-            min_price: 0,
-            max_price: undefined,
         },
     });
 
-    // Populate form when data loads
     useEffect(() => {
-        if (type === 'voucher' && voucherData) {
+        if (voucherData) {
             let dtype = voucherData.discount_type;
             if (dtype === 'PERCENTAGE' && voucherData.code) {
                 dtype = 'RANK_PERCENTAGE'; // Code-based percentage is order voucher
             } else if (dtype === 'PERCENTAGE' && !voucherData.code) {
-                dtype = 'PRODUCT_PERCENTAGE';
+                dtype = 'PRODUCT_PERCENTAGE'; // (Fallback, shouldn't occur)
             }
+
+            // Convert UTC ISO string → local datetime-local string (YYYY-MM-DDTHH:mm)
+            const toLocalDatetimeStr = (isoStr: string | null | undefined): string => {
+                if (!isoStr) return '';
+                const d = new Date(isoStr);
+                if (isNaN(d.getTime())) return '';
+                const offset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+            };
 
             form.reset({
                 discount_type: dtype as any,
                 name: voucherData.name || "",
                 code: voucherData.code || "",
                 discount_value: voucherData.discount_value || 0,
-                start_date: voucherData.start_date ? voucherData.start_date.substring(0, 16) : "",
-                end_date: voucherData.end_date ? voucherData.end_date.substring(0, 16) : "",
+                start_date: toLocalDatetimeStr(voucherData.start_date),
+                end_date: toLocalDatetimeStr(voucherData.end_date),
                 min_order_value: voucherData.min_order_value || 0,
                 apply_rank_code: voucherData.apply_rank_code || "ALL",
                 max_quantity: voucherData.max_quantity || undefined,
                 is_public: voucherData.is_public ?? true,
-                min_price: 0,
-                max_price: undefined,
-            });
-        } else if (type === 'promotion' && promoData) {
-            form.reset({
-                discount_type: 'PRODUCT_PERCENTAGE',
-                name: promoData.name || "",
-                code: "",
-                discount_value: Number(promoData.value) || 0,
-                start_date: "",
-                end_date: "",
-                start_time: promoData.start_time ?? "",
-                end_time: promoData.end_time ?? "",
-                is_recurring: promoData.is_recurring ?? false,
-                min_order_value: 0,
-                apply_rank_code: "ALL",
-                max_quantity: undefined,
-                is_public: true,
-                min_price: Number(promoData.min_apply_price) || 0,
-                max_price: promoData.max_apply_price ? Number(promoData.max_apply_price) : undefined,
             });
         }
-    }, [voucherData, promoData, form, type]);
+    }, [voucherData, form]);
 
     const watchType = form.watch('discount_type');
-    const isPromo = watchType === 'PRODUCT_PERCENTAGE';
 
     const onSubmit: SubmitHandler<FormValues> = async (values) => {
         try {
-            if (isPromo) {
-                // Promotion update: use start_time/end_time
-                let finalName = values.name;
-                if (!finalName || finalName.trim() === '') {
-                    finalName = `Flash Sale ${values.discount_value}% (${values.start_time} - ${values.end_time})`;
+            let finalCode = values.code?.toUpperCase();
+
+            if (!finalCode || finalCode.trim() === '') {
+                const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+                if (watchType === 'FREE_SHIP') {
+                    finalCode = `FREESHIP${randomSuffix}`;
+                } else {
+                    finalCode = `SALE${values.discount_value}${randomSuffix}`;
                 }
-
-                await PromotionsService.update(Number(id), {
-                    name: finalName,
-                    type_code: 'PERCENTAGE',
-                    value: values.discount_value!,
-                    start_time: values.start_time!,
-                    end_time: values.end_time!,
-                    is_recurring: values.is_recurring ?? false,
-                    min_apply_price: values.min_price,
-                    max_apply_price: values.max_price,
-                });
-
-                toast({ title: "Success", description: "Product Promotion updated!" });
-                queryClient.invalidateQueries({ queryKey: ['promotions'] });
-                queryClient.invalidateQueries({ queryKey: ['promotion', id] });
-                queryClient.invalidateQueries({ queryKey: ['voucher', id] });
-                navigate('/manager/vouchers?tab=promotions');
-            } else {
-                let finalCode = values.code?.toUpperCase();
-
-                if (!finalCode || finalCode.trim() === '') {
-                    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-                    if (watchType === 'FREE_SHIP') {
-                        finalCode = `FREESHIP${randomSuffix}`;
-                    } else {
-                        finalCode = `SALE${values.discount_value}${randomSuffix}`;
-                    }
-                }
-
-                const payload = {
-                    code: finalCode,
-                    discount_type: watchType === 'FREE_SHIP' ? 'FREE_SHIP' : 'PERCENTAGE',
-                    discount_value: watchType === 'FREE_SHIP' ? 0 : values.discount_value!,
-                    min_order_value: values.min_order_value,
-                    apply_rank_code: values.apply_rank_code === 'ALL' ? undefined : values.apply_rank_code,
-                    max_quantity: values.max_quantity || undefined,
-                    is_public: values.is_public,
-                    start_date: new Date(values.start_date!).toISOString(),
-                    end_date: new Date(values.end_date!).toISOString(),
-                };
-
-                await VouchersService.update(Number(id), payload);
-                toast({ title: "Success", description: "Voucher updated successfully." });
-                queryClient.invalidateQueries({ queryKey: ['vouchers'] });
-                queryClient.invalidateQueries({ queryKey: ['voucher', id] });
-                queryClient.invalidateQueries({ queryKey: ['promotions'] });
-                navigate('/manager/vouchers?tab=vouchers');
             }
+
+            const payload = {
+                code: finalCode,
+                discount_type: watchType === 'FREE_SHIP' ? 'FREE_SHIP' : 'PERCENTAGE',
+                discount_value: watchType === 'FREE_SHIP' ? 0 : values.discount_value!,
+                min_order_value: values.min_order_value,
+                apply_rank_code: values.apply_rank_code === 'ALL' ? undefined : values.apply_rank_code,
+                max_quantity: values.max_quantity || undefined,
+                is_public: values.is_public,
+                is_active: true, // preserve active state when updating
+                ...(values.start_date ? { start_date: localDatetimeToISO(values.start_date) } : {}),
+                ...(values.end_date   ? { end_date:   localDatetimeToISO(values.end_date)   } : {}),
+            };
+
+            await VouchersService.update(Number(id), payload);
+            toast({ title: "Success", description: "Voucher updated successfully." });
+            queryClient.invalidateQueries({ queryKey: ['vouchers'] });
+            queryClient.invalidateQueries({ queryKey: ['voucher', id] });
+            queryClient.invalidateQueries({ queryKey: ['promotions'] });
+            navigate('/manager/vouchers?tab=vouchers');
         } catch (error: any) {
             console.error(error);
             toast({ variant: "destructive", title: "Error", description: error?.response?.data?.message || "Failed to update." });
@@ -317,7 +244,6 @@ export default function VoucherEditPage() {
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="PRODUCT_PERCENTAGE">Product Promotion (% off direct price)</SelectItem>
                                                 <SelectItem value="RANK_PERCENTAGE">Rank Voucher (% off order value)</SelectItem>
                                                 <SelectItem value="FREE_SHIP">Free Shipping Voucher</SelectItem>
                                             </SelectContent>
@@ -329,55 +255,36 @@ export default function VoucherEditPage() {
                             />
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* CONDITIONAL: NAME vs CODE */}
-                                {isPromo ? (
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Program Name (Optional)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g. Summer Sale. Leave blank to auto-generate." {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                ) : (
-                                    <FormField
-                                        control={form.control}
-                                        name="code"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Voucher Code</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g. NEWYEAR2026. Leave blank to auto-generate." className="uppercase" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                )}
+                                <FormField
+                                    control={form.control}
+                                    name="code"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Voucher Code</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g. NEWYEAR2026. Leave blank to auto-generate." className="uppercase" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                                {/* CONDITIONAL: IS_PUBLIC (Only for Vouchers) */}
-                                {!isPromo && (
-                                    <FormField
-                                        control={form.control}
-                                        name="is_public"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                <div className="space-y-0.5">
-                                                    <FormLabel className="text-base">Public Collection</FormLabel>
-                                                    <FormDescription>Show in public voucher gallery</FormDescription>
-                                                </div>
-                                                <FormControl>
-                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                )}
+                                {/* CONDITIONAL: IS_PUBLIC */}
+                                <FormField
+                                    control={form.control}
+                                    name="is_public"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                            <div className="space-y-0.5">
+                                                <FormLabel className="text-base">Public Collection</FormLabel>
+                                                <FormDescription>Show in public voucher gallery</FormDescription>
+                                            </div>
+                                            <FormControl>
+                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -399,137 +306,40 @@ export default function VoucherEditPage() {
                                 ) : <div />} {/* Empty div to keep grid alignment if Free Ship */}
                             </div>
 
-                            {/* DATE/TIME SECTION - Conditional based on type */}
-                            {isPromo ? (
-                                // Promotion: Time inputs + recurring
-                                <>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <FormField
-                                            control={form.control}
-                                            name="start_time"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>⚡ Start Time</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="time" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="end_time"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>⚡ End Time</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="time" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                    <FormField
-                                        control={form.control}
-                                        name="is_recurring"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border border-orange-200 bg-orange-50 p-4">
-                                                <div className="space-y-0.5">
-                                                    <FormLabel className="text-base font-semibold text-orange-900">🔁 Daily Recurring</FormLabel>
-                                                    <FormDescription className="text-orange-700">
-                                                        When ON — repeats every day. When OFF — runs once then deactivates.
-                                                    </FormDescription>
-                                                </div>
-                                                <FormControl>
-                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </>
-                            ) : (
-                                // Voucher: DateTime inputs
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="start_date"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Start Date</FormLabel>
-                                                <FormControl>
-                                                    <Input type="datetime-local" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="end_date"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>End Date</FormLabel>
-                                                <FormControl>
-                                                    <Input type="datetime-local" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            )}
+                            {/* DATE/TIME SECTION */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="start_date"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Start Date</FormLabel>
+                                            <FormControl>
+                                                <Input type="datetime-local" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="end_date"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>End Date</FormLabel>
+                                            <FormControl>
+                                                <Input type="datetime-local" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
 
-                            {/* SECTION: PRODUCT PROMOTION FIELDS (Readonly mostly, but allowed to change limits if we want) */}
-                            {isPromo && (
-                                <div className="space-y-4 border rounded-lg p-5 bg-slate-50">
-                                    <h3 className="font-semibold text-lg">Application Range</h3>
-                                    <p className="text-sm text-slate-500">
-                                        Price range limits for applying this promotion.
-                                    </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="min_price"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Minimum Price (VND)</FormLabel>
-                                                    <FormControl>
-                                                        <Input 
-                                                            type="text" 
-                                                            placeholder="0" 
-                                                            value={formatNumberStr(field.value)}
-                                                            onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
-                                                        />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="max_price"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Maximum Price (VND)</FormLabel>
-                                                    <FormControl>
-                                                        <Input 
-                                                            type="text" 
-                                                            placeholder="No limit" 
-                                                            value={formatNumberStr(field.value)}
-                                                            onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
-                                                        />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                </div>
-                            )}
+
 
                             {/* SECTION: VOUCHER CONDITIONS */}
-                            {!isPromo && (
-                                <div className="space-y-4 border rounded-lg p-5 bg-slate-50">
+                            <div className="space-y-4 border rounded-lg p-5 bg-slate-50">
                                     <h3 className="font-semibold text-lg">Conditions & Restrictions</h3>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -537,22 +347,43 @@ export default function VoucherEditPage() {
                                             control={form.control}
                                             name="apply_rank_code"
                                             render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Customer Rank Required</FormLabel>
+                                                <FormItem className="col-span-full">
+                                                    <FormLabel className="text-base font-semibold">Đối tượng áp dụng</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value || "ALL"}>
                                                         <FormControl>
                                                             <SelectTrigger>
-                                                                <SelectValue placeholder="Any Rank" />
+                                                                <SelectValue placeholder="Chọn hạng khách hàng" />
                                                             </SelectTrigger>
                                                         </FormControl>
                                                         <SelectContent>
-                                                            <SelectItem value="ALL">All Customers</SelectItem>
-                                                            <SelectItem value="BRONZE">Bronze</SelectItem>
-                                                            <SelectItem value="SILVER">Silver</SelectItem>
-                                                            <SelectItem value="GOLD">Gold</SelectItem>
-                                                            <SelectItem value="DIAMOND">Diamond</SelectItem>
+                                                            <SelectItem value="ALL">
+                                                                <span className="flex items-center gap-2">👥 Tất cả khách hàng</span>
+                                                            </SelectItem>
+                                                            <SelectItem value="BRONZE">
+                                                                <span className="flex items-center gap-2">🥉 Hạng Đồng (Bronze)</span>
+                                                            </SelectItem>
+                                                            <SelectItem value="SILVER">
+                                                                <span className="flex items-center gap-2">🥈 Hạng Bạc (Silver)</span>
+                                                            </SelectItem>
+                                                            <SelectItem value="GOLD">
+                                                                <span className="flex items-center gap-2">🥇 Hạng Vàng (Gold)</span>
+                                                            </SelectItem>
+                                                            <SelectItem value="DIAMOND">
+                                                                <span className="flex items-center gap-2">💎 Hạng Kim Cương (Diamond)</span>
+                                                            </SelectItem>
                                                         </SelectContent>
                                                     </Select>
+                                                    <FormDescription>
+                                                        Nếu chọn hạng cụ thể, hệ thống sẽ tự động gửi email thông báo có voucher đến các khách hàng thuộc hạng này.
+                                                    </FormDescription>
+                                                    {field.value && field.value !== 'ALL' && (
+                                                        <div className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-1">
+                                                            <span className="text-amber-600 mt-0.5">📧</span>
+                                                            <span className="text-amber-800">
+                                                                Email thông báo sẽ được gửi tự động đến tất cả khách hàng hạng <strong>{field.value}</strong> ngay khi voucher được tạo.
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -601,7 +432,6 @@ export default function VoucherEditPage() {
                                         )}
                                     />
                                 </div>
-                            )}
 
                             <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 font-semibold h-12" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}

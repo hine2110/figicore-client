@@ -7,15 +7,37 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { User, Mail, Phone, MapPin, Shield, Bell, Loader2, Trash2, Crown, Package, TicketPercent } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Shield, Bell, Loader2, Trash2, Crown, Package, TicketPercent, Camera } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authService } from '@/services/auth.service';
+import { userService } from '@/services/user.service';
 import MembershipTab from '@/components/customer/MembershipTab'; // New Import
 import MyOrdersTab from '@/components/customer/MyOrdersTab'; // New Import
 import MyVouchersTab from '@/components/customer/MyVouchersTab'; // New Import
 import AddressDialog from '@/components/customer/AddressDialog';
 import { addressService, Address } from '@/services/address.service';
 import { useToast } from "@/components/ui/use-toast";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -26,6 +48,14 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+const profileSchema = z.object({
+    full_name: z.string().min(2, "Full name must be at least 2 characters"),
+    phone: z.string().regex(/^0\d{9}$/, "Phone must be 10 digits starting with 0"),
+    dob: z.date().optional().nullable(),
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
 
 // Rank Config from Seed Data
 const RANK_CONFIG: Record<string, { label: string; className: string }> = {
@@ -64,13 +94,68 @@ export default function CustomerProfile() {
     const [addressToEdit, setAddressToEdit] = useState<Address | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
-    // Form State
-    const [formData, setFormData] = useState({
-        full_name: user?.full_name || '',
-        phone: user?.phone || '',
+    const form = useForm<ProfileFormValues>({
+        resolver: zodResolver(profileSchema),
+        defaultValues: {
+            full_name: user?.full_name || '',
+            phone: user?.phone || '',
+            dob: user?.dob ? new Date(user.dob) : null,
+        },
     });
+
+    // DOB Select Helpers
+    const years = Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i);
+    const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    const getDaysInMonth = (year: number, month: number) => {
+        return new Date(year, month + 1, 0).getDate();
+    };
+
+    const currentDob = form.watch('dob');
+    const selectedYear = currentDob ? currentDob.getFullYear() : new Date().getFullYear();
+    const selectedMonth = currentDob ? currentDob.getMonth() : 0;
+    const selectedDay = currentDob ? currentDob.getDate() : 1;
+
+    const days = Array.from(
+        { length: getDaysInMonth(selectedYear, selectedMonth) },
+        (_, i) => i + 1
+    );
+
+    const handleDobChange = (type: 'day' | 'month' | 'year', value: string) => {
+        const date = currentDob ? new Date(currentDob) : new Date();
+        if (type === 'day') date.setDate(parseInt(value));
+        if (type === 'month') {
+            const newMonth = parseInt(value);
+            const maxDays = getDaysInMonth(date.getFullYear(), newMonth);
+            if (date.getDate() > maxDays) date.setDate(maxDays);
+            date.setMonth(newMonth);
+        }
+        if (type === 'year') {
+            const newYear = parseInt(value);
+            const maxDays = getDaysInMonth(newYear, date.getMonth());
+            if (date.getDate() > maxDays) date.setDate(maxDays);
+            date.setFullYear(newYear);
+        }
+        form.setValue('dob', date, { shouldDirty: true });
+    };
+
     const [isLoading, setIsLoading] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    // OTP States
+    const [isOtpOpen, setIsOtpOpen] = useState(false);
+    const [otpValue, setOtpValue] = useState('');
+    const [isOtpVerifying, setIsOtpVerifying] = useState(false);
+
+    const hasChanges = user && (
+        form.watch('full_name') !== (user.full_name || '') ||
+        form.watch('phone') !== (user.phone || '') ||
+        (form.watch('dob') ? new Date(form.watch('dob')!).getTime() : null) !== (user.dob ? new Date(user.dob).getTime() : null)
+    );
 
     // Address Handlers
     const handleEditAddress = (addr: Address) => {
@@ -131,12 +216,13 @@ export default function CustomerProfile() {
     // Sync form with user data when it loads
     useEffect(() => {
         if (user) {
-            setFormData({
+            form.reset({
                 full_name: user.full_name || '',
                 phone: user.phone || '',
+                dob: user.dob ? new Date(user.dob) : null,
             });
         }
-    }, [user]);
+    }, [user, form]);
 
     // Fetch latest profile on mount to ensure fresh data (fixes stale data on refresh)
     useEffect(() => {
@@ -151,35 +237,133 @@ export default function CustomerProfile() {
         fetchLatestProfile();
     }, [setUser]);
 
-    const handleSaveProfile = async () => {
+    const handleSaveProfile = async (values: ProfileFormValues) => {
+        if (!hasChanges) return;
+
+        // Check if sensitive field (phone) is changing
+        const isPhoneChanging = values.phone !== (user?.phone || '');
+
+        if (isPhoneChanging) {
+            setIsLoading(true);
+            try {
+                await userService.requestUpdateOtp();
+                setIsOtpOpen(true);
+                toast({
+                    title: "OTP Sent",
+                    description: "Please check your email for the verification code.",
+                });
+            } catch (error: any) {
+                toast({
+                    variant: "destructive",
+                    title: "Failed to send OTP",
+                    description: error.response?.data?.message || "Something went wrong.",
+                });
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
+
+        // Only full_name/dob changed or other non-sensitive fields
         setIsLoading(true);
         setMessage(null);
         try {
             await authService.updateProfile({
-                full_name: formData.full_name,
-                phone: formData.phone
+                full_name: values.full_name,
+                phone: values.phone,
+                dob: values.dob ? values.dob.toISOString().split('T')[0] : undefined
             });
 
             // Update local store with new data
-            const updatedUser = { ...user, ...formData };
+            const updatedUser = { ...user, ...values };
             setUser(updatedUser as any);
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
             toast({
                 title: "Profile Updated",
-                description: "Your profile information has been saved.",
-                duration: 10000,
+                description: "Your changes have been saved.",
+                duration: 5000,
             });
         } catch (error: any) {
-            console.error('Update profile error:', error);
             setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to update profile' });
-            toast({
-                variant: "destructive",
-                title: "Update Failed",
-                description: error.response?.data?.message || "Failed to update profile",
-                duration: 10000,
-            });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleVerifyOtpAndSave = async () => {
+        if (!otpValue) return;
+        setIsOtpVerifying(true);
+        const values = form.getValues();
+        try {
+            await userService.requestProfileUpdate({
+                changes: {
+                    full_name: values.full_name,
+                    phone: values.phone,
+                    dob: values.dob ? values.dob.toISOString().split('T')[0] : undefined
+                },
+                otp: otpValue
+            });
+
+            // Success: Update store & UI
+            const updatedUser = { 
+                ...user, 
+                full_name: values.full_name,
+                phone: values.phone,
+                dob: values.dob ? values.dob.toISOString().split('T')[0] : user?.dob
+            };
+            setUser(updatedUser as any);
+            setIsOtpOpen(false);
+            setOtpValue('');
+            setMessage({ type: 'success', text: 'Profile updated successfully with OTP!' });
+            toast({
+                title: "Changes Saved",
+                description: "Your phone number has been updated successfully.",
+            });
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Verification Failed",
+                description: error.response?.data?.message || "Invalid OTP code.",
+            });
+        } finally {
+            setIsOtpVerifying(false);
+        }
+    };
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Size check (e.g., 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            toast({
+                variant: "destructive",
+                title: "File too large",
+                description: "Avatar image must be less than 2MB.",
+            });
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const res = await userService.uploadAvatar(file);
+            if (res.data?.url) {
+                const updatedUser = { ...user, avatar_url: res.data.url };
+                setUser(updatedUser as any);
+                toast({
+                    title: "Avatar Updated",
+                    description: "Your profile picture has been changed.",
+                });
+            }
+        } catch (error: any) {
+            console.error("Avatar upload failed", error);
+            toast({
+                variant: "destructive",
+                title: "Upload Failed",
+                description: error.response?.data?.message || "Could not upload avatar.",
+            });
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -269,12 +453,19 @@ export default function CustomerProfile() {
 
                                         {/* Avatar Section */}
                                         <div className="flex items-center gap-6 mb-8">
-                                            <Avatar className="w-20 h-20 border-2 border-white shadow-sm">
-                                                <AvatarImage src={user?.avatar_url || ""} />
-                                                <AvatarFallback className="bg-blue-100 text-blue-600 text-xl font-medium">
-                                                    {user?.full_name?.charAt(0) || "U"}
-                                                </AvatarFallback>
-                                            </Avatar>
+                                            <div className="relative group">
+                                                <Avatar className="w-20 h-20 border-2 border-white shadow-sm">
+                                                    <AvatarImage src={user?.avatar_url || ""} />
+                                                    <AvatarFallback className="bg-blue-100 text-blue-600 text-xl font-medium">
+                                                        {user?.full_name?.charAt(0) || "U"}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                {isUploading && (
+                                                    <div className="absolute inset-0 bg-black/20 rounded-full flex items-center justify-center">
+                                                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                                                    </div>
+                                                )}
+                                            </div>
                                             <div>
                                                 <h2 className="text-xl font-medium text-neutral-900">{user?.full_name || "User"}</h2>
                                                 <p className="text-neutral-500 capitalize">{user?.role_code?.replace('_', ' ').toLowerCase() || "Customer"}</p>
@@ -290,8 +481,26 @@ export default function CustomerProfile() {
                                                     );
                                                 })()}
                                             </div>
-                                            {/* Disabled for now */}
-                                            <Button variant="outline" className="ml-auto opacity-50 cursor-not-allowed" disabled>Change Avatar</Button>
+                                            <div className="ml-auto">
+                                                <input
+                                                    type="file"
+                                                    id="avatar-upload"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={handleAvatarUpload}
+                                                    disabled={isUploading}
+                                                />
+                                                <Button
+                                                    variant="outline"
+                                                    asChild
+                                                    disabled={isUploading}
+                                                >
+                                                    <label htmlFor="avatar-upload" className="cursor-pointer flex items-center gap-2">
+                                                        {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                                                        Change Avatar
+                                                    </label>
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         {/* Membership Progress - MOVED TO TAB */}
@@ -305,44 +514,161 @@ export default function CustomerProfile() {
                                         )}
 
                                         {/* Form Fields */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-neutral-700">Full Name</label>
-                                                <div className="relative">
-                                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                                                    <Input
-                                                        value={formData.full_name}
-                                                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                                                        className="pl-10"
+                                        <Form {...form}>
+                                            <form onSubmit={form.handleSubmit(handleSaveProfile)} className="space-y-6">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="full_name"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Full Name</FormLabel>
+                                                                <FormControl>
+                                                                    <div className="relative">
+                                                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                                                        <Input {...field} className="pl-10" />
+                                                                    </div>
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
                                                     />
-                                                </div>
-                                            </div>
 
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-neutral-700">Email Address</label>
-                                                <div className="relative">
-                                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                                                    <Input
-                                                        value={user?.email || ''}
-                                                        readOnly
-                                                        className="pl-10 bg-gray-100 text-gray-500 cursor-not-allowed"
-                                                    />
-                                                </div>
-                                            </div>
+                                                    <FormItem>
+                                                        <FormLabel>Email Address</FormLabel>
+                                                        <FormControl>
+                                                            <div className="relative">
+                                                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                                                <Input
+                                                                    value={user?.email || ''}
+                                                                    readOnly
+                                                                    className="pl-10 bg-gray-100 text-gray-500 cursor-not-allowed"
+                                                                />
+                                                            </div>
+                                                        </FormControl>
+                                                    </FormItem>
 
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-neutral-700">Phone Number</label>
-                                                <div className="relative">
-                                                    <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${!formData.phone ? 'text-amber-500' : 'text-neutral-400'}`} />
-                                                    <Input
-                                                        value={formData.phone}
-                                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                        className={`pl-10 ${!formData.phone ? 'border-amber-300 focus:ring-amber-200' : ''}`}
-                                                        placeholder="Enter your phone number"
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="phone"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Phone Number</FormLabel>
+                                                                <FormControl>
+                                                                    <div className="relative">
+                                                                        <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${!field.value ? 'text-amber-500' : 'text-neutral-400'}`} />
+                                                                        <Input
+                                                                            {...field}
+                                                                            onChange={(e) => field.onChange(e.target.value.replace(/[^0-9]/g, ''))}
+                                                                            className={`pl-10 ${!field.value ? 'border-amber-300 focus:ring-amber-200' : ''}`}
+                                                                            placeholder="Enter your phone number"
+                                                                            maxLength={11}
+                                                                        />
+                                                                    </div>
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="dob"
+                                                        render={({ field }) => (
+                                                            <FormItem className="flex flex-col">
+                                                                <div className="flex justify-between items-center mb-1.5">
+                                                                    <FormLabel>Date of Birth</FormLabel>
+                                                                    {user?.dob && (
+                                                                        <span className="text-[10px] text-neutral-400 flex items-center gap-1">
+                                                                            <Shield className="w-3 h-3" /> Locked for security
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="grid grid-cols-3 gap-2">
+                                                                    {/* Day Select */}
+                                                                    <Select
+                                                                        value={field.value ? field.value.getDate().toString() : ""}
+                                                                        onValueChange={(val) => handleDobChange('day', val)}
+                                                                        disabled={!!user?.dob}
+                                                                    >
+                                                                        <SelectTrigger className={user?.dob ? "bg-neutral-50" : ""}>
+                                                                            <SelectValue placeholder="Day" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {days.map((d) => (
+                                                                                <SelectItem key={d} value={d.toString()}>
+                                                                                    {d}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+
+                                                                    {/* Month Select */}
+                                                                    <Select
+                                                                        value={field.value ? field.value.getMonth().toString() : ""}
+                                                                        onValueChange={(val) => handleDobChange('month', val)}
+                                                                        disabled={!!user?.dob}
+                                                                    >
+                                                                        <SelectTrigger className={user?.dob ? "bg-neutral-50" : ""}>
+                                                                            <SelectValue placeholder="Month" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {months.map((m, i) => (
+                                                                                <SelectItem key={m} value={i.toString()}>
+                                                                                    {m}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+
+                                                                    {/* Year Select */}
+                                                                    <Select
+                                                                        value={field.value ? field.value.getFullYear().toString() : ""}
+                                                                        onValueChange={(val) => handleDobChange('year', val)}
+                                                                        disabled={!!user?.dob}
+                                                                    >
+                                                                        <SelectTrigger className={user?.dob ? "bg-neutral-50" : ""}>
+                                                                            <SelectValue placeholder="Year" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="max-h-[300px]">
+                                                                            {years.map((y) => (
+                                                                                <SelectItem key={y} value={y.toString()}>
+                                                                                    {y}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                                <FormMessage />
+                                                                {user?.dob && (
+                                                                    <p className="text-[11px] text-neutral-400 mt-1">
+                                                                        Date of birth cannot be changed once set to prevent reward exploitation.
+                                                                    </p>
+                                                                )}
+                                                            </FormItem>
+                                                        )}
                                                     />
                                                 </div>
-                                            </div>
-                                        </div>
+
+                                                {/* Submit Button */}
+                                                <div className="flex justify-end pt-4">
+                                                    <Button
+                                                        type="submit"
+                                                        className="bg-neutral-900 text-white hover:bg-neutral-800 min-w-[120px]"
+                                                        disabled={isLoading || !hasChanges}
+                                                    >
+                                                        {isLoading ? (
+                                                            <>
+                                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                                Saving...
+                                                            </>
+                                                        ) : (
+                                                            "Save Changes"
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </form>
+                                        </Form>
 
                                         {/* Saved Addresses */}
                                         <div className="pt-6 border-t border-neutral-100">
@@ -426,23 +752,54 @@ export default function CustomerProfile() {
                                             </AlertDialogContent>
                                         </AlertDialog>
 
+                                        <AlertDialog open={isOtpOpen} onOpenChange={setIsOtpOpen}>
+                                            <AlertDialogContent className="bg-white/80 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl p-8 max-w-md">
+                                                <AlertDialogHeader>
+                                                    <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-4 mx-auto">
+                                                        <Shield className="w-8 h-8" />
+                                                    </div>
+                                                    <AlertDialogTitle className="text-2xl font-bold text-center text-slate-800">Verify Identity</AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-center text-slate-500 mt-2">
+                                                        We've sent a 6-digit code to your registered email. Please enter it below to confirm your phone change.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+
+                                                <div className="py-8 space-y-4">
+                                                    <Input
+                                                        value={otpValue}
+                                                        onChange={(e) => setOtpValue(e.target.value.replace(/[^0-9]/g, ''))}
+                                                        placeholder="000000"
+                                                        className="text-center text-3xl font-mono tracking-[0.5em] h-16 rounded-2xl border-2 border-slate-100 focus:border-blue-400 bg-white/50"
+                                                        maxLength={6}
+                                                    />
+                                                    <p className="text-center text-xs text-slate-400">
+                                                        Code expires in 5 minutes.
+                                                    </p>
+                                                </div>
+
+                                                <AlertDialogFooter className="flex gap-3 mt-4 sm:justify-center">
+                                                    <AlertDialogCancel className="rounded-2xl border-slate-200 text-slate-500 hover:bg-slate-50 min-w-[120px]">
+                                                        Cancel
+                                                    </AlertDialogCancel>
+                                                    <Button
+                                                        onClick={handleVerifyOtpAndSave}
+                                                        disabled={otpValue.length !== 6 || isOtpVerifying}
+                                                        className="rounded-2xl bg-slate-900 text-white hover:bg-slate-800 min-w-[140px] shadow-lg shadow-slate-200"
+                                                    >
+                                                        {isOtpVerifying ? (
+                                                            <>
+                                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                                Verifying
+                                                            </>
+                                                        ) : (
+                                                            "Confirm"
+                                                        )}
+                                                    </Button>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+
                                         {/* Submit Button */}
-                                        <div className="flex justify-end pt-4">
-                                            <Button
-                                                className="bg-neutral-900 text-white hover:bg-neutral-800 min-w-[120px]"
-                                                onClick={handleSaveProfile}
-                                                disabled={isLoading}
-                                            >
-                                                {isLoading ? (
-                                                    <>
-                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                        Saving...
-                                                    </>
-                                                ) : (
-                                                    "Save Changes"
-                                                )}
-                                            </Button>
-                                        </div>
                                     </div>
                                 )}
 

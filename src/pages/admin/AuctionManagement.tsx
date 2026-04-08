@@ -178,7 +178,7 @@ export default function AuctionManagement() {
                                                 variant="outline"
                                                 size="sm"
                                                 className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-                                                onClick={() => navigate(`/admin/auctions/${auction.auction_id}`)}
+                                                onClick={() => navigate(`/admin/auctions/${auction.auction_id}/live`)}
                                                 title="View Details"
                                             >
                                                 <Eye className="w-4 h-4" />

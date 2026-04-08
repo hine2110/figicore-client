@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import CustomerLayout from '@/layouts/CustomerLayout';
-import { Gavel, Clock, Flame, ShieldAlert, AlertCircle, CalendarOff, ArrowRight, CalendarDays, ChevronRight, Loader2, Wallet, Info, FileText, Archive, Trophy } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Gavel, Clock, Flame, ShieldAlert, AlertCircle, CalendarOff, ArrowRight, ChevronRight, Loader2, Wallet, Info, Archive } from "lucide-react";
+// import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { auctionsService } from "@/services/auctions.service";
@@ -10,7 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
+    // DialogHeader,
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
@@ -25,9 +26,10 @@ export default function CustomerAuctions() {
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [isJoining, setIsJoining] = useState(false);
     const [showJoinModal, setShowJoinModal] = useState(false);
+    const [showRulesModal, setShowRulesModal] = useState(false);
     const [joinedRooms, setJoinedRooms] = useState<Record<number, boolean>>({});
     const { toast } = useToast();
-    const [pendingPaymentAuctions, setPendingPaymentAuctions] = useState<any[]>([]);
+    // const [pendingPaymentAuctions, setPendingPaymentAuctions] = useState<any[]>([]);
 
     useEffect(() => {
         const initData = async () => {
@@ -65,8 +67,10 @@ export default function CustomerAuctions() {
 
             setAuctions(publicAuctions);
 
-            // Vault Archives (COMPLETED)
-            const completedAuctions = data.filter((a: any) => a.status_code === 'COMPLETED');
+            // Vault Archives (COMPLETED, AWAITING_PAYMENT, FAILED_NO_BUYER)
+            const completedAuctions = data.filter((a: any) => 
+                ['COMPLETED', 'AWAITING_PAYMENT', 'FAILED_NO_BUYER'].includes(a.status_code)
+            );
             completedAuctions.sort((a: any, b: any) => new Date(b.end_time).getTime() - new Date(a.end_time).getTime());
             setArchiveAuctions(completedAuctions);
 
@@ -88,18 +92,7 @@ export default function CustomerAuctions() {
             }
             setJoinedRooms(joinedStatuses);
 
-            // [FIX] Tìm các auction AWAITING_PAYMENT mà user đang là WINNER
-            const awaitingAuctions = data.filter((a: any) => a.status_code === 'AWAITING_PAYMENT');
-            const pendingList: any[] = [];
-            for (const a of awaitingAuctions) {
-                try {
-                    const s = await auctionsService.getMyStatus(a.auction_id);
-                    if (s?.participant?.status === 'WINNER') {
-                        pendingList.push(a);
-                    }
-                } catch { /* ignore */ }
-            }
-            setPendingPaymentAuctions(pendingList);
+            // setPendingPaymentAuctions([]);
 
         } catch (error) {
             console.error("Could not fetch auctions", error);
@@ -173,11 +166,23 @@ export default function CustomerAuctions() {
         variant = spotlightRoom.product_variants;
         mainProduct = variant?.products;
 
-        // Use variant's media_assets if available (parsed from JSON string if needed), otherwise fallback
+        const productImages = [];
+        if (mainProduct?.media_urls) {
+            const urls = typeof mainProduct.media_urls === 'string' ? JSON.parse(mainProduct.media_urls) : mainProduct.media_urls;
+            productImages.push(...urls.map((u: string) => ({ url: u, type: 'IMAGE' })));
+        }
+
+        const variantImages = [];
         if (variant?.media_assets) {
-            mediaAssets = typeof variant.media_assets === 'string' ? JSON.parse(variant.media_assets) : variant.media_assets;
-        } else if (mainProduct?.media_urls) {
-            mediaAssets = (typeof mainProduct.media_urls === 'string' ? JSON.parse(mainProduct.media_urls) : mainProduct.media_urls).map((u: string) => ({ url: u }));
+            variantImages.push(...(typeof variant.media_assets === 'string' ? JSON.parse(variant.media_assets) : variant.media_assets));
+        }
+
+        // Combine product cover (priority) and variant assets
+        mediaAssets = [...productImages, ...variantImages];
+
+        // Ensure we have at least one fallback if empty
+        if (mediaAssets.length === 0) {
+            mediaAssets = [{ url: null }];
         }
 
         description = variant?.description || mainProduct?.description || "This extremely limited edition piece has been locked in the FigiCore Vault. It is now being released for a one-time exclusive bidding event. Secure your position before the timer runs out.";
@@ -209,47 +214,28 @@ export default function CustomerAuctions() {
                     <div className="container mx-auto px-4 py-3 flex items-center justify-center gap-6 md:gap-16 text-[10px] md:text-xs font-mono tracking-[0.2em] uppercase text-neutral-400">
                         <span className="flex items-center gap-2 group cursor-default">
                             <ShieldAlert className="w-3 h-3 text-red-500 group-hover:scale-125 transition-transform" />
-                            <span className="group-hover:text-white transition-colors">Deposit Required</span>
+                            <span className="group-hover:text-white transition-colors text-rose-500/80">Participation Requires Deposit</span>
                         </span>
                         <span className="flex items-center gap-2 group cursor-default">
                             <Flame className="w-3 h-3 text-amber-500 group-hover:scale-125 transition-transform" />
                             <span className="group-hover:text-white transition-colors">Anti-Snipe Protected (+60s)</span>
                         </span>
-                        <span className="items-center gap-2 group cursor-default hidden md:flex">
+                        <span className="flex items-center gap-2 group cursor-default">
                             <Gavel className="w-3 h-3 text-neutral-500 group-hover:scale-125 transition-transform" />
                             <span className="group-hover:text-white transition-colors">24H Clearing Window</span>
                         </span>
+                        <div className="h-4 w-px bg-white/10 mx-2 hidden md:block"></div>
+                        <button 
+                            onClick={() => setShowRulesModal(true)}
+                            className="flex items-center gap-2 group hover:text-white transition-colors text-amber-500/90 font-bold"
+                        >
+                            <Info className="w-3.5 h-3.5 animate-pulse" />
+                            <span>Bidding Rules & FAQ</span>
+                        </button>
                     </div>
                 </div>
 
-                {/* [FIX] Pending Payment Banner — hiện khi user đang có phiên chờ thanh toán */}
-                {pendingPaymentAuctions.length > 0 && (
-                    <div className="relative z-20 border-b border-amber-500/30">
-                        {pendingPaymentAuctions.map(a => (
-                            <div key={a.auction_id} className="bg-gradient-to-r from-amber-950/80 to-amber-900/60 backdrop-blur-xl px-4 py-3">
-                                <div className="container mx-auto max-w-[1400px] flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 animate-pulse">
-                                            <Trophy className="w-4 h-4 text-amber-400" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-mono text-amber-300 uppercase tracking-widest font-bold">🏆 You won! — Pending Payment</p>
-                                            <p className="text-sm text-amber-100/80">
-                                                <strong>{a.product_variants?.products?.name || `Auction #${a.auction_id}`}</strong> — Pay within 24h or lose your deposit.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Button
-                                        onClick={() => navigate(`/customer/auctions/${a.auction_id}`)}
-                                        className="shrink-0 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs px-4 py-2 rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all"
-                                    >
-                                        Check Details →
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+
 
                 <div className="container mx-auto px-4 max-w-[1400px] pt-12 lg:pt-24 relative z-10">
                     {/* Return to Live Action */}
@@ -290,27 +276,40 @@ export default function CustomerAuctions() {
                                 <div className="absolute bottom-[10%] left-1/2 -translate-x-1/2 w-[60%] h-8 bg-black blur-2xl rounded-[100%] opacity-80 group-hover:scale-110 transition-transform duration-[2s]"></div>
 
                                 {currentImageUrl ? (
-                                    <img
-                                        src={currentImageUrl}
-                                        alt={mainProduct?.name}
-                                        className="w-[90%] md:w-[80%] h-auto max-h-[750px] object-contain filter drop-shadow-[0_30px_40px_rgba(0,0,0,0.8)] xl:drop-shadow-[0_40px_50px_rgba(0,0,0,0.9)] scale-100 group-hover:scale-105 group-hover:-translate-y-4 transition-all duration-[2s] ease-in-out relative z-10"
-                                    />
+                                    <div className="relative w-[90%] md:w-[80%] aspect-square flex items-center justify-center p-6 bg-neutral-900/40 backdrop-blur-md rounded-[2.5rem] border border-white/10 shadow-[0_30px_60px_-12px_rgba(0,0,0,0.5)] overflow-hidden group/img-container">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none z-20"></div>
+                                        <AnimatePresence mode="wait">
+                                            <motion.img
+                                                key={currentImageUrl}
+                                                src={currentImageUrl}
+                                                alt={mainProduct?.name}
+                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 1.05 }}
+                                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                className="w-full h-full object-contain filter drop-shadow-[0_20px_40px_rgba(0,0,0,0.4)] relative z-10"
+                                            />
+                                        </AnimatePresence>
+                                        
+                                        {/* Simplified Edge Light */}
+                                        <div className="absolute inset-0 rounded-[2.5rem] border border-white/5 pointer-events-none z-30"></div>
+                                    </div>
                                 ) : (
-                                    <Gavel className="w-32 h-32 text-white/5 relative z-10" />
+                                    <div className="w-[90%] md:w-[80%] aspect-square bg-white/5 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 flex items-center justify-center">
+                                        <Gavel className="w-32 h-32 text-white/5" />
+                                    </div>
                                 )}
 
-                                {/* Floating Thumbnail Gallery */}
+                                {/* Floating Thumbnail Gallery - Better UI */}
                                 {mediaAssets.length > 1 && (
-                                    <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 flex gap-4 z-30 opacity-0 group-hover:opacity-100 group-hover:bottom-4 transition-all duration-500">
-                                        <div className="bg-black/60 backdrop-blur-2xl p-2 rounded-2xl border border-white/10 flex gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
+                                    <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 flex gap-4 z-40 opacity-0 group-hover:opacity-100 group-hover:bottom-4 transition-all duration-700 ease-out">
+                                        <div className="bg-black/80 backdrop-blur-[40px] p-2.5 rounded-[2rem] border border-white/10 flex gap-2.5 shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
                                             {mediaAssets.map((asset: any, idx: number) => (
                                                 <button
                                                     key={idx}
                                                     onClick={() => setActiveImageIndex(idx)}
-                                                    className={`w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden relative transition-all duration-300 ${activeImageIndex === idx ? 'scale-105 z-10 border border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.1)]' : 'border border-transparent opacity-40 hover:opacity-100 hover:scale-100'}`}
+                                                    className={`w-14 h-14 md:w-16 md:h-16 rounded-[1.2rem] overflow-hidden relative transition-all duration-500 hover:scale-105 active:scale-95 ${activeImageIndex === idx ? 'ring-2 ring-white ring-offset-4 ring-offset-black/50 border border-white/40' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`}
                                                 >
-                                                    {/* Brighten the active thumbnail */}
-                                                    <div className={`absolute inset-0 bg-black transition-opacity ${activeImageIndex === idx ? 'opacity-0' : 'opacity-40'}`}></div>
                                                     <img src={asset.url} alt="Thumbnail" className="w-full h-full object-cover" />
                                                 </button>
                                             ))}
@@ -405,25 +404,15 @@ export default function CustomerAuctions() {
                                 {/* Action */}
                                 <div className="space-y-4">
                                     <Button
-                                        onClick={(e) => {
-                                            if (joinedRooms[spotlightRoom.auction_id]) {
-                                                // Already joined, go straight to room
-                                                navigate(`/customer/auctions/${spotlightRoom.auction_id}`);
-                                            } else if (spotlightRoom.status_code === 'UPCOMING' ||
-                                                ((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants && spotlightRoom.status_code !== 'COMPLETED')) {
-                                                e.preventDefault();
-                                            } else {
-                                                setShowJoinModal(true);
-                                            }
+                                        onClick={() => {
+                                            navigate(`/customer/auctions/${spotlightRoom.auction_id}`);
                                         }}
                                         disabled={
-                                            !joinedRooms[spotlightRoom.auction_id] && (
-                                                spotlightRoom.status_code === 'UPCOMING' ||
-                                                (((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants) && spotlightRoom.status_code !== 'COMPLETED')
-                                            )
+                                            spotlightRoom.status_code === 'UPCOMING' ||
+                                            (((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants) && spotlightRoom.status_code !== 'COMPLETED' && !joinedRooms[spotlightRoom.auction_id])
                                         }
                                         size="lg"
-                                        className={`w-full h-20 rounded-[1.5rem] text-xl font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center justify-center gap-4 group relative overflow-hidden ${!joinedRooms[spotlightRoom.auction_id] && (spotlightRoom.status_code === 'UPCOMING' || ((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants && spotlightRoom.status_code !== 'COMPLETED'))
+                                        className={`w-full h-20 rounded-[1.5rem] text-xl font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center justify-center gap-4 group relative overflow-hidden ${spotlightRoom.status_code === 'UPCOMING' || (((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants) && spotlightRoom.status_code !== 'COMPLETED' && !joinedRooms[spotlightRoom.auction_id])
                                             ? 'bg-white/5 text-neutral-500 cursor-not-allowed border border-white/5'
                                             : 'bg-white text-black hover:bg-neutral-200 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_60px_rgba(255,255,255,0.3)] hover:scale-[1.01]'
                                             }`}
@@ -431,13 +420,11 @@ export default function CustomerAuctions() {
                                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out z-0"></div>
 
                                         <span className="relative z-10 flex items-center gap-4">
-                                            {joinedRooms[spotlightRoom.auction_id] ? (
-                                                <>Enter Room <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" /></>
-                                            ) : spotlightRoom.status_code === 'UPCOMING' ? (
+                                            {spotlightRoom.status_code === 'UPCOMING' ? (
                                                 <>Upcoming <Clock className="w-6 h-6" /></>
                                             ) : (
                                                 <>
-                                                    {((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants) ? 'At Capacity' : 'Join Auction'} <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                                                    {((spotlightRoom._count?.auction_participants || 0) >= spotlightRoom.max_participants && !joinedRooms[spotlightRoom.auction_id]) ? 'Watch Only - At Capacity' : 'Enter Live Vault'} <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                                                 </>
                                             )}
                                         </span>
@@ -559,7 +546,11 @@ export default function CustomerAuctions() {
                             {scheduleRooms.map((room) => {
                                 const p = room.product_variants;
                                 const prod = p?.products;
-                                const img = p?.media_assets?.[0]?.url || prod?.media_urls?.[0];
+                                
+                                // Image Priority Logic
+                                const prodImages = typeof prod?.media_urls === 'string' ? JSON.parse(prod.media_urls) : prod?.media_urls;
+                                const variantImages = typeof p?.media_assets === 'string' ? JSON.parse(p.media_assets) : p?.media_assets;
+                                const img = prodImages?.[0] || variantImages?.[0]?.url;
 
                                 return (
                                     <div
@@ -573,9 +564,17 @@ export default function CustomerAuctions() {
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent z-10 bottom-0 top-[30%]"></div>
 
-                                        <div className="absolute inset-0 w-full h-full flex items-center justify-center p-8 z-0 bg-black">
+                                        <div className="absolute inset-0 w-full h-full flex items-center justify-center p-6 z-0 bg-[#0a0a0a]">
                                             {img ? (
-                                                <img src={img} alt={prod?.name} className="w-full h-full object-contain filter drop-shadow-2xl group-hover:scale-110 transition-transform duration-700 ease-out" />
+                                                <div className="relative w-full h-full flex items-center justify-center">
+                                                    {/* Card Image Depth Glow */}
+                                                    <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-75 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                                                    <img 
+                                                        src={img} 
+                                                        alt={prod?.name} 
+                                                        className="w-[85%] h-[85%] object-contain filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-700 ease-out relative z-10 rounded-2xl" 
+                                                    />
+                                                </div>
                                             ) : (
                                                 <Gavel className="w-16 h-16 text-white/5" />
                                             )}
@@ -623,7 +622,10 @@ export default function CustomerAuctions() {
                             {archiveAuctions.map((room) => {
                                 const p = room.product_variants;
                                 const prod = p?.products;
-                                const img = p?.media_assets?.[0]?.url || prod?.media_urls?.[0];
+                                
+                                const prodImages = typeof prod?.media_urls === 'string' ? JSON.parse(prod.media_urls) : prod?.media_urls;
+                                const variantImages = typeof p?.media_assets === 'string' ? JSON.parse(p.media_assets) : p?.media_assets;
+                                const img = prodImages?.[0] || variantImages?.[0]?.url;
 
                                 return (
                                     <div
@@ -663,6 +665,65 @@ export default function CustomerAuctions() {
                         </div>
                     </div>
                 )}
+
+                {/* Rules & Participation Guidelines Modal */}
+                <Dialog open={showRulesModal} onOpenChange={setShowRulesModal}>
+                    <DialogContent className="bg-[#050505]/95 backdrop-blur-3xl border border-white/10 text-white max-w-[600px] p-0 overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.8)] sm:rounded-[2rem] outline-none">
+                        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent pointer-events-none"></div>
+                        
+                        <div className="p-10 pb-4">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                                    <Gavel className="w-6 h-6 text-amber-500" />
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-3xl font-black tracking-tight uppercase">Bidding Protocol</DialogTitle>
+                                    <DialogDescription className="text-neutral-500 font-mono text-[10px] tracking-widest uppercase mt-1">Participation Guidelines & Legal Terms</DialogDescription>
+                                </div>
+                            </div>
+
+                            <div className="space-y-8 py-6 max-h-[60vh] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-white/10 custom-scrollbar">
+                                <section className="space-y-3">
+                                    <h3 className="text-amber-500 font-bold text-sm tracking-wider uppercase">1. Mandatory Security Deposit</h3>
+                                    <p className="text-neutral-400 text-[13px] leading-relaxed">
+                                        Participation in any FigiCore Vault auction requires a security deposit. This amount is **fully refundable** immediately after the auction ends if you are not the winner. For the winner, it will be applied toward the final payment.
+                                    </p>
+                                </section>
+
+                                <section className="space-y-3">
+                                    <h3 className="text-amber-500 font-bold text-sm tracking-wider uppercase">2. Anti-Snipe Extension</h3>
+                                    <p className="text-neutral-400 text-[13px] leading-relaxed">
+                                        To ensure fairness, any bid placed within the **final 60 seconds** of an auction will automatically extend the timer by an additional 60 seconds. This continues until no new bids are placed for one full minute.
+                                    </p>
+                                </section>
+
+                                <section className="space-y-3">
+                                    <h3 className="text-amber-500 font-bold text-sm tracking-wider uppercase">3. Increment Rules</h3>
+                                    <p className="text-neutral-400 text-[13px] leading-relaxed">
+                                        Each bid must be higher than the current top bid by at least the **Increment Step** specified for each item. You can place a maximum bid, and the system will automatically bid on your behalf up to that amount.
+                                    </p>
+                                </section>
+
+                                <section className="space-y-3">
+                                    <h3 className="text-amber-500 font-bold text-sm tracking-wider uppercase">4. Win Fulfillment</h3>
+                                    <p className="text-neutral-400 text-[13px] leading-relaxed">
+                                        Auction winners are legally obligated to complete the payment for their item within **24 hours**. Failure to do so will result in the forfeiture of your security deposit and potential banning from the platform.
+                                    </p>
+                                </section>
+                            </div>
+                        </div>
+
+                        <div className="p-8 pt-4 border-t border-white/5 bg-white/5">
+                            <Button 
+                                onClick={() => setShowRulesModal(false)}
+                                className="w-full bg-white text-black hover:bg-neutral-200 h-14 rounded-2xl font-bold tracking-widest uppercase text-xs"
+                            >
+                                I Understand
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
             </div>
         </CustomerLayout>
     );

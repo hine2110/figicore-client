@@ -15,12 +15,16 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { productsService } from '@/services/products.service';
 import { customersService } from '@/services/customers.service';
 import { calculateFinalPrice } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import CollectVoucherBlock from '@/components/CollectVoucherBlock';
+import { livestreamsService } from '@/services/livestreams.service';
+import LivestreamPreviewCard from '@/components/customer/LivestreamPreviewCard';
+import FlashSaleSection from '@/components/flash-sale/FlashSaleSection';
+import { PromotionsService } from '@/services/promotions.service';
 
 export default function CustomerHome() {
     const navigate = useNavigate();
@@ -29,17 +33,21 @@ export default function CustomerHome() {
     // Data States
     const [retailProducts, setRetailProducts] = useState<any[]>([]);
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
+    const [flashSaleItems, setFlashSaleItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<any>({ walletBalance: 0, loyaltyPoints: 0, activeOrders: 0, rankCode: 'MEMBER' });
+    const [liveSessions, setLiveSessions] = useState<any[]>([]);
 
     // Initial Data Fetch
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [retailData, preorderData, statsData] = await Promise.all([
+                const [retailData, preorderData, statsData, liveData, flashData] = await Promise.all([
                     productsService.getProducts({ type_code: 'RETAIL', limit: 50 }),
                     productsService.getProducts({ type_code: 'PREORDER', limit: 50 }),
-                    customersService.getDashboardStats()
+                    customersService.getDashboardStats().catch(() => null),
+                    livestreamsService.getLivestreams('LIVE').catch(() => []),
+                    PromotionsService.getActiveFlashSales().catch(() => [])
                 ]);
 
                 const getList = (res: any) => Array.isArray(res) ? res : (res as any)?.data || [];
@@ -52,9 +60,23 @@ export default function CustomerHome() {
                     return arr;
                 };
 
-                setRetailProducts(shuffle(getList(retailData)).slice(0, 6));
-                setPreorderProducts(shuffle(getList(preorderData)).slice(0, 4));
+                const getPrioritizedList = (data: any, maxCount: number) => {
+                    const items = getList(data);
+                    // Lấy riêng các sp đang Sale (đã được Backend ưu tiên vị trí)
+                    const onSaleItems = items.filter((p: any) => p.product_variants?.some((v: any) => v.is_on_sale) || p.product_promotions);
+                    // Lọc các sp không Sale
+                    const normalItems = items.filter((p: any) => !p.product_variants?.some((v: any) => v.is_on_sale) && !p.product_promotions);
+                    
+                    // Ghép: Giữ nguyên Sale ở đầu, Shuffle mảng còn lại
+                    // Nếu muốn Sale cũng shuffle thì bọc shuffle(onSaleItems)
+                    return [...onSaleItems, ...shuffle(normalItems)].slice(0, maxCount);
+                };
+
+                setRetailProducts(getPrioritizedList(retailData, 6));
+                setPreorderProducts(getPrioritizedList(preorderData, 4));
+                setLiveSessions(Array.isArray(liveData) ? liveData : []);
                 if (statsData) setStats(statsData);
+                if (Array.isArray(flashData)) setFlashSaleItems(flashData);
 
             } catch (error) {
                 console.error("Failed to load dashboard data", error);
@@ -65,26 +87,44 @@ export default function CustomerHome() {
         loadData();
     }, []);
 
+    // ⚡ Real-time Flash Sale: re-fetch active flash sales (used for polling + onExpire)
+    const refreshFlashSales = useCallback(async () => {
+        try {
+            const data = await PromotionsService.getActiveFlashSales();
+            setFlashSaleItems(Array.isArray(data) ? data : []);
+        } catch {
+            // silently fail — don't clear existing data on network error
+        }
+    }, []);
+
+    // Poll every 60 seconds to update sold/quota counts and detect new/ended sales
+    useEffect(() => {
+        const id = setInterval(refreshFlashSales, 60_000);
+        return () => clearInterval(id);
+    }, [refreshFlashSales]);
+
     // Helpers
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
     const getDisplayPrice = (product: any) => {
-        const basePrice = Number(product.product_variants?.[0]?.price || 0);
+        const variant = product.product_variants?.[0] || {};
+        const basePrice = Number(variant.price || 0);
         if (isNaN(basePrice)) return 'Contact';
 
-        const promo = Array.isArray(product.product_promotions) ? product.product_promotions[0] : product.product_promotions;
-        const finalPrice = calculateFinalPrice(basePrice, promo);
+        const finalPrice = Number(variant.final_price || basePrice);
+        const isOnSale = variant.is_on_sale;
+        const discountPercentage = variant.discount_percentage;
 
-        if (finalPrice < basePrice) {
+        if (isOnSale && finalPrice < basePrice) {
             return (
                 <div className="flex flex-col items-start leading-none gap-1">
                     <div className="flex items-center gap-2">
                         <span className="text-red-600 font-bold text-lg">
                             {formatPrice(finalPrice)}
                         </span>
-                        {promo?.type_code === 'PERCENTAGE' && (
+                        {discountPercentage > 0 && (
                             <span className="bg-red-100/80 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
-                                -{Number(promo.value)}%
+                                -{discountPercentage}%
                             </span>
                         )}
                     </div>
@@ -272,7 +312,7 @@ export default function CustomerHome() {
                                         {[
                                             { label: "My Collection", path: "/customer/profile?tab=orders", icon: Package },
                                             { label: "Wallet & Points", path: "/customer/wallet", icon: Wallet },
-                                            { label: "Vouchers", path: "/customer/wallet", icon: Ticket },
+                                            { label: "Vouchers", path: "/customer/profile?tab=vouchers", icon: Ticket },
                                             { label: "Live Auctions", path: "/customer/auctions", icon: Gavel },
                                         ].map((item, i) => (
                                             <button key={i} onClick={() => navigate(item.path)} className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-white text-slate-600 hover:text-blue-600 transition-all group font-medium text-sm hover:shadow-md border border-transparent hover:border-white/50">
@@ -301,6 +341,25 @@ export default function CustomerHome() {
                                         </Button>
                                     </div>
                                 </div>
+
+                                {/* Live Now Section (Moved to Sidebar) */}
+                                {liveSessions.length > 0 && (
+                                    <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h2 className="text-xl font-bold text-slate-900">Live Now</h2>
+                                                    <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-ping"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {liveSessions.map(session => (
+                                                <LivestreamPreviewCard key={session.id} session={session} />
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
                             </div>
                         </div>
 
@@ -308,6 +367,15 @@ export default function CustomerHome() {
                         <div className="lg:col-span-3 space-y-12">
                             {/* Collect Voucher Block */}
                             <CollectVoucherBlock />
+
+                            {/* ⚡ Flash Sale Section (only shown when there are active flash sales) */}
+                            {flashSaleItems.length > 0 && (
+                                <FlashSaleSection
+                                    items={flashSaleItems}
+                                    endTime={flashSaleItems[0]?.end_time}
+                                    onExpire={refreshFlashSales}
+                                />
+                            )}
                             {/* New Arrivals */}
                             <section>
                                 <div className="flex items-center justify-between mb-8">
@@ -345,10 +413,10 @@ export default function CustomerHome() {
                                     </div>
                                 </div>
                             </section>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </CustomerLayout>
+                        </div >
+                    </div >
+                </div >
+            </div >
+        </CustomerLayout >
     );
 }

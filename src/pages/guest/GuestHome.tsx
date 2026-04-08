@@ -6,6 +6,8 @@ import { GuestLayout } from '@/layouts/GuestLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Package, Star } from 'lucide-react';
+import FlashSaleSection from '@/components/flash-sale/FlashSaleSection';
+import { PromotionsService } from '@/services/promotions.service';
 
 // --- MOCK BANNERS (Refined Copy) ---
 const BANNERS = [
@@ -30,8 +32,8 @@ const BANNERS = [
 export function GuestHome() {
     const navigate = useNavigate();
     const [latestProducts, setLatestProducts] = useState<any[]>([]);
-
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
+    const [flashSaleItems, setFlashSaleItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -45,14 +47,16 @@ export function GuestHome() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [retail, preorder] = await Promise.all([
+                const [retail, preorder, flashData] = await Promise.all([
                     productsService.getProducts({ limit: 8, type_code: 'RETAIL' }),
-                    productsService.getProducts({ limit: 4, type_code: 'PREORDER' })
+                    productsService.getProducts({ limit: 4, type_code: 'PREORDER' }),
+                    PromotionsService.getActiveFlashSales().catch(() => [])
                 ]);
 
                 const getList = (res: any) => Array.isArray(res) ? res : (res as any)?.data || [];
                 setLatestProducts(getList(retail).slice(0, 8));
                 setPreorderProducts(getList(preorder).slice(0, 4));
+                if (Array.isArray(flashData)) setFlashSaleItems(flashData);
             } catch (error) {
                 console.error("Failed to load home data", error);
             } finally {
@@ -249,6 +253,16 @@ export function GuestHome() {
 
                 <HeroSection />
 
+                {/* ⚡ FLASH SALE SECTION */}
+                {!loading && flashSaleItems.length > 0 && (
+                    <section className="pt-24 pb-8 container mx-auto px-6">
+                        <FlashSaleSection 
+                            items={flashSaleItems} 
+                            endTime={flashSaleItems[0]?.end_time} 
+                        />
+                    </section>
+                )}
+
                 {/* SECTION 1: NEW ARRIVALS */}
                 <section className="py-32 container mx-auto px-6">
                     <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6 text-center md:text-left">
@@ -318,10 +332,10 @@ export function GuestHome() {
                         Join <span className="text-neutral-900 font-medium">FigiCore</span> to access exclusive <strong>Blind Box</strong> collections, earn loyalty points, and participate in member-only auctions.
                     </p>
                     <div className="flex flex-col sm:flex-row justify-center gap-6">
-                        <Button size="lg" className="bg-neutral-900 text-white hover:bg-black rounded-none px-12 h-16 text-lg tracking-wide uppercase" onClick={() => navigate('/guest/register')}>
+                        <Button size="lg" className="bg-neutral-900 text-white hover:bg-black rounded-none px-12 h-16 text-lg tracking-wide uppercase" onClick={() => navigate('/guest/home?auth=register')}>
                             Become a Member
                         </Button>
-                        <Button size="lg" variant="outline" className="border-neutral-300 text-neutral-900 hover:bg-neutral-200 rounded-none px-12 h-16 text-lg tracking-wide uppercase" onClick={() => navigate('/guest/login')}>
+                        <Button size="lg" variant="outline" className="border-neutral-300 text-neutral-900 hover:bg-neutral-200 rounded-none px-12 h-16 text-lg tracking-wide uppercase" onClick={() => navigate('/guest/home?auth=login')}>
                             Sign In
                         </Button>
                     </div>

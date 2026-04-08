@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { productsService } from "@/services/products.service";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -38,6 +40,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 // --- Types ---
 interface ReceiptItem {
@@ -59,6 +63,7 @@ interface Receipt {
     receipt_id: number;
     created_at: string;
     note: string;
+    status_code: string;
     warehouse_staff_id: number;
     employees?: {
         users: {
@@ -77,10 +82,21 @@ export function InboundHistory() {
     const [totalPages, setTotalPages] = useState(1);
     const [expandedRows, setExpandedRows] = useState<number[]>([]);
 
+    // Approval Modal State
+    const [isApprovalOpen, setIsApprovalOpen] = useState(false);
+    const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
+    const [approvalItems, setApprovalItems] = useState<any[]>([]);
+    const [isApproving, setIsApproving] = useState(false);
+    const { toast } = useToast();
+
     // Filters
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [date, setDate] = useState<DateRange | undefined>();
+
+    // Blind box state
+    const [draftBlindboxes, setDraftBlindboxes] = useState<any[]>([]);
+    const [draftLoading, setDraftLoading] = useState(false);
 
     // --- Effects ---
     // Debounce Search
@@ -113,7 +129,30 @@ export function InboundHistory() {
 
     useEffect(() => {
         fetchHistory();
+        fetchDraftBlindboxes();
     }, [page, debouncedSearch, date]);
+
+    const fetchDraftBlindboxes = async () => {
+        setDraftLoading(true);
+        try {
+            const res = await productsService.getDraftBlindboxes();
+            setDraftBlindboxes(res || []);
+        } catch (error) {
+            console.error("Failed to fetch draft blindboxes", error);
+        } finally {
+            setDraftLoading(false);
+        }
+    };
+
+    const handleApproveBlindbox = async (id: number) => {
+        try {
+            await productsService.approveBlindbox(id);
+            toast({ title: "Đã duyệt", description: "Blind Box đã được chuyển sang trạng thái ACTIVE." });
+            fetchDraftBlindboxes();
+        } catch (error: any) {
+            toast({ title: "Lỗi duyệt", description: error.response?.data?.message || error.message, variant: "destructive" });
+        }
+    };
 
     // --- Handlers ---
     const toggleRow = (id: number) => {
@@ -125,6 +164,52 @@ export function InboundHistory() {
     const handleClearDate = (e: React.MouseEvent) => {
         e.stopPropagation();
         setDate(undefined);
+    };
+
+    const handleOpenApproval = (e: React.MouseEvent, receipt: Receipt) => {
+        e.stopPropagation();
+        setSelectedReceipt(receipt);
+        setApprovalItems(receipt.inventory_receipt_items.map(item => ({
+            item_id: item.item_id,
+            quantity_total: item.quantity_total,
+            quantity_good: item.quantity_total, // Default to suggested amount
+            quantity_defect: 0,
+            option_name: item.product_variants.option_name,
+            sku: item.product_variants.sku,
+            name: item.product_variants.products.name
+        })));
+        setIsApprovalOpen(true);
+    };
+
+    const handleUpdateApprovalItem = (itemId: number, field: 'quantity_good' | 'quantity_defect', val: string) => {
+        if (val === '') {
+            setApprovalItems(prev => prev.map(i => i.item_id === itemId ? { ...i, [field]: 0 } : i));
+            return;
+        }
+        const qty = Math.max(0, parseInt(val) || 0);
+        setApprovalItems(prev => prev.map(i => i.item_id === itemId ? { ...i, [field]: qty } : i));
+    };
+
+    const handleSubmitApproval = async () => {
+        if (!selectedReceipt) return;
+        setIsApproving(true);
+        try {
+            await inventoryService.completeReceipt(selectedReceipt.receipt_id, {
+                items: approvalItems.map(i => ({
+                    item_id: i.item_id,
+                    quantity_good: i.quantity_good,
+                    quantity_defect: i.quantity_defect
+                }))
+            });
+            toast({ title: "Approved", description: "Receipt approved and stock updated successfully.", className: "bg-green-600 text-white" });
+            setIsApprovalOpen(false);
+            fetchHistory();
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: "Approval Failed", description: error.response?.data?.message || error.message || "Failed to approve receipt", variant: "destructive" });
+        } finally {
+            setIsApproving(false);
+        }
     };
 
     return (
@@ -162,6 +247,18 @@ export function InboundHistory() {
                 </div>
             </div>
 
+            <Tabs defaultValue="inbound" className="w-full">
+                <TabsList className="mb-6 h-12 bg-neutral-100 rounded-xl p-1 gap-1 flex items-center justify-start w-fit">
+                    <TabsTrigger value="inbound" className="h-full px-6 rounded-lg data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm font-bold text-neutral-500">
+                        Inbound History
+                    </TabsTrigger>
+                    <TabsTrigger value="blindbox" className="h-full px-6 rounded-lg data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-sm font-bold text-neutral-500">
+                        Blind Box Approval <Badge className="ml-2 bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">{draftBlindboxes.length}</Badge>
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="inbound" className="space-y-6 mt-0">
+
             {/* Filter Toolbar - Floating & Glassy */}
             <div className="sticky top-4 z-40 bg-white/80 backdrop-blur-xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-2 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
                 <div className="flex flex-col md:flex-row gap-2 items-center justify-between">
@@ -172,7 +269,7 @@ export function InboundHistory() {
                             <Search className="w-4 h-4 text-neutral-400 group-focus-within:text-blue-500 transition-colors" />
                         </div>
                         <Input
-                            placeholder="Search receipt ID, staff name, or notes..."
+                            placeholder="Search receipt ID, staff name, product name, or notes..."
                             className="pl-10 h-11 bg-neutral-100/50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -321,9 +418,17 @@ export function InboundHistory() {
 
                                             <TableCell>
                                                 <div className="flex flex-col gap-1.5">
-                                                    <Badge variant="outline" className="w-fit font-mono text-[10px] bg-white text-neutral-500 border-neutral-200">
-                                                        #{receipt.receipt_id}
-                                                    </Badge>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="w-fit font-mono text-[10px] bg-white text-neutral-500 border-neutral-200">
+                                                            #{receipt.receipt_id}
+                                                        </Badge>
+                                                        <Badge className={cn(
+                                                            "text-[8px] px-1.5 py-0 border-none shadow-none uppercase tracking-wider font-bold h-4 flex items-center justify-center", 
+                                                            ['DRAFT', 'PENDING'].includes(receipt.status_code) ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"
+                                                        )}>
+                                                            {receipt.status_code}
+                                                        </Badge>
+                                                    </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-bold text-neutral-800">
                                                             {format(new Date(receipt.created_at), "MMM dd, yyyy")}
@@ -370,17 +475,27 @@ export function InboundHistory() {
 
                                             <TableCell className="text-right pr-8">
                                                 <div className="flex flex-col items-end gap-2">
-                                                    <div className="flex items-center gap-2">
-                                                        {hasDefects && (
-                                                            <div className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold border border-red-100">
-                                                                <AlertCircle className="w-3 h-3" />
-                                                                {totalDefects} Issues
-                                                            </div>
-                                                        )}
-                                                        <Badge className="bg-neutral-900 hover:bg-neutral-800 text-white border-none px-3 py-1 text-xs shadow-lg shadow-neutral-900/10">
-                                                            {totalQuantity} Units
-                                                        </Badge>
-                                                    </div>
+                                                    {['DRAFT', 'PENDING'].includes(receipt.status_code) ? (
+                                                        <Button 
+                                                            size="sm" 
+                                                            className="h-8 bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20"
+                                                            onClick={(e) => handleOpenApproval(e, receipt)}
+                                                        >
+                                                            <CheckCircle2 className="w-4 h-4 mr-1.5" /> Approve Draft
+                                                        </Button>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            {hasDefects && (
+                                                                <div className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold border border-red-100">
+                                                                    <AlertCircle className="w-3 h-3" />
+                                                                    {totalDefects} Issues
+                                                                </div>
+                                                            )}
+                                                            <Badge className="bg-neutral-900 hover:bg-neutral-800 text-white border-none px-3 py-1 text-xs shadow-lg shadow-neutral-900/10">
+                                                                {totalQuantity} Units
+                                                            </Badge>
+                                                        </div>
+                                                    )}
                                                     <span className="text-[10px] font-medium text-neutral-400">
                                                         Across <span className="text-neutral-900 font-bold">{totalItems}</span> Product SKUs
                                                     </span>
@@ -510,6 +625,145 @@ export function InboundHistory() {
                     </div>
                 </div>
             </div>
+
+            {/* Approval Dialog */}
+            <Dialog open={isApprovalOpen} onOpenChange={setIsApprovalOpen}>
+                <DialogContent className="max-w-3xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+                    <div className="px-6 py-6 bg-gradient-to-b from-amber-50 to-white">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                <CheckCircle2 className="w-6 h-6 text-amber-500" />
+                                Approve Inventory Draft #{selectedReceipt?.receipt_id}
+                            </DialogTitle>
+                            <DialogDescription className="text-neutral-500 mt-2">
+                                Review the AI-generated restock quantities and confirm the actual received amounts.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    <div className="px-6 pb-6 max-h-[60vh] overflow-y-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="text-xs">Product Details</TableHead>
+                                    <TableHead className="text-xs text-center w-[120px]">Suggested Qty</TableHead>
+                                    <TableHead className="text-xs text-center text-green-600 w-[140px]">Good Qty</TableHead>
+                                    <TableHead className="text-xs text-center text-red-600 w-[140px]">Defect Qty</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {approvalItems.map(item => (
+                                    <TableRow key={item.item_id}>
+                                        <TableCell>
+                                            <div className="font-semibold text-sm text-neutral-800">{item.name}</div>
+                                            <div className="text-[10px] text-neutral-500 flex items-center gap-2 mt-1">
+                                                <Badge variant="secondary" className="font-normal text-[10px]">{item.option_name}</Badge>
+                                                <span className="font-mono bg-neutral-100 px-1 rounded">{item.sku}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center font-bold text-neutral-600">
+                                            {item.quantity_total}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                className="w-20 rounded-xl h-10 border border-neutral-200 bg-neutral-50 px-3 text-center text-sm font-semibold text-green-700 focus:bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500/50 outline-none transition-all mx-auto block"
+                                                value={item.quantity_good === 0 && item.quantity_good.toString() !== '0' ? '' : item.quantity_good}
+                                                onChange={e => handleUpdateApprovalItem(item.item_id, 'quantity_good', e.target.value)}
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                className="w-20 rounded-xl h-10 border border-neutral-200 bg-neutral-50 px-3 text-center text-sm font-semibold text-red-700 focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 outline-none transition-all mx-auto block"
+                                                value={item.quantity_defect === 0 && item.quantity_defect.toString() !== '0' ? '' : item.quantity_defect}
+                                                onChange={e => handleUpdateApprovalItem(item.item_id, 'quantity_defect', e.target.value)}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    <DialogFooter className="px-6 py-4 bg-neutral-50 border-t border-neutral-100 flex gap-2 justify-end">
+                        <Button variant="ghost" className="rounded-xl text-neutral-600" onClick={() => setIsApprovalOpen(false)}>Cancel</Button>
+                        <Button className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20" onClick={handleSubmitApproval} disabled={isApproving}>
+                            {isApproving ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/> Approving...</span> : "Confirm & Update Stock"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+                </TabsContent>
+
+                <TabsContent value="blindbox" className="mt-0">
+                    <div className="rounded-3xl border border-purple-100 shadow-xl shadow-neutral-900/5 bg-white overflow-hidden p-6 min-h-[400px]">
+                        <div className="mb-6 flex items-center gap-3">
+                            <div className="p-2 bg-purple-100 rounded-lg">
+                                <Package className="w-5 h-5 text-purple-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg text-purple-900">Pending Blind Boxes</h3>
+                                <p className="text-sm text-neutral-500">Check physical inventory and approve Manager's draft blind boxes.</p>
+                            </div>
+                        </div>
+
+                        {draftLoading ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
+                                <Loader2 className="w-8 h-8 animate-spin mb-4 text-purple-500" />
+                                <span>Loading pending blind boxes...</span>
+                            </div>
+                        ) : draftBlindboxes.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
+                                <CheckCircle2 className="w-12 h-12 text-neutral-300 mb-4" />
+                                <span className="text-lg font-semibold text-neutral-600">All Caught Up!</span>
+                                <p className="text-sm text-neutral-400 mt-1">No draft blind boxes awaiting approval.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {draftBlindboxes.map(bb => (
+                                    <div key={bb.product_id} className="bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-3">
+                                            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-none font-bold uppercase tracking-wider text-[10px]">Pending</Badge>
+                                        </div>
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center overflow-hidden shrink-0 border border-purple-100">
+                                                {bb.media_urls ? <img src={typeof bb.media_urls === 'string' ? bb.media_urls : bb.media_urls[0]} alt="" className="w-full h-full object-cover" /> : <Package className="w-6 h-6 text-purple-300" />}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-sm text-neutral-900 line-clamp-1">{bb.name}</h4>
+                                                <p className="text-xs text-neutral-500">{bb.brands?.name} • {bb.categories?.name}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-3 bg-neutral-50 p-3 rounded-xl mb-4 border border-neutral-100">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-neutral-500">Ticket Price:</span>
+                                                <span className="text-sm font-bold text-purple-700">{bb.product_blindboxes?.[0]?.price?.toLocaleString()}đ</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-neutral-500">Value Range:</span>
+                                                <span className="text-xs font-semibold">{bb.product_blindboxes?.[0]?.min_value?.toLocaleString()}đ - {bb.product_blindboxes?.[0]?.max_value?.toLocaleString()}đ</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-neutral-500">Total Variants:</span>
+                                                <span className="text-xs font-semibold">{bb._count?.product_variants || 0}</span>
+                                            </div>
+                                        </div>
+                                        <Button 
+                                            className="w-full bg-purple-600 hover:bg-purple-700 rounded-xl"
+                                            onClick={() => handleApproveBlindbox(bb.product_id)}
+                                        >
+                                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                                            Verify & Approve
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

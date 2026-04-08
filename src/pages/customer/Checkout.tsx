@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Copy, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Copy, CheckCircle2, AlertCircle, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -16,6 +16,8 @@ import AddressSelectorDialog from "@/components/customer/AddressSelectorDialog";
 import { TicketPercent } from "lucide-react";
 import { TopUpModal } from "@/components/customer/TopUpModal";
 import { io } from 'socket.io-client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VouchersService, MyVoucher } from "@/services/vouchers.service";
 
 export default function Checkout() {
     const navigate = useNavigate();
@@ -25,6 +27,7 @@ export default function Checkout() {
     // Support both new Ref and legacy ID
     const paymentRef = location.state?.paymentRef;
     const legacyOrderId = location.state?.orderId;
+    const livestreamId = location.state?.livestreamId;
 
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -41,6 +44,11 @@ export default function Checkout() {
 
     // Wallet State
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
+
+    // Voucher Wallet State
+    const [myVouchers, setMyVouchers] = useState<MyVoucher[]>([]);
+    const [selectedVoucher, setSelectedVoucher] = useState<MyVoucher | null>(null);
+    const [showVoucherDialog, setShowVoucherDialog] = useState(false);
 
     // Selected Payment Method (Global for Group)
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('QR_BANK');
@@ -67,7 +75,7 @@ export default function Checkout() {
     // 3. Fetch Orders Data
     const fetchOrders = async () => {
         if (!paymentRef && !legacyOrderId) {
-            navigate('/customer/cart');
+            navigate(livestreamId ? '/customer/home' : '/customer/cart');
             return;
         }
         try {
@@ -126,10 +134,16 @@ export default function Checkout() {
             } catch (promoErr) {
                 console.error("Failed to fetch applied promotion details:", promoErr);
             }
-            // Fetch Wallet Balance
+            // Fetch Wallet Balance + My Vouchers
             try {
-                const walletRes = await api.get('/wallet');
+                const [walletRes, voucherRes] = await Promise.all([
+                    api.get('/wallets/my-wallet'),
+                    VouchersService.getMyVouchers().catch(() => []),
+                ]);
                 setWalletBalance(Number(walletRes.data.balance_available) || 0);
+                // Only show COLLECTED vouchers in picker
+                const available = (voucherRes as MyVoucher[]).filter(v => v.status === 'COLLECTED');
+                setMyVouchers(available);
             } catch (walletErr) {
                 console.warn("Could not fetch wallet", walletErr);
                 setWalletBalance(0);
@@ -137,7 +151,7 @@ export default function Checkout() {
 
         } catch (error) {
             console.error("Orders Load Failed", error);
-            navigate('/customer/cart');
+            navigate(livestreamId ? '/customer/home' : '/customer/cart');
         } finally {
             setLoading(false);
         }
@@ -262,14 +276,19 @@ export default function Checkout() {
         try {
             if (selectedPaymentMethod === 'WALLET') {
                 if (paymentRef) {
-                    await api.post('/orders/pay-with-wallet', { payment_ref_code: paymentRef });
+                    await api.post('/orders/pay-with-wallet', { 
+                        payment_ref_code: paymentRef,
+                        voucher_id: selectedVoucher?.id
+                    });
                 } else if (legacyOrderId) {
-                    // Keep mock compatibility if legacy
                     await api.post(`/orders/${legacyOrderId}/confirm-payment`);
                 }
             } else {
                 if (paymentRef) {
-                    await api.post('/orders/mock-pay-group', { payment_ref_code: paymentRef });
+                    await api.post('/orders/mock-pay-group', { 
+                        payment_ref_code: paymentRef,
+                        voucher_id: selectedVoucher?.id
+                    });
                 } else if (legacyOrderId) {
                     await api.post(`/orders/${legacyOrderId}/confirm-payment`);
                 }
@@ -290,17 +309,19 @@ export default function Checkout() {
         setIsProcessing(true);
         try {
             await Promise.all(orders.map(o => api.post(`/orders/${o.order_id}/cancel`)));
-            toast({ 
-                title: isAuctionOrder ? "Auction Forfeited" : "Order Cancelled", 
-                description: isAuctionOrder ? "Tiền cọc của bạn đã bị tịch thu theo quy định" : "Items returned to cart/stock." 
+            toast({
+                title: isAuctionOrder ? "Auction Forfeited" : "Order Cancelled",
+                description: isAuctionOrder ? "Tiền cọc của bạn đã bị tịch thu theo quy định" : "Items returned to cart/stock."
             });
             // Navigate to auctions list if this was an auction order, else go to retail
             navigate(isAuctionOrder ? '/customer/auctions' : '/customer/retail');
         } catch (e) {
             toast({ variant: "destructive", title: "Error", description: "Failed to cancel orders." });
+            if (livestreamId) navigate('/customer/home');
         } finally {
             setIsProcessing(false);
             setShowCancelDialog(false);
+            if (livestreamId) navigate('/customer/home');
         }
     };
 
@@ -310,14 +331,27 @@ export default function Checkout() {
 
     const rawTotalAmount = orders.reduce((sum, o) => sum + Number(o.total_amount), 0); // Note: total_amount in DB is already discounted or full
     const totalShipping = orders.reduce((sum, o) => sum + Number(o.shipping_fee || 0), 0);
+    const totalDeposit = orders.reduce((sum, o) => sum + Number(o.paid_amount || 0), 0);
 
     // Calculate subtotal before any discounts from the order items
     const subtotal = orders.reduce((sum, o) => {
         return sum + o.order_items.reduce((itemSum: number, item: any) => itemSum + Number(item.total_price), 0);
     }, 0);
 
-    let calculatedDiscount = 0;
-    if (appliedDiscountPromo) {
+    // ── RETAIL-ONLY SUB-TOTAL ──────────────────────────────────────────────
+    const retailSubtotal = useMemo(() => {
+        return orders.reduce((sum, o) => {
+            return sum + o.order_items.reduce((itemSum: number, item: any) => {
+                const tc = item.product_variants?.products?.type_code;
+                return tc === 'RETAIL' ? itemSum + Number(item.total_price) : itemSum;
+            }, 0);
+        }, 0);
+    }, [orders]);
+
+    let calculatedDiscount = orders.reduce((sum, o) => sum + Number(o.discount_amount || 0), 0);
+    
+    // Fallback display if discount_amount is 0 but promo exists (legacy fallback)
+    if (calculatedDiscount === 0 && appliedDiscountPromo) {
         if (appliedDiscountPromo.discount_type === 'PERCENTAGE') {
             calculatedDiscount = (subtotal * (appliedDiscountPromo.discount_value || 0)) / 100;
         } else {
@@ -327,20 +361,26 @@ export default function Checkout() {
 
     let calculatedFreeShip = 0;
     if (appliedShippingPromo && appliedShippingPromo.discount_type === 'FREE_SHIP') {
-        calculatedFreeShip = totalShipping;
+        const totalOriginalShipping = orders.reduce((sum, o) => sum + Number(o.original_shipping_fee || 30000), 0);
+        calculatedFreeShip = totalOriginalShipping - totalShipping;
     }
 
-    // Since total_amount from DB might already include the discount (subtotal + shipping - discount)
-    // or it might just be (subtotal + shipping) and the frontend needs to handle it.
-    // Based on orders.service.ts, total_amount does NOT explicitly subtract the voucher discount there for retail/pre-order deposits yet in this iteration, 
-    // unless we modified it. Assuming it is NOT subtracted in DB total_amount, we subtract it here for the UI.
-    // Wait, the backend logic for full payment vs deposit makes total_amount the exact amount to pay.
-    // Let's rely on the rawTotalAmount as the final payable amount if no voucher is applied dynamically,
-    // OR if the voucher is applied during Order Creation, the backend 'total_amount' is already discounted?
-    // Looking at backend `orders.service.ts` line 384: `total_amount: rtFinalTotal`, it is `rtTotalAmount + customerShippingFee`. It DOES NOT subtract the voucher!
-    // This means we must subtract it dynamically here for the UI and final payment, or fix the backend.
-    // Actually, sending payment to QR uses `grandTotal`. We will subtract `calculatedDiscount` and `calculatedFreeShip` from `rawTotalAmount`.
-    const grandTotal = Math.max(0, rawTotalAmount - calculatedDiscount - calculatedFreeShip);
+    // ── Voucher discount calculation (local preview only) ──
+    const voucherDiscount = useMemo(() => {
+        if (!selectedVoucher) return 0;
+        const promo = selectedVoucher.promotions;
+        if (!promo || promo.discount_type === 'FREE_SHIP') return 0;
+        
+        // Retail-only rule: Discount applies to retail portions only
+        if (promo.discount_type === 'PERCENTAGE') {
+            return Math.round(retailSubtotal * (Number(promo.discount_value) / 100));
+        }
+        return Math.min(retailSubtotal, Number(promo.discount_value) || 0); // Cannot discount more than retail value
+    }, [selectedVoucher, retailSubtotal]);
+
+    // BUG FIXED: Backend authoritative checkout already subtracted vouchers from 'total_amount'.
+    // grandTotal should simply be rawTotalAmount (the sum of order.total_amount)
+    const grandTotal = Math.max(0, rawTotalAmount);
 
     // Address Info (From first order - assuming uniform address for group)
     const address = orders.length > 0 ? orders[0].addresses : null;
@@ -353,7 +393,7 @@ export default function Checkout() {
             <div className="min-h-screen bg-[#F8F9FA] py-10 font-sans text-slate-900">
                 <div className="container mx-auto px-4 max-w-6xl">
                     <div className="flex items-center gap-4 mb-8">
-                        <Button variant="ghost" size="icon" onClick={() => navigate('/customer/cart')} className="rounded-full bg-white/50 border border-slate-200">
+                        <Button variant="ghost" size="icon" onClick={() => navigate(livestreamId ? '/customer/home' : '/customer/cart')} className="rounded-full bg-white/50 border border-slate-200">
                             <ArrowLeft className="w-5 h-5 text-slate-600" />
                         </Button>
                         <div>
@@ -461,6 +501,7 @@ export default function Checkout() {
                                 </CardHeader>
                                 <CardContent className="p-6">
                                     <RadioGroup value={selectedPaymentMethod} onValueChange={handlePaymentMethodChange} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
                                         {/* FIGI WALLET OPTION */}
                                         <Label htmlFor="WALLET" className={`cursor-pointer group relative`}>
                                             <div className={`p-5 rounded-xl border-2 transition-all h-full flex flex-col ${selectedPaymentMethod === 'WALLET' ? 'border-purple-600 bg-purple-50/30' : 'border-slate-100 hover:border-slate-200'}`}>
@@ -529,6 +570,31 @@ export default function Checkout() {
                                                 <span>Total Shipping</span>
                                                 <span className="font-medium text-slate-900">{formatPrice(totalShipping)}</span>
                                             </div>
+
+                                            {totalDeposit > 0 && (
+                                                <div className="flex justify-between text-emerald-600 font-medium">
+                                                    <span>Deposit Deduction</span>
+                                                    <span>-{formatPrice(totalDeposit)}</span>
+                                                </div>
+                                            )}
+
+                                            {/* Voucher from wallet (local preview) */}
+                                            {selectedVoucher && voucherDiscount > 0 && (
+                                                <>
+                                                    <div className="w-full h-px bg-slate-100 my-2" />
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-violet-600 font-medium flex items-center gap-1.5">
+                                                                <TicketPercent className="w-4 h-4" /> Voucher áp dụng
+                                                            </span>
+                                                            <span className="text-xs text-slate-500 font-mono mt-0.5 ml-5">
+                                                                {selectedVoucher.promotions?.code}
+                                                            </span>
+                                                        </div>
+                                                        <span className="font-bold text-violet-600">-{formatPrice(voucherDiscount)}</span>
+                                                    </div>
+                                                </>
+                                            )}
 
                                             {/* Voucher Details */}
                                             {(appliedDiscountPromo || appliedShippingPromo) && (
@@ -688,7 +754,74 @@ export default function Checkout() {
                     <AddressDialog open={showAddressForm} onOpenChange={setShowAddressForm} onSelect={handleAddressChange} />
                 </div>
             </div>
+
+            {/* VOUCHER PICKER DIALOG */}
+            <Dialog open={showVoucherDialog} onOpenChange={setShowVoucherDialog}>
+                <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <TicketPercent className="w-5 h-5 text-violet-600" />
+                            Chọn Voucher
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 mt-2">
+                        {myVouchers.map(v => {
+                            const promo = v.promotions;
+                            const isSelected = selectedVoucher?.id === v.id;
+                            const discountLabel =
+                                promo?.discount_type === 'FREE_SHIP' ? '🚚 Miễn phí vận chuyển' :
+                                promo?.discount_type === 'PERCENTAGE' ? `${promo.discount_value}% OFF` :
+                                `${new Intl.NumberFormat('vi-VN').format(Number(promo?.discount_value))}đ OFF`;
+
+                            const meetsMinOrder = !promo?.min_order_value || retailSubtotal >= Number(promo.min_order_value);
+                            const canApply = retailSubtotal > 0 && meetsMinOrder;
+
+                            return (
+                                <button
+                                    key={v.id}
+                                    className={`w-full text-left relative rounded-xl border-2 px-4 py-4 transition-all ${isSelected ? 'border-violet-500 bg-violet-50' : canApply ? 'border-slate-200 hover:border-violet-300 bg-white' : 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'}`}
+                                    onClick={() => { if (canApply) { setSelectedVoucher(v); setShowVoucherDialog(false); } }}
+                                    disabled={!canApply}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="font-black text-lg text-violet-700">{discountLabel}</div>
+                                            <div className="font-mono text-xs text-slate-500 mt-0.5">{promo?.code}</div>
+                                        </div>
+                                        {isSelected && <CheckCircle2 className="w-5 h-5 text-violet-600 shrink-0" />}
+                                    </div>
+                                    <div className="mt-2">
+                                        {promo?.min_order_value && Number(promo.min_order_value) > 0 && (
+                                            <div className={`text-xs ${meetsMinOrder ? 'text-slate-400' : 'text-red-500 font-bold'}`}>
+                                                Đơn Retail tối thiểu: {new Intl.NumberFormat('vi-VN').format(Number(promo.min_order_value))}đ
+                                                {!meetsMinOrder && ' (Chưa đủ điều kiện)'}
+                                            </div>
+                                        )}
+                                        {retailSubtotal === 0 && (
+                                            <div className="text-[10px] text-amber-600 font-bold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 inline-block uppercase">
+                                                Cần có sản phẩm Retail trong đơn hàng
+                                            </div>
+                                        )}
+                                    </div>
+                                    {promo?.end_date && (
+                                        <div className="text-xs text-slate-400 mt-1">
+                                            HSD: {new Date(promo.end_date).toLocaleDateString('vi-VN')}
+                                        </div>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {selectedVoucher && (
+                        <Button variant="ghost" className="w-full mt-2 text-slate-500 text-sm" onClick={() => { setSelectedVoucher(null); setShowVoucherDialog(false); }}>
+                            Bỏ chọn voucher
+                        </Button>
+                    )}
+                </DialogContent>
+            </Dialog>
+
             {/* TOP UP MODAL (Inside Checkout) */}
+
             <TopUpModal
                 open={showTopUpModal}
                 onOpenChange={setShowTopUpModal}

@@ -14,6 +14,7 @@ import {
     User
 } from "lucide-react";
 import { useState } from "react";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -211,8 +212,26 @@ export default function PosLayout() {
             </Sheet>
 
             {/* Main Content Area */}
-            <div className={`flex-1 overflow-y-auto relative w-full h-full ${location.pathname === '/pos/counter' ? 'p-0' : 'p-8'}`}>
-                <Outlet />
+            <div className={`flex-1 flex flex-col min-w-0 overflow-hidden relative`}>
+                {/* POS Header */}
+                <header className="h-14 bg-white border-b border-neutral-200 flex items-center px-6 justify-between shrink-0">
+                    <div className="md:hidden w-8"></div> {/* Spacer for mobile menu button */}
+                    <div className="text-sm font-medium text-neutral-500 truncate">
+                        POS: <span className="text-blue-600">{user?.full_name}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <NotificationBell />
+                        <div className="h-6 w-px bg-neutral-200 hidden sm:block"></div>
+                        <div className="hidden sm:flex flex-col text-right">
+                            <span className="text-xs font-bold text-neutral-900">Shift Status</span>
+                            <span className="text-[10px] text-green-600 font-bold uppercase">Active</span>
+                        </div>
+                    </div>
+                </header>
+
+                <div className={`flex-1 overflow-y-auto ${location.pathname === '/pos/counter' ? 'p-0' : 'p-8'}`}>
+                    <Outlet />
+                </div>
             </div>
         </div>
     );
