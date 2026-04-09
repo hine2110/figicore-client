@@ -32,7 +32,7 @@ function VoucherTicket({ v, status }: { v: MyVoucher; status: 'COLLECTED' | 'USE
     const discountLabel =
         promo.discount_type === 'FREE_SHIP'  ? '🚚 Free Shipping' :
         promo.discount_type === 'PERCENTAGE' ? `${promo.discount_value}% OFF` :
-                                               `${new Intl.NumberFormat('en-US').format(Number(promo.discount_value))}đ OFF`;
+                                               `${new Intl.NumberFormat('vi-VN').format(Number(promo.discount_value))}đ OFF`;
 
     const rankInfo = promo.apply_rank_code ? RANK_BADGE[promo.apply_rank_code] : null;
 
@@ -92,7 +92,7 @@ function VoucherTicket({ v, status }: { v: MyVoucher; status: 'COLLECTED' | 'USE
                     {promo.min_order_value && Number(promo.min_order_value) > 0 && (
                         <div className="flex items-center gap-1.5">
                             <span className="w-1 h-1 rounded-full bg-violet-400 shrink-0" />
-                            Min. Order: <strong className="text-slate-700">{new Intl.NumberFormat('en-US').format(Number(promo.min_order_value))}đ</strong>
+                            Min. Order: <strong className="text-slate-700">{new Intl.NumberFormat('vi-VN').format(Number(promo.min_order_value))}đ</strong>
                         </div>
                     )}
                     {rankInfo && (

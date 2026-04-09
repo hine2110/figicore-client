@@ -26,8 +26,24 @@ export default function ResetPassword() {
         setMessage(null);
 
         // Validation
-        if (formData.password.length < 6) {
-            setError('Password must be at least 6 characters');
+        if (formData.password.length < 8) {
+            setError('Password must be at least 8 characters');
+            return;
+        }
+        if (!/[A-Z]/.test(formData.password)) {
+            setError('Needs at least 1 uppercase letter');
+            return;
+        }
+        if (!/[a-z]/.test(formData.password)) {
+            setError('Needs at least 1 lowercase letter');
+            return;
+        }
+        if (!/\d/.test(formData.password)) {
+            setError('Needs at least 1 number');
+            return;
+        }
+        if (!/[^A-Za-z0-9]/.test(formData.password)) {
+            setError('Needs at least 1 special character (@, #, $, etc.)');
             return;
         }
 
@@ -73,7 +89,10 @@ export default function ResetPassword() {
                 <div className="w-full max-w-md space-y-8">
                     <div className="text-center">
                         <h1 className="text-2xl font-bold text-neutral-900">Set New Password</h1>
-                        <p className="text-neutral-500 mt-2">Must be at least 6 characters</p>
+                        <div className="text-[10px] text-neutral-500 mt-2 space-y-0.5">
+                            <p>Min 8 characters, 1 Uppercase, 1 Number</p>
+                            <p>& 1 Special character (@, #, $, etc.)</p>
+                        </div>
                     </div>
 
                     <form onSubmit={handleResetPassword} className="space-y-6">

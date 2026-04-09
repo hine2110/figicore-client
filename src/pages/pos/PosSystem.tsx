@@ -451,8 +451,8 @@ export default function StaffPOS() {
                 setIsQrModalOpen(true);
             } catch (error: any) {
                 toast({
-                    title: 'Lỗi tạo đơn QR',
-                    description: error.response?.data?.message || 'Không thể tạo đơn hàng QR.',
+                    title: 'QR Order Error',
+                    description: error.response?.data?.message || 'Could not create QR order.',
                     variant: 'destructive',
                 });
             } finally {
@@ -576,8 +576,8 @@ export default function StaffPOS() {
         if (!term) return;
         
         const { dismiss } = toast({
-            title: "Đang tìm kiếm...",
-            description: `Đang đối soát mã: ${term}`,
+            title: "Searching...",
+            description: `Matching code: ${term}`,
         });
 
         try {
@@ -601,7 +601,7 @@ export default function StaffPOS() {
                     addToCart(exactMatch.p, exactMatch.v);
                     setSearchTerm('');
                     toast({
-                        title: 'Đã thêm vào giỏ',
+                        title: 'Added to Cart',
                         description: `${exactMatch.p.product_name} - ${exactMatch.v.option_name}`,
                         className: 'bg-cyan-600 text-white border-none'
                     });
@@ -612,22 +612,22 @@ export default function StaffPOS() {
                 } else {
                     // If multiple matches or no exact match, just keep the search term for manual selection
                     toast({
-                        title: 'Nhiều kết quả',
-                        description: 'Vui lòng chọn thực tế sản phẩm từ danh sách bên dưới.',
+                        title: 'Multiple Results',
+                        description: 'Please select the specific product from the list below.',
                     });
                 }
             } else {
                 toast({
-                    title: 'Không tìm thấy',
-                    description: `Không có sản phẩm nào khớp với mã "${term}"`,
+                    title: 'Not Found',
+                    description: `No product matches code "${term}"`,
                     variant: 'destructive'
                 });
             }
         } catch (err) {
             console.error("Scan error", err);
             toast({
-                title: 'Lỗi tìm kiếm',
-                description: 'Đã xảy ra lỗi khi tìm kiếm sản phẩm.',
+                title: 'Search Error',
+                description: 'An error occurred while searching for the product.',
                 variant: 'destructive'
             });
         }
@@ -922,12 +922,12 @@ export default function StaffPOS() {
                                             <span className="text-neutral-500 font-mono">{selectedCustomer.phone}</span>
                                             <span className="text-neutral-300">•</span>
                                             <div className="flex items-center gap-1 text-amber-600">
-                                                <Gift className="w-3 h-3" />
+                                                <Gift className="w-3.5 h-3.5" />
                                                 <span>{Number(selectedCustomer.loyalty_points || 0).toLocaleString('vi-VN')} pts</span>
                                             </div>
                                             <span className="text-neutral-300">•</span>
                                             <div className="flex items-center gap-1 text-indigo-600">
-                                                <Wallet className="w-3 h-3" />
+                                                <Wallet className="w-3.5 h-3.5" />
                                                 <span>{Number(selectedCustomer.wallet_balance || 0).toLocaleString('vi-VN')}₫</span>
                                             </div>
                                         </div>
@@ -1017,53 +1017,55 @@ export default function StaffPOS() {
                         </ScrollArea>
                     </div>
 
-                    <div className="bg-white/80 backdrop-blur-xl border-t border-neutral-200 p-4 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-20 rounded-t-3xl mx-1 mb-1">
+                    <div className="bg-white/80 backdrop-blur-xl border-t border-neutral-200 p-5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-20 rounded-t-3xl mx-1 mb-1">
 
-
-                        <div className="space-y-2 mb-4">
-                            <div className="flex justify-between text-neutral-600 text-sm">
-                                <span>Subtotal</span>
-                                <span className="font-medium text-neutral-900">{cartTotal.toLocaleString('vi-VN')}₫</span>
+                        <div className="space-y-3 mb-5">
+                            <div className="flex justify-between items-center text-neutral-500 text-base">
+                                <span className="font-medium">Subtotal</span>
+                                <span className="font-semibold text-neutral-700">{cartTotal.toLocaleString('vi-VN')}₫</span>
                             </div>
 
-                            <Separator className="my-1.5 bg-neutral-200/60" />
-                            <div className="flex justify-between items-end">
-                                <span className="font-bold text-neutral-900">Total</span>
+                            <Separator className="bg-neutral-200/80" />
+
+                            <div className="flex justify-between items-center pt-1">
+                                <span className="text-lg font-extrabold text-neutral-900">Total</span>
                                 <div className="text-right">
-                                    <span className="font-bold text-2xl text-neutral-900 block leading-none tracking-tight">{finalTotal.toLocaleString('vi-VN')}₫</span>
-                                    {cart.length > 0 && <span className="text-[10px] font-medium text-neutral-400 mt-1 block">{cart.length} items</span>}
+                                    <span className="font-extrabold text-4xl text-neutral-900 block leading-none tracking-tight">{finalTotal.toLocaleString('vi-VN')}₫</span>
+                                    {cart.length > 0 && <span className="text-xs font-medium text-neutral-400 mt-1.5 block">{cart.length} items</span>}
                                 </div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 mb-2 mt-2">
+
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                            {/* Cash Payment Button */}
                             <Button
-                                variant="outline"
-                                className="h-10 rounded-xl border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300 text-neutral-700 font-medium"
+                                className="h-[72px] rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold shadow-lg shadow-green-900/20 transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-1.5"
                                 disabled={cart.length === 0 || checkoutLoading}
                                 onClick={() => handleCheckout('CASH')}
                             >
-                                <DollarSign className="w-4 h-4 mr-1.5 text-green-600" />
-                                Cash Payment
+                                <DollarSign className="w-6 h-6 text-white" />
+                                <span className="text-sm font-bold">Cash Payment</span>
                             </Button>
-                            {/* Wallet button removed per user request */}
+
+                            {/* QR/Card Charge Button */}
+                            <Button
+                                className="h-[72px] rounded-xl bg-neutral-900 hover:bg-cyan-600 text-white font-semibold shadow-lg shadow-neutral-900/20 transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-1.5"
+                                disabled={cart.length === 0 || checkoutLoading}
+                                onClick={() => handleCheckout('QR_BANK')}
+                            >
+                                    {checkoutLoading ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <span className="text-sm font-bold">Processing...</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <CreditCard className="w-6 h-6" />
+                                            <span className="text-sm font-bold">Charge {finalTotal.toLocaleString('vi-VN')}₫</span>
+                                        </>
+                                    )}
+                            </Button>
                         </div>
-                        <Button
-                            className="w-full h-12 text-base font-bold bg-neutral-900 hover:bg-cyan-600 shadow-lg shadow-neutral-900/20 transition-all active:scale-[0.98]"
-                            disabled={cart.length === 0 || checkoutLoading}
-                            onClick={() => handleCheckout('QR_BANK')}
-                        >
-                            {checkoutLoading ? (
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Processing...
-                                </div>
-                            ) : (
-                                <>
-                                    <CreditCard className="w-4 h-4 mr-2" />
-                                    Charge {finalTotal.toLocaleString('vi-VN')}₫
-                                </>
-                            )}
-                        </Button>
                     </div>
                 </div>
 

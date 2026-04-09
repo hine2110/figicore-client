@@ -200,7 +200,7 @@ export default function VoucherListPage() {
     });
 
     const formatCurrency = (val: number) =>
-        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(val);
+        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
     if (user?.role_code !== 'MANAGER' && user?.role_code !== 'SUPER_ADMIN') return null;
 
@@ -298,12 +298,12 @@ export default function VoucherListPage() {
                                                 <TableRow key={v.promotion_id}>
                                                     <TableCell className="font-semibold">{v.code}</TableCell>
                                                     <TableCell>
-                                                        {v.discount_type === 'PERCENTAGE' ? `${v.discount_value}%` : v.discount_type === 'FREE_SHIP' ? 'Free Ship' : `${new Intl.NumberFormat('en-US').format(Number(v.discount_value))}đ`}
+                                                        {v.discount_type === 'PERCENTAGE' ? `${v.discount_value}%` : v.discount_type === 'FREE_SHIP' ? 'Free Ship' : `${new Intl.NumberFormat('vi-VN').format(Number(v.discount_value))}đ`}
                                                     </TableCell>
                                                     <TableCell>
                                                         {v.apply_rank_code ? <Badge variant="outline" className="bg-yellow-50">{v.apply_rank_code}</Badge> : <span className="text-gray-400">All</span>}
                                                     </TableCell>
-                                                    <TableCell>{v.min_order_value ? `${new Intl.NumberFormat('en-US').format(Number(v.min_order_value))}đ` : '-'}</TableCell>
+                                                    <TableCell>{v.min_order_value ? `${new Intl.NumberFormat('vi-VN').format(Number(v.min_order_value))}đ` : '-'}</TableCell>
                                                     <TableCell>{v.collected_quantity || 0} / {v.max_quantity || '∞'}</TableCell>
                                                     <TableCell className="text-sm">
                                                         {v.start_date && v.end_date ? (
@@ -509,12 +509,12 @@ export default function VoucherListPage() {
                                 <p className="font-semibold">
                                     {viewVoucher?.discount_type === 'PERCENTAGE' ? `${viewVoucher.discount_value}% OFF` :
                                      viewVoucher?.discount_type === 'FREE_SHIP' ? '🚚 Free Shipping' :
-                                     `${new Intl.NumberFormat('en-US').format(Number(viewVoucher?.discount_value))}đ OFF`}
+                                     `${new Intl.NumberFormat('vi-VN').format(Number(viewVoucher?.discount_value))}đ OFF`}
                                 </p>
                             </div>
                             <div className="rounded-lg bg-slate-50 p-3">
                                 <p className="text-xs text-muted-foreground mb-1">Minimum Order</p>
-                                <p className="font-semibold">{viewVoucher?.min_order_value ? `${new Intl.NumberFormat('en-US').format(Number(viewVoucher.min_order_value))}đ` : 'No limit'}</p>
+                                <p className="font-semibold">{viewVoucher?.min_order_value ? `${new Intl.NumberFormat('vi-VN').format(Number(viewVoucher.min_order_value))}đ` : 'No limit'}</p>
                             </div>
                             <div className="rounded-lg bg-slate-50 p-3">
                                 <p className="text-xs text-muted-foreground mb-1">Applied Rank</p>

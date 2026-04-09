@@ -236,7 +236,7 @@ export default function PosTimesheets() {
                                                             className="text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100 h-8 text-xs"
                                                             onClick={() => handleOpenCorrection(log.timesheet_id as number, log.date, log.shift_name)}
                                                         >
-                                                            <AlertTriangle className="w-3 h-3 mr-1" /> Báo lỗi
+                                                            <AlertTriangle className="w-3 h-3 mr-1" /> Report Error
                                                         </Button>
                                                     ) : (
                                                         <span className="text-xs text-neutral-400 italic"></span>

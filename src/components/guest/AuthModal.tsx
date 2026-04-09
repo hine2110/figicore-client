@@ -146,28 +146,37 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
         return () => clearInterval(interval);
     }, [timer]);
 
-    const validateRegField = (name: string, value: string) => {
+    const validateRegField = (name: string, value: string, currentFormState?: typeof regForm) => {
         let msg = "";
+        const formToUse = currentFormState || regForm;
+
         switch (name) {
             case "email":
                 if (!value.trim()) msg = "Email is required";
                 else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) msg = "Invalid email";
                 break;
             case "phone":
+                const cleanPhone = value.replace(/\D/g, "");
                 if (!value.trim()) msg = "Phone is required";
-                else if (!/^(0?)(3[2-9]|5[6|8|9]|7[0|6-9]|8[0-6|8|9]|9[0-4|6-9])[0-9]{7}$/.test(value))
-                    msg = "Invalid Vietnam phone number";
+                else if (!/^0(3|5|7|8|9)\d{8}$/.test(cleanPhone))
+                    msg = "Invalid VN mobile number";
                 break;
             case "password":
                 if (!value) msg = "Password is required";
-                else if (value.length < 6) msg = "Minimum 6 characters";
+                else if (value.length < 8) msg = "Minimum 8 characters required";
+                else if (!/[A-Z]/.test(value)) msg = "Needs at least 1 uppercase letter";
+                else if (!/[a-z]/.test(value)) msg = "Needs at least 1 lowercase letter";
+                else if (!/\d/.test(value)) msg = "Needs at least 1 number";
+                else if (!/[^A-Za-z0-9]/.test(value)) msg = "Needs at least 1 special character (@, #, $, etc.)";
                 break;
             case "confirmPassword":
-                if (!value) msg = "Required";
-                else if (value !== regForm.password) msg = "Passwords do not match";
+                if (!value) msg = "Please confirm your password";
+                else if (value !== formToUse.password) msg = "Passwords do not match";
                 break;
             case "fullName":
                 if (!value.trim()) msg = "Full Name is required";
+                else if (value.trim().length < 2) msg = "Full name must be at least 2 characters";
+                else if (!/^[\p{L}\s]+$/u.test(value)) msg = "Name cannot contain special characters or numbers";
                 break;
             case "otp":
                 if (otpSent && (!value || value.length !== 6)) msg = "OTP must be 6 digits";
@@ -179,9 +188,35 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
     const handleRegChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
-        setRegForm((prev) => ({ ...prev, [id]: value }));
-        if (regErrors[id as keyof typeof regErrors]) {
+        let finalValue = value;
+
+        // Auto-clean phone numbers
+        if (id === "phone") {
+            finalValue = value.replace(/\D/g, "").slice(0, 10);
+        }
+
+        const newForm = { ...regForm, [id]: finalValue };
+        setRegForm(newForm);
+
+        // Real-time validation for specific fields
+        if (id === "password" || id === "confirmPassword") {
+            validateRegField(id, finalValue, newForm);
+        } else if (id === "phone") {
+            // Only validate phone when it reaches 10 digits
+            if (finalValue.length === 10) {
+                validateRegField(id, finalValue, newForm);
+            } else if (regErrors.phone) {
+                // Clear error while user is correcting/re-typing
+                setRegErrors((prev) => ({ ...prev, phone: "" }));
+            }
+        } else if (regErrors[id as keyof typeof regErrors]) {
+            // Clear errors for other fields as user types if error exists
             setRegErrors((prev) => ({ ...prev, [id]: "" }));
+        }
+
+        // Cross-validate confirm password if password changes
+        if (id === "password" && regForm.confirmPassword) {
+            validateRegField("confirmPassword", regForm.confirmPassword, newForm);
         }
     };
 
@@ -341,7 +376,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                                                     id="password"
                                                     type="password"
                                                     className={`auth-input ${regErrors.password ? "auth-input-error" : ""}`}
-                                                    placeholder="Min 6 chars"
+                                                    placeholder="Min 8 characters"
                                                     value={regForm.password}
                                                     onChange={handleRegChange}
                                                     onBlur={(e) => validateRegField("password", e.target.value)}

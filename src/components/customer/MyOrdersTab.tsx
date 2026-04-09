@@ -109,7 +109,7 @@ export default function MyOrdersTab() {
     const displayedOrders = filteredOrders.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
-    const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const formatDate = (d: string) => new Date(d).toLocaleDateString('vi-VN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     const RenderOrderCard = ({ order }: { order: any }) => {
         let status = STATUS_CONFIG[order.status_code] || { label: order.status_code, className: 'bg-gray-100 text-gray-700', icon: Package };

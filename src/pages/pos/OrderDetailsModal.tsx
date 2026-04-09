@@ -143,19 +143,19 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                                     <span className="font-bold uppercase">{order.users?.customers?.current_rank_code}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span>Điểm cộng thêm:</span>
+                                    <span>Điểm tích lũy:</span>
                                     <span className="font-bold">
                                         +{(() => {
                                             const oldSpent = Number(order.users?.customers?.total_spent || 0) - Number(order.total_amount);
-                                            const oldPoints = Math.floor(oldSpent / 100000);
-                                            const newPoints = Math.floor(Number(order.users?.customers?.total_spent || 0) / 100000);
+                                            const oldPoints = Math.floor(oldSpent / 10000);
+                                            const newPoints = Math.floor(Number(order.users?.customers?.total_spent || 0) / 10000);
                                             return Math.max(0, newPoints - oldPoints);
                                         })()} điểm
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span>Tổng điểm tích lũy:</span>
-                                    <span>{(order.users?.customers?.loyalty_points || 0).toLocaleString()} điểm</span>
+                                    <span>Tổng điểm hiện tại:</span>
+                                    <span>{(order.users?.customers?.loyalty_points || 0).toLocaleString('vi-VN')} điểm</span>
                                 </div>
                             </>
                         )}
@@ -165,46 +165,45 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                         <div className="flex font-bold border-b border-dashed border-black pb-1 mb-1 text-[11px]">
                             <span className="flex-1">Mặt hàng</span>
                             <span className="w-12 text-center">SL</span>
-                            <span className="w-20 text-right">T.Tiền</span>
+                            <span className="w-20 text-right">Tổng</span>
                         </div>
                         {order.order_items?.map((item: any, idx: number) => (
                             <div key={idx} className="flex py-0.5 text-[11px]">
-                                <span className="flex-1 leading-none">{(item.product_variants?.products?.name || 'Item').toUpperCase()}</span>
+                                <span className="flex-1 leading-none">{(item.product_variants?.products?.name || 'Món').toUpperCase()}</span>
                                 <span className="w-12 text-center">{item.quantity}</span>
-                                <span className="w-20 text-right">{Number(item.total_price).toLocaleString()}</span>
+                                <span className="w-20 text-right">{Number(item.total_price).toLocaleString('vi-VN')}</span>
                             </div>
                         ))}
                     </div>
 
                     <div className="border-t border-dashed border-black pt-2 space-y-1 text-[11px]">
                         <div className="flex justify-between text-sm">
-                            <span>Tiền hàng ({order.order_items?.length || 0})</span>
-                            <span>{(Number(order.total_amount) + Number(order.discount_amount || 0)).toLocaleString()}</span>
+                            <span>Tạm tính ({order.order_items?.length || 0})</span>
+                            <span>{(Number(order.total_amount) + Number(order.discount_amount || 0)).toLocaleString('vi-VN')}</span>
                         </div>
-
                         {Number(order.discount_amount) > 0 && (
                             <div className="flex justify-between">
-                                <span>Tổng giảm giá</span>
-                                <span>-{Number(order.discount_amount).toLocaleString()}</span>
+                                <span>Chiết khấu</span>
+                                <span>-{Number(order.discount_amount).toLocaleString('vi-VN')}</span>
                             </div>
                         )}
                         <div className="flex justify-between text-[14px] font-bold border-t border-dotted border-black pt-1">
-                            <span>THANH TOÁN</span>
-                            <span>{Number(order.total_amount).toLocaleString()}₫</span>
+                            <span>TỔNG THANH TOÁN</span>
+                            <span>{Number(order.total_amount).toLocaleString('vi-VN')}₫</span>
                         </div>
                         <div className="flex justify-between">
                             <span>{getPaymentMethodLabel(order.payment_method_code)}</span>
-                            <span>{Number(order.total_amount).toLocaleString()}</span>
+                            <span>{Number(order.total_amount).toLocaleString('vi-VN')}</span>
                         </div>
                         {order.payment_method_code === 'CASH' && order.cash_received && (
                             <>
                                 <div className="flex justify-between">
                                     <span>Khách đưa</span>
-                                    <span>{Number(order.cash_received).toLocaleString()}</span>
+                                    <span>{Number(order.cash_received).toLocaleString('vi-VN')}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span>Tiền trả lại</span>
-                                    <span>{Number(order.cash_change || 0).toLocaleString()}</span>
+                                    <span>Trả lại</span>
+                                    <span>{Number(order.cash_change || 0).toLocaleString('vi-VN')}</span>
                                 </div>
                             </>
                         )}

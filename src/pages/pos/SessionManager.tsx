@@ -64,6 +64,9 @@ export default function SessionManager() {
                 } catch (err) {
                     console.error('Failed to load sales stats', err);
                 }
+            } else if (sessionRes.suggested_opening_cash !== undefined) {
+                // Auto-fill opening cash from system suggestions (first of day = 2M, else last closed shift)
+                setOpeningCash(formatVNDInput(sessionRes.suggested_opening_cash.toString()));
             }
 
             // Load history sessions
@@ -508,7 +511,7 @@ export default function SessionManager() {
                                                     (Number(detailSession.closing_cash) - (Number(detailSession.opening_cash) + Number(detailSession.cash_revenue_app) - Number(detailSession.total_expenses))) >= 0
                                                         ? 'bg-emerald-50' : 'bg-rose-50'
                                                     }`}>
-                                                    <span className="text-xs font-black uppercase tracking-wider text-neutral-400">Variance (Sai số)</span>
+                                                    <span className="text-xs font-black uppercase tracking-wider text-neutral-400">Variance</span>
                                                     <span className={`text-xl font-black ${detailSession.status_code === 'OPEN' ? 'text-neutral-400' :
                                                         (Number(detailSession.closing_cash) - (Number(detailSession.opening_cash) + Number(detailSession.cash_revenue_app) - Number(detailSession.total_expenses))) >= 0
                                                             ? 'text-emerald-600' : 'text-rose-600'
@@ -646,7 +649,7 @@ export default function SessionManager() {
                         {/* Left Side: Cash Counting */}
                         <div className="p-8 border-r border-neutral-100 bg-white">
                             <h3 className="font-black text-neutral-900 uppercase text-[10px] tracking-[2px] mb-6 flex items-center gap-2">
-                                <Banknote className="w-4 h-4 text-indigo-500" /> 1. Kiểm kê tiền mặt (Actual Cash)
+                                <Banknote className="w-4 h-4 text-indigo-500" /> 1. Actual Cash Count
                             </h3>
                             <DenominationTable onChange={(total, breakdown) => {
                                 setActualCashTotal(total);
@@ -654,7 +657,7 @@ export default function SessionManager() {
                             }} />
 
                             <div className="mt-8 p-6 bg-indigo-50 rounded-2xl border border-indigo-100 flex justify-between items-center">
-                                <span className="font-bold text-indigo-900">Tổng tiền thực tế:</span>
+                                <span className="font-bold text-indigo-900">Total Actual Cash:</span>
                                 <div className="text-2xl font-black text-indigo-600">
                                     {actualCashTotal.toLocaleString('vi-VN')}₫
                                 </div>
@@ -664,13 +667,13 @@ export default function SessionManager() {
                         {/* Right Side: Reconciliation & Final Form */}
                         <div className="p-8 space-y-6">
                             <h3 className="font-black text-neutral-900 uppercase text-[10px] tracking-[2px] mb-6 flex items-center gap-2">
-                                <AlertCircle className="w-4 h-4 text-amber-500" /> 2. Đối soát & Báo cáo
+                                <AlertCircle className="w-4 h-4 text-amber-500" /> 2. Reconciliation & Reporting
                             </h3>
 
                             {/* Detailed Stats Panel */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-4 bg-white rounded-xl border border-neutral-100">
-                                    <div className="text-[9px] font-black text-neutral-400 uppercase mb-1">Chi trong ngày (II)</div>
+                                    <div className="text-[9px] font-black text-neutral-400 uppercase mb-1">Daily Expenses</div>
                                     <Input
                                         type="text"
                                         placeholder="0"
@@ -680,7 +683,7 @@ export default function SessionManager() {
                                     />
                                 </div>
                                 <div className="p-4 bg-white rounded-xl border border-neutral-100 flex flex-col justify-center">
-                                    <div className="text-[9px] font-black text-neutral-400 uppercase mb-1">D.Thu T.Mặt App (III)</div>
+                                    <div className="text-[9px] font-black text-neutral-400 uppercase mb-1">App Cash Revenue</div>
                                     <div className="text-lg font-bold text-neutral-900">{cashSalesApp.toLocaleString('vi-VN')}₫</div>
                                 </div>
                             </div>
@@ -688,29 +691,29 @@ export default function SessionManager() {
                             {/* Final Results */}
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center py-3 border-b border-neutral-200">
-                                    <span className="text-sm font-bold text-neutral-500">Phải có trong két:</span>
+                                    <span className="text-sm font-bold text-neutral-500">Expected in Drawer:</span>
                                     <span className="font-black text-neutral-900">{mustHaveInDrawer.toLocaleString('vi-VN')}₫</span>
                                 </div>
                                 <div className="flex justify-between items-center py-4 bg-white px-4 rounded-xl shadow-sm border border-neutral-100">
-                                    <span className="text-sm font-bold text-neutral-500">Sai số (Actual - App):</span>
+                                    <span className="text-sm font-bold text-neutral-500">Variance (Actual - App):</span>
                                     <span className={`text-xl font-black ${variance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                         {variance > 0 ? '+' : ''}{variance.toLocaleString('vi-VN')}₫
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center py-4 bg-indigo-600 text-white px-6 rounded-2xl shadow-xl shadow-indigo-100">
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase opacity-70">Thu về hôm nay</span>
-                                        <span className="text-xs font-medium italic opacity-50 px-0.5">IV - Tiền nền</span>
+                                        <span className="text-[10px] font-black uppercase opacity-70">Daily Cash Collection</span>
+                                        <span className="text-xs font-medium italic opacity-50 px-0.5">Revenue minus Opening</span>
                                     </div>
                                     <span className="text-2xl font-black">{amountToWithdraw.toLocaleString('vi-VN')}₫</span>
                                 </div>
                             </div>
 
                             <div className="space-y-2 pt-4">
-                                <Label htmlFor="close-note-adv" className="text-[9px] font-black text-neutral-400 uppercase">Ghi chú kết ca</Label>
+                                <Label htmlFor="close-note-adv" className="text-[9px] font-black text-neutral-400 uppercase">Closing Note</Label>
                                 <Textarea
                                     id="close-note-adv"
-                                    placeholder="Lý do sai sót (nếu có)..."
+                                    placeholder="Reason for variance (if any)..."
                                     className="resize-none h-24 bg-white border-neutral-200"
                                     value={closeNote}
                                     onChange={(e) => setCloseNote(e.target.value)}
@@ -733,7 +736,7 @@ export default function SessionManager() {
                             disabled={actionLoading || actualCashTotal === 0}
                             className="h-14 px-10 rounded-2xl font-black text-lg shadow-xl shadow-red-100 hover:scale-105 transition-all"
                         >
-                            {actionLoading ? 'Đang đóng...' : 'Confirm & End Shift'}
+                            {actionLoading ? 'Closing...' : 'Confirm & End Shift'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
