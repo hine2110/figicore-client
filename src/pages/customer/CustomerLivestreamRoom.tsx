@@ -19,6 +19,9 @@ import {
     Star,
     Info,
     ArrowLeft,
+    Sparkles,
+    Trophy,
+    Gift,
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { io, Socket } from "socket.io-client";
@@ -195,9 +198,17 @@ export default function CustomerLivestreamRoom() {
     const [heartsCount, setHeartsCount] = useState(0);
     const [addedProductId, setAddedProductId] = useState<number | null>(null);
     const [selectedProductId, setSelectedProductId] = useState<number | null>(null); // for detail sheet (reactive ID)
+    const [recentBuyer, setRecentBuyer] = useState<{ name: string, product: string } | null>(null);
     const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
     const [flashSaleEnds, setFlashSaleEnds] = useState<Record<number, number>>({});
-    const [recentBuyer, setRecentBuyer] = useState<{name: string, product: string} | null>(null);
+    const [activeGiveaway, setActiveGiveaway] = useState<any>(null);
+    const [giveawayEntries, setGiveawayEntries] = useState(0);
+    const [hasJoinedGiveaway, setHasJoinedGiveaway] = useState(false);
+    const [winnerResult, setWinnerResult] = useState<any>(null);
+    const [isGiveawayWheelVisible, setIsGiveawayWheelVisible] = useState(false);
+    const [giveawayParticipantsList, setGiveawayParticipantsList] = useState<{userId: number, name: string}[]>([]);
+    const [pendingClaims, setPendingClaims] = useState<any[]>([]);
+    const [isClaiming, setIsClaiming] = useState(false);
     const reactionIdCounter = useRef(0);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const streamRef = useRef<any>(null);
@@ -220,6 +231,8 @@ export default function CustomerLivestreamRoom() {
         if (!endTime) return true; // no timer tracked yet — server says it's active, trust it
         return Date.now() < endTime;
     };
+
+
 
     const fetchLivestream = useCallback(async () => {
         try {
@@ -248,6 +261,16 @@ export default function CustomerLivestreamRoom() {
         }
     }, [id, navigate, toast]);
 
+    const fetchPendingClaims = useCallback(async () => {
+        if (!user) return;
+        try {
+            const res = await api.get('/orders/my-claims', { params: { livestreamId: id } });
+            setPendingClaims(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch claims:", error);
+        }
+    }, [id, user]);
+
     useEffect(() => {
         if (!user || !id) return;
         let isMounted = true;
@@ -257,7 +280,10 @@ export default function CustomerLivestreamRoom() {
                 const data = await fetchLivestream();
                 if (!data) return;
 
-                if (isMounted) setHeartsCount(data.hearts_count || 0);
+                if (isMounted) {
+                    setHeartsCount(data.hearts_count || 0);
+                    fetchPendingClaims(); // Initial check for prizes
+                }
 
                 const tokenRes = await api.get(`/livekit/token`, {
                     params: {
@@ -271,7 +297,11 @@ export default function CustomerLivestreamRoom() {
 
                 if (!isMounted) return;
 
-                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3000'}/livestream-live`);
+                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3000'}/livestream-live`, {
+                    auth: {
+                        token: localStorage.getItem('token')
+                    }
+                });
                 socketRef.current = socket;
 
                 socket.on('connect', () => {
@@ -310,9 +340,9 @@ export default function CustomerLivestreamRoom() {
                     if (product) {
                         setPinnedProduct(product.product_variants);
                         setFeaturedProduct(product);
-                        toast({ 
-                            title: "New Item Featured!", 
-                            description: product.product_variants?.products?.name || "The host is highlighting a new item." 
+                        toast({
+                            title: "New Item Featured!",
+                            description: product.product_variants?.products?.name || "The host is highlighting a new item."
                         });
                     }
                 };
@@ -320,7 +350,6 @@ export default function CustomerLivestreamRoom() {
                 socket.on('product_pinned', handleProductHighlight);
                 socket.on('product_focused', handleProductHighlight);
 
-                // Listen to inventory/products updates from admin actions
                 socket.on('products_updated', () => {
                     if (isMounted) fetchLivestream();
                 });
@@ -328,20 +357,22 @@ export default function CustomerLivestreamRoom() {
                     if (isMounted) fetchLivestream();
                 });
 
-                socket.on('flash_sale_started', (data: any) => { 
-                    if (data?.end_time) { 
-                        setFlashSaleEnds(prev => ({ ...prev, [data.variant_id]: new Date(data.end_time).getTime() })); 
-                    } 
-                    if (isMounted) fetchLivestream(); 
-                }); 
-                
-                socket.on('flash_sale_ended', (data: any) => { 
-                    setFlashSaleEnds(prev => { 
-                        const next = { ...prev }; 
-                        delete next[data?.variant_id]; 
-                        return next; 
-                    }); 
-                    if (isMounted) fetchLivestream(); 
+                socket.on('flash_sale_started', (data: { variant_id: number; duration: number }) => {
+                    const endsAt = Date.now() + (data.duration * 1000);
+                    setFlashSaleEnds((prev: Record<number, number>) => ({
+                        ...prev,
+                        [data.variant_id]: endsAt
+                    }));
+                    if (isMounted) fetchLivestream();
+                });
+
+                socket.on('flash_sale_ended', (data: { variant_id: number }) => {
+                    setFlashSaleEnds((prev: Record<number, number>) => {
+                        const next = { ...prev };
+                        delete next[data.variant_id];
+                        return next;
+                    });
+                    if (isMounted) fetchLivestream();
                 });
 
                 socket.on('reaction_received', (data: { symbol: string }) => {
@@ -369,6 +400,47 @@ export default function CustomerLivestreamRoom() {
                     navigate('/customer/home');
                 });
 
+                // --- GIVEAWAY EVENTS ---
+                socket.on('giveaway_started', (data: any) => {
+                    setActiveGiveaway(data);
+                    setGiveawayEntries(data.current_entries || 0);
+                    setWinnerResult(null);
+                    // Reset joining state if it's a new giveaway
+                    setHasJoinedGiveaway(false);
+                });
+
+                socket.on('giveaway_entry_count', (data: { count: number }) => {
+                    setGiveawayEntries(data.count);
+                });
+
+                socket.on('giveaway_draw_started', (data: any) => {
+                    setGiveawayParticipantsList(data.participants || []);
+                    setWinnerResult(null);
+                    setIsGiveawayWheelVisible(true);
+                });
+
+                socket.on('giveaway_winner_selected', (data: any) => {
+                    setActiveGiveaway(null);
+                    setWinnerResult(data);
+                    // If this user is the winner
+                    if (data.user_id === user?.user_id) {
+                        toast({ title: "OMG! YOU WON! 🏆", description: "Claim your prize now!" });
+                        fetchPendingClaims(); // Check if it was a claim or direct order
+                    }
+                });
+
+                socket.on('giveaway_claim_success', () => {
+                    toast({ title: "Prize Claimed!", description: "Check your cart for your 0đ order." });
+                    setIsClaiming(false);
+                    fetchPendingClaims();
+                    fetchCart();
+                });
+
+                socket.on('giveaway_claim_error', (data: { message: string }) => {
+                    toast({ title: "Claim Failed", description: data.message, variant: "destructive" });
+                    setIsClaiming(false);
+                });
+
                 setIsLoading(false);
             } catch (error) {
                 console.error("Load failed", error);
@@ -378,6 +450,7 @@ export default function CustomerLivestreamRoom() {
         };
 
         loadData();
+        fetchPendingClaims();
         return () => {
             isMounted = false;
             if (socketRef.current) {
@@ -392,6 +465,15 @@ export default function CustomerLivestreamRoom() {
     const handleSendChat = useCallback(() => {
         if (!chatInput.trim() || !socketRef.current) return;
         const rankCode = (user as any)?.current_rank_code ?? user?.customers?.current_rank_code ?? 'BRONZE';
+        
+        // --- GIVEAWAY KEYWORD CHECK (100% exact match) ---
+        if (activeGiveaway && !hasJoinedGiveaway) {
+            // Strict match: case-sensitive, exact characters
+            if (chatInput.trim() === activeGiveaway.keyword) { 
+                setHasJoinedGiveaway(true);
+            }
+        }
+
         socketRef.current.emit('send_chat', {
             roomId: `LIVE-${id}`,
             userId: user?.user_id,
@@ -399,8 +481,9 @@ export default function CustomerLivestreamRoom() {
             text: chatInput.trim(),
             rank: rankCode
         });
+
         setChatInput('');
-    }, [chatInput, id, user]);
+    }, [chatInput, id, user, activeGiveaway, hasJoinedGiveaway]);
 
     const getRankColor = (rankCode: string) => {
         if (!rankCode) return 'text-neutral-400';
@@ -609,6 +692,8 @@ export default function CustomerLivestreamRoom() {
                                 </div>
                             </LiveKitRoom>
                         )}
+
+
                     </div>
 
                     {/* Reaction Bar below video */}
@@ -879,16 +964,15 @@ export default function CustomerLivestreamRoom() {
                                                     <button
                                                         key={v.variant_id}
                                                         onClick={() => setSelectedVariantId(v.variant_id)}
-                                                        className={`flex flex-col items-start px-3 py-2 rounded-xl border text-left transition-all ${
-                                                            isActive
+                                                        className={`flex flex-col items-start px-3 py-2 rounded-xl border text-left transition-all ${isActive
                                                                 ? 'border-rose-500 bg-rose-600/10 text-white'
                                                                 : 'border-white/10 bg-white/[0.03] text-neutral-400 hover:border-white/20 hover:text-white'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         <span className="text-[9px] font-black uppercase leading-none mb-1">
                                                             {v.product_variants?.option_name}
                                                         </span>
-                                                        <span className={`text-[10px] font-black font-mono ${ isFlashActive(v.variant_id, v.flash_sale_price) ? 'text-rose-400' : 'text-amber-400'}` }>
+                                                        <span className={`text-[10px] font-black font-mono ${isFlashActive(v.variant_id, v.flash_sale_price) ? 'text-rose-400' : 'text-amber-400'}`}>
                                                             {fmt(livePrice)}
                                                         </span>
                                                         {isFlashActive(v.variant_id, v.flash_sale_price) && (
@@ -961,6 +1045,77 @@ export default function CustomerLivestreamRoom() {
                 </div>
             </div>
 
+            {/* Giveaway UI Overlays */}
+            <AnimatePresence>
+                {activeGiveaway && !isGiveawayWheelVisible && !winnerResult && (
+                    <GiveawayWidget 
+                        giveaway={activeGiveaway} 
+                        entries={giveawayEntries} 
+                        hasJoined={hasJoinedGiveaway} 
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Lucky Wheel Overlay - synchronized drawing animation */}
+            <AnimatePresence>
+                {isGiveawayWheelVisible && (
+                    <PublicLuckyWheel 
+                        participants={giveawayParticipantsList} 
+                        winnerId={winnerResult?.user_id}
+                        onClose={() => {
+                            setIsGiveawayWheelVisible(false);
+                            setGiveawayParticipantsList([]);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Winner Celebration - final reveal and claim prize */}
+            <AnimatePresence>
+                {winnerResult && !isGiveawayWheelVisible && (
+                    <WinnerCelebration 
+                        result={winnerResult} 
+                        isMe={winnerResult?.user_id === user?.user_id}
+                        onClose={() => setWinnerResult(null)}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Pending Claims Banner - appears if user has unclaimed prizes */}
+            <AnimatePresence>
+                {pendingClaims.length > 0 && !winnerResult && !isGiveawayWheelVisible && (
+                    <GiveawayClaimBanner 
+                        claims={pendingClaims} 
+                        isClaiming={isClaiming}
+                        onClaim={(claimId) => {
+                            console.log("[Giveaway] Attempting to claim ID:", claimId, "Type:", typeof claimId);
+                            setIsClaiming(true);
+                            socketRef.current?.emit('claim_giveaway_prize', { 
+                                claimId,
+                                userId: user?.user_id // Temporary for debugging since guard is off
+                            });
+                            
+                            // Safety Backup: Reset if server doesn't respond in 10s
+                            setTimeout(() => {
+                                if (socketRef.current?.connected) {
+                                    setIsClaiming(prev => {
+                                        if (prev) {
+                                            toast({ 
+                                                title: "Yêu cầu hết hạn", 
+                                                description: "Server phản hồi lâu hơn dự kiến. Vui lòng kiểm tra giỏ hàng hoặc thử lại.",
+                                                variant: "destructive"
+                                            });
+                                            return false;
+                                        }
+                                        return prev;
+                                    });
+                                }
+                            }, 10000);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
+
             <style>{`
                 .scrollbar-none::-webkit-scrollbar { display: none; }
                 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
@@ -968,3 +1123,301 @@ export default function CustomerLivestreamRoom() {
         </div>
     );
 }
+
+// ── NEW: Lucky Wheel Giveaway Components ──
+
+function GiveawayWidget({ giveaway, entries, hasJoined }: { giveaway: any, entries: number, hasJoined: boolean }) {
+    const [timeLeft, setTimeLeft] = useState(0);
+
+    useEffect(() => {
+        if (!giveaway?.end_time) return;
+        const interval = setInterval(() => {
+            const end = new Date(giveaway.end_time).getTime();
+            const now = Date.now();
+            const diff = Math.max(0, Math.floor((end - now) / 1000));
+            setTimeLeft(diff);
+            if (diff <= 0) clearInterval(interval);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [giveaway?.end_time]);
+
+    const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+    const s = (timeLeft % 60).toString().padStart(2, '0');
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.8, x: 50 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.8, x: 50 }}
+            className="absolute bottom-4 right-4 z-40 w-48 bg-black/80 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-4 shadow-2xl"
+        >
+            <div className="flex flex-col items-center text-center gap-3">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 rounded-full border border-amber-500/20">
+                    <Star className="w-2.5 h-2.5 text-amber-500 animate-spin" />
+                    <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Lucky Wheel</span>
+                </div>
+
+                <div className="space-y-0.5">
+                    <p className="text-[7px] font-black text-white/40 uppercase tracking-widest">Type to Join</p>
+                    <p className="text-xl font-black text-white italic tracking-tighter">#{giveaway.keyword}</p>
+                </div>
+
+                <div className="flex gap-2 w-full">
+                    <div className="flex-1 bg-white/5 rounded-lg p-1.5 border border-white/5">
+                        <span className="text-[6px] font-black text-neutral-500 uppercase block">Time</span>
+                        <span className="text-[10px] font-black text-emerald-500 font-mono">{m}:{s}</span>
+                    </div>
+                    <div className="flex-1 bg-white/5 rounded-lg p-1.5 border border-white/5">
+                        <span className="text-[6px] font-black text-neutral-500 uppercase block">Active</span>
+                        <span className="text-[10px] font-black text-blue-400 font-mono">{entries}</span>
+                    </div>
+                </div>
+
+                <div className={`w-full py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
+                    hasJoined ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30' : 'bg-neutral-800 text-neutral-500'
+                }`}>
+                    {hasJoined ? 'Joined ✅' : 'Waiting...'}
+                </div>
+            </div>
+        </motion.div>
+    );
+}
+
+function GiveawayClaimBanner({ claims, isClaiming, onClaim }: { claims: any[], isClaiming: boolean, onClaim: (id: number) => void }) {
+    return (
+        <motion.div 
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            className="fixed bottom-0 left-0 right-0 z-50 p-6 pointer-events-none"
+        >
+            <div className="max-w-4xl mx-auto bg-gradient-to-r from-amber-600 via-rose-600 to-amber-600 rounded-[2.5rem] p-1 shadow-[0_-20px_80px_rgba(244,63,94,0.4)] relative overflow-hidden group pointer-events-auto">
+                <div className="bg-[#0c0d14]/90 backdrop-blur-2xl rounded-[2.4rem] px-8 py-6 flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center border border-amber-500/30 animate-bounce">
+                            <Trophy className="w-8 h-8 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.6)]" />
+                        </div>
+                        <div className="space-y-1">
+                            <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">You Won {claims.length} Prize(s)! 🎉</h3>
+                            <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.3em]">Official Livestream Reward • Restricted Item</p>
+                        </div>
+                    </div>
+
+                    <Button 
+                        disabled={isClaiming}
+                        onClick={() => onClaim(claims[0].claim_id || claims[0].id)}
+                        className="h-14 px-12 bg-white text-black hover:bg-amber-500 hover:text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                    >
+                        {isClaiming ? "Claiming..." : "Claim Reward Now"}
+                    </Button>
+                </div>
+            </div>
+        </motion.div>
+    );
+}
+
+function WinnerCelebration({ result, isMe, onClose }: { result: any, isMe: boolean, onClose: () => void }) {
+    const navigate = useNavigate();
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-md"
+        >
+            <div className="relative max-w-sm w-full bg-[#111218] border border-white/10 rounded-[2.5rem] p-8 text-center shadow-[0_0_100px_rgba(245,158,11,0.3)] overflow-hidden">
+                {/* Visual Flair */}
+                <div className="absolute -top-24 -left-24 w-48 h-48 bg-amber-500/10 blur-[60px] rounded-full" />
+                <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-rose-500/10 blur-[60px] rounded-full" />
+
+                <motion.div
+                    initial={{ scale: 0, rotate: -10 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', damping: 12 }}
+                    className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500 to-rose-500 mx-auto mb-6 flex items-center justify-center shadow-xl border border-white/20"
+                >
+                    <Sparkles className="w-10 h-10 text-white" />
+                </motion.div>
+
+                <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">
+                    {isMe ? "YOU ARE THE WINNER!" : "WE HAVE A WINNER!"}
+                </h2>
+                <p className="text-[10px] text-neutral-400 uppercase tracking-[0.2em] font-bold mb-8">
+                    {isMe 
+                        ? (result.result_type === 'ORDER' ? "Your 0đ order has been created" : "You have a prize held in reserve!") 
+                        : "Stay tuned for the next round"}
+                </p>
+
+                {isMe ? (
+                    <div className="space-y-3">
+                        <Button
+                            onClick={() => {
+                                // Close celebration - the Claim Banner will now appear for the user to action
+                                onClose(); 
+                            }}
+                            className="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl shadow-xl transition-all"
+                        >
+                            Ready to Claim
+                        </Button>
+                        <button onClick={onClose} className="text-[9px] text-neutral-600 uppercase font-black hover:text-white transition-colors">Dismiss</button>
+                    </div>
+                ) : (
+                    <Button
+                        onClick={onClose}
+                        className="w-full h-12 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black text-[11px] uppercase tracking-[0.2em] rounded-2xl"
+                    >
+                        Congrats!
+                    </Button>
+                )}
+            </div>
+
+            {/* Simple Confetti Effect logic would go here, can be added via lib or custom motion divs */}
+        </motion.div>
+    );
+}
+
+const PublicLuckyWheel = memo(({ 
+    participants, 
+    winnerId, 
+    onClose, 
+    title = "Giveaway Draw" 
+}: { 
+    participants: { userId: number, name: string }[], 
+    winnerId?: number, 
+    onClose?: () => void,
+    title?: string 
+}) => {
+    const [isSpinning, setIsSpinning] = useState(true);
+    const [rotation, setRotation] = useState(0);
+
+    useEffect(() => {
+        if (!winnerId) {
+            setRotation(0);
+            setIsSpinning(true);
+            return;
+        }
+
+        const winnerIndex = participants.findIndex(p => p.userId === winnerId);
+        if (winnerIndex !== -1) {
+            const segmentAngle = 360 / Math.max(1, participants.length);
+            const targetRotation = (360 * 5) + (360 - (winnerIndex * segmentAngle) - (segmentAngle / 2));
+            setRotation(targetRotation);
+            setTimeout(() => setIsSpinning(false), 4500);
+        }
+    }, [winnerId, participants]);
+
+    const winnerName = (participants || []).find(p => p.userId === winnerId)?.name || 'Winner';
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl">
+            <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="relative bg-[#0c0d14] border border-white/10 p-12 rounded-[4rem] shadow-[0_0_120px_rgba(245,158,11,0.2)] flex flex-col items-center max-w-lg w-full"
+            >
+                {/* Visual Flair */}
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-rose-500/10 blur-[100px] rounded-full" />
+                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/10 blur-[100px] rounded-full" />
+
+                <div className="text-center mb-10">
+                    <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase mb-2">{title}</h2>
+                    <p className="text-amber-500/80 font-mono text-[9px] font-black tracking-[0.3em] uppercase animate-pulse">
+                        {isSpinning ? 'Selecting identified target...' : 'Winner Identified'}
+                    </p>
+                </div>
+
+                <div className="relative w-80 h-80 mb-12">
+                    {/* Indicator */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-8 z-30">
+                        <div className="w-0 h-0 border-l-[20px] border-r-[20px] border-t-[35px] border-l-transparent border-r-transparent border-t-amber-500 drop-shadow-[0_0_20px_rgba(245,158,11,1)]"></div>
+                        <div className="w-1 h-12 bg-amber-500 absolute top-0 left-1/2 -translate-x-1/2 -mt-4 blur-sm opacity-50"></div>
+                    </div>
+                    
+                    <motion.div 
+                        animate={{ rotate: rotation }}
+                        transition={winnerId ? { duration: 5, type: 'spring', bounce: 0.1, restDelta: 0.001 } : { ease: "linear", duration: 1, repeat: Infinity }}
+                        className="w-full h-full rounded-full border-8 border-white/5 relative shadow-[0_0_80px_rgba(0,0,0,0.8)] bg-[#0c0d14]"
+                    >
+                        <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+                            {participants.length === 0 ? (
+                                <text x="50" y="50" dominantBaseline="middle" textAnchor="middle" className="fill-neutral-700 text-[4px] font-black uppercase italic">Scanning...</text>
+                            ) : (
+                                participants.map((p, i) => {
+                                    const segmentAngle = 360 / participants.length;
+                                    const startAngle = i * segmentAngle;
+                                    const endAngle = (i + 1) * segmentAngle;
+                                    
+                                    // Math to calculate SVG arc
+                                    const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
+                                        const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+                                        return {
+                                            x: centerX + (radius * Math.cos(angleInRadians)),
+                                            y: centerY + (radius * Math.sin(angleInRadians))
+                                        };
+                                    };
+
+                                    const start = polarToCartesian(50, 50, 50, startAngle);
+                                    const end = polarToCartesian(50, 50, 50, endAngle);
+                                    const largeArcFlag = segmentAngle <= 180 ? "0" : "1";
+                                    
+                                    const d = participants.length === 1 
+                                        ? "M 50, 50 m -50, 0 a 50, 50 0 1,0 100,0 a 50, 50 0 1,0 -100,0" // Full circle
+                                        : [
+                                            "M", 50, 50, 
+                                            "L", start.x, start.y, 
+                                            "A", 50, 50, 0, largeArcFlag, 1, end.x, end.y,
+                                            "Z"
+                                        ].join(" ");
+
+                                    const colors = ['#f59e0b', '#10b981', '#3b82f6', '#f43f5e', '#8b5cf6', '#ec4899', '#f97316', '#06b6d4'];
+                                    const color = colors[i % colors.length];
+
+                                    // Mid-point for text
+                                    const midAngle = startAngle + (segmentAngle / 2);
+                                    const textPos = polarToCartesian(50, 50, 35, midAngle);
+
+                                    return (
+                                        <g key={p.userId}>
+                                            <path d={d} fill={color} stroke="#0c0d14" strokeWidth="0.5" />
+                                            <text 
+                                                x={textPos.x} 
+                                                y={textPos.y} 
+                                                transform={`rotate(${midAngle}, ${textPos.x}, ${textPos.y})`}
+                                                dominantBaseline="middle" 
+                                                textAnchor="middle" 
+                                                className="fill-white text-[3px] font-black uppercase tracking-tighter drop-shadow-md"
+                                            >
+                                                {p.name.length > 12 ? p.name.substring(0, 10) + '...' : p.name}
+                                            </text>
+                                        </g>
+                                    );
+                                })
+                            )}
+                        </svg>
+                        
+                        {/* Center Hub */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-16 h-16 bg-[#0c0d14] rounded-full border-4 border-white/10 shadow-2xl flex items-center justify-center">
+                                <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 animate-pulse"></div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+
+                {!isSpinning && winnerId && (
+                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center w-full">
+                        <div className="bg-gradient-to-r from-amber-600 to-amber-500 text-black px-8 py-4 rounded-2xl font-black text-xl uppercase italic shadow-2xl mb-6 ring-2 ring-white/20">
+                            {winnerName}
+                        </div>
+                        {onClose && (
+                            <Button onClick={onClose} variant="ghost" className="text-white/40 hover:text-white font-black text-[10px] uppercase tracking-widest">
+                                Dismiss Result
+                            </Button>
+                        )}
+                    </motion.div>
+                )}
+            </motion.div>
+        </div>
+    );
+});

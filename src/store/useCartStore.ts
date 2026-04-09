@@ -27,6 +27,7 @@ export interface CartItem {
     promotion?: import('@/types/product').ProductPromotion;
     originalPrice?: number;
     livestream_id?: number;
+    giveaway_claim_id?: number | null;
 }
 
 interface CartState {
@@ -59,15 +60,15 @@ export const useCartStore = create<CartState>()(
                     // Map lại dữ liệu từ BE để đảm bảo total tính đúng
                     const items = data.items.map((i: any) => ({
                         ...i,
-                        // Nếu là DEPOSIT thì dùng deposit_amount, ngược lại dùng price
-                        // Fix: Price logic for Pre-order must respect stored payment_option
-                        // For Retail/Blindbox, price is just price.
-                        // For Pre-order: if DEPOSIT -> deposit_amount. if FULL -> full_price.
-                        price: i.product_variants?.products?.type_code === 'PREORDER'
-                            ? (i.payment_option === 'FULL_PAYMENT'
-                                ? (i.product_variants?.product_preorder_configs?.full_price || i.full_price || i.price)
-                                : (i.product_variants?.product_preorder_configs?.deposit_amount || i.deposit_amount || i.price))
-                            : i.price
+                        // Logic: If Preorder & Deposit Mode -> Price is Deposit Amount. Else Full Price.
+                        // Priority Check: Giveaway item price is always 0
+                        price: i.giveaway_claim_id 
+                            ? 0
+                            : (i.product_variants?.products?.type_code === 'PREORDER'
+                                ? (i.payment_option === 'FULL_PAYMENT'
+                                    ? (i.product_variants?.product_preorder_configs?.full_price || i.full_price || i.price)
+                                    : (i.product_variants?.product_preorder_configs?.deposit_amount || i.deposit_amount || i.price))
+                                : i.price)
                     }));
 
                     set({
