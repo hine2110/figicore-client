@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Copy, CheckCircle2, AlertCircle, X } from "lucide-react";
+import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Copy, CheckCircle2, AlertCircle, X, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -354,6 +354,10 @@ export default function Checkout() {
     if (calculatedDiscount === 0 && appliedDiscountPromo) {
         if (appliedDiscountPromo.discount_type === 'PERCENTAGE') {
             calculatedDiscount = (subtotal * (appliedDiscountPromo.discount_value || 0)) / 100;
+            const maxCap = Number(appliedDiscountPromo.max_discount_amount);
+            if (maxCap > 0) {
+                calculatedDiscount = Math.min(calculatedDiscount, maxCap);
+            }
         } else {
             calculatedDiscount = appliedDiscountPromo.discount_value || 0;
         }
@@ -373,7 +377,12 @@ export default function Checkout() {
         
         // Retail-only rule: Discount applies to retail portions only
         if (promo.discount_type === 'PERCENTAGE') {
-            return Math.round(retailSubtotal * (Number(promo.discount_value) / 100));
+            let disc = Math.round(retailSubtotal * (Number(promo.discount_value) / 100));
+            const maxCap = Number(promo.max_discount_amount);
+            if (maxCap > 0) {
+                disc = Math.min(disc, maxCap);
+            }
+            return disc;
         }
         return Math.min(retailSubtotal, Number(promo.discount_value) || 0); // Cannot discount more than retail value
     }, [selectedVoucher, retailSubtotal]);
@@ -765,50 +774,68 @@ export default function Checkout() {
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 mt-2">
-                        {myVouchers.map(v => {
+                        {myVouchers.filter(v => v.status === 'COLLECTED').map(v => {
                             const promo = v.promotions;
                             const isSelected = selectedVoucher?.id === v.id;
-                            const discountLabel =
-                                promo?.discount_type === 'FREE_SHIP' ? '🚚 Miễn phí vận chuyển' :
-                                promo?.discount_type === 'PERCENTAGE' ? `${promo.discount_value}% OFF` :
-                                `${new Intl.NumberFormat('vi-VN').format(Number(promo?.discount_value))}đ OFF`;
-
+                            const isFreeShip = promo?.discount_type === 'FREE_SHIP';
                             const meetsMinOrder = !promo?.min_order_value || retailSubtotal >= Number(promo.min_order_value);
                             const canApply = retailSubtotal > 0 && meetsMinOrder;
 
                             return (
-                                <button
+                                <div
                                     key={v.id}
-                                    className={`w-full text-left relative rounded-xl border-2 px-4 py-4 transition-all ${isSelected ? 'border-violet-500 bg-violet-50' : canApply ? 'border-slate-200 hover:border-violet-300 bg-white' : 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'}`}
-                                    onClick={() => { if (canApply) { setSelectedVoucher(v); setShowVoucherDialog(false); } }}
-                                    disabled={!canApply}
+                                    onClick={() => { if (canApply) { setSelectedVoucher(isSelected ? null : v); setShowVoucherDialog(false); } }}
+                                    className={`ticket-container border-2 transition-all cursor-pointer ${isSelected ? (isFreeShip ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-violet-500 ring-2 ring-violet-500/20') : canApply ? 'border-transparent hover:border-slate-300' : 'opacity-50 grayscale cursor-not-allowed'}`}
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <div className="font-black text-lg text-violet-700">{discountLabel}</div>
-                                            <div className="font-mono text-xs text-slate-500 mt-0.5">{promo?.code}</div>
-                                        </div>
-                                        {isSelected && <CheckCircle2 className="w-5 h-5 text-violet-600 shrink-0" />}
+                                    {/* Left Section */}
+                                    <div className={`ticket-left !w-24 ${isFreeShip ? 'bg-emerald-500' : 'bg-violet-600'}`}>
+                                        {isFreeShip ? <ShoppingCart className="w-8 h-8 mb-1" /> : <TicketPercent className="w-8 h-8 mb-1" />}
+                                        <div className="ticket-brand-text">{isFreeShip ? 'FREE SHIP' : 'SHOP VOUCHER'}</div>
                                     </div>
-                                    <div className="mt-2">
-                                        {promo?.min_order_value && Number(promo.min_order_value) > 0 && (
-                                            <div className={`text-xs ${meetsMinOrder ? 'text-slate-400' : 'text-red-500 font-bold'}`}>
-                                                Đơn Retail tối thiểu: {new Intl.NumberFormat('vi-VN').format(Number(promo.min_order_value))}đ
-                                                {!meetsMinOrder && ' (Chưa đủ điều kiện)'}
+
+                                    {/* Right Section */}
+                                    <div className="ticket-right">
+                                        <div className="flex justify-between items-start">
+                                            <div className="space-y-0.5">
+                                                <h4 className={`font-bold text-base md:text-lg leading-tight ${isFreeShip ? 'text-emerald-800' : 'text-violet-800'}`}>
+                                                    {isFreeShip 
+                                                        ? 'MIỄN PHÍ VẬN CHUYỂN'
+                                                        : promo?.discount_type === 'PERCENTAGE' 
+                                                            ? `Giảm ${promo.discount_value}%` 
+                                                            : `Giảm ${formatPrice(Number(promo?.discount_value))}`
+                                                    }
+                                                </h4>
+                                                <div className="flex flex-col gap-0.5">
+                                                    {!isFreeShip && Number(promo?.max_discount_amount || 0) > 0 && (
+                                                        <p className="text-[11px] text-orange-600 font-bold">
+                                                            Giảm tối đa {formatPrice(Number(promo?.max_discount_amount))}
+                                                        </p>
+                                                    )}
+                                                    <p className={`text-xs ${meetsMinOrder ? 'text-slate-500' : 'text-red-500 font-bold'}`}>
+                                                        {promo?.min_order_value 
+                                                            ? `Đơn tối thiểu ${formatPrice(Number(promo.min_order_value))}`
+                                                            : 'Không giới hạn đơn tối thiểu'}
+                                                        {!meetsMinOrder && ' (Chưa đủ điều kiện)'}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        )}
-                                        {retailSubtotal === 0 && (
-                                            <div className="text-[10px] text-amber-600 font-bold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 inline-block uppercase">
-                                                Cần có sản phẩm Retail trong đơn hàng
-                                            </div>
-                                        )}
-                                    </div>
-                                    {promo?.end_date && (
-                                        <div className="text-xs text-slate-400 mt-1">
-                                            HSD: {new Date(promo.end_date).toLocaleDateString('vi-VN')}
+                                            {isSelected && (
+                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs shadow-sm ${isFreeShip ? 'bg-emerald-500' : 'bg-violet-600'}`}>✓</div>
+                                            )}
                                         </div>
-                                    )}
-                                </button>
+
+                                        <div className="mt-3 pt-2 border-t border-dashed border-slate-100 flex items-center justify-between">
+                                            <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 uppercase">
+                                                {promo?.code}
+                                            </span>
+                                            {promo?.end_date && (
+                                                <span className="text-[10px] text-slate-400">
+                                                    HSD: {new Date(promo.end_date).toLocaleDateString('vi-VN')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
                             );
                         })}
                     </div>

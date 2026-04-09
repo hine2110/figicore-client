@@ -39,6 +39,7 @@ const voucherSchema = z.object({
     start_date: z.string().min(1, 'Required'),
     end_date: z.string().min(1, 'Required'),
     min_order_value: z.coerce.number().min(0).optional(),
+    max_discount_amount: z.coerce.number().min(0).optional(),
     apply_rank_code: z.string().optional(),
     max_quantity: z.coerce.number().min(1).optional(),
     is_public: z.boolean().default(true),
@@ -82,6 +83,7 @@ export default function VoucherCreatePage() {
             start_date: '',
             end_date: '',
             min_order_value: 0,
+            max_discount_amount: undefined,
             apply_rank_code: 'ALL',
             max_quantity: undefined,
             is_public: true,
@@ -107,6 +109,7 @@ export default function VoucherCreatePage() {
                 discount_type: isFreeShip ? 'FREE_SHIP' : 'PERCENTAGE',
                 discount_value: isFreeShip ? 0 : values.discount_value!,
                 min_order_value: values.min_order_value,
+                max_discount_amount: values.max_discount_amount,
                 apply_rank_code: values.apply_rank_code === 'ALL' ? undefined : values.apply_rank_code,
                 max_quantity: values.max_quantity || undefined,
                 is_public: values.is_public,
@@ -332,24 +335,46 @@ export default function VoucherCreatePage() {
                                         )}
                                     />
                                 </div>
-                                <FormField
-                                    control={form.control}
-                                    name="min_order_value"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Minimum Order Value (VND)</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="text"
-                                                    placeholder="0 (no minimum)"
-                                                    value={formatNumberStr(field.value)}
-                                                    onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
+                                    <FormField
+                                        control={form.control}
+                                        name="min_order_value"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Minimum Order Value (VND)</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="text"
+                                                        placeholder="0 (no minimum)"
+                                                        value={formatNumberStr(field.value)}
+                                                        onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    {/* MAX DISCOUNT AMOUNT — Only visible for Percentage */}
+                                    {!isFreeShip && (
+                                        <FormField
+                                            control={form.control}
+                                            name="max_discount_amount"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Maximum Discount Cap (VND)</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="Leave blank for no limit"
+                                                            value={formatNumberStr(field.value)}
+                                                            onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>Limits the discount for high-value orders (e.g., 10% up to 100k)</FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     )}
-                                />
                             </div>
 
                             <Button

@@ -11,6 +11,8 @@ import EmployeeDetailSheet from "@/features/admin/components/EmployeeDetailSheet
 import ConfirmStatusDialog from "@/features/admin/components/ConfirmStatusDialog";
 import { userService } from "@/services/user.service";
 import { useAuthStore } from "@/store/useAuthStore";
+import { Wallet, QrCode } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function TeamManagement() {
@@ -22,6 +24,7 @@ export default function TeamManagement() {
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [statusConfirm, setStatusConfirm] = useState<{ id: number, status: string } | null>(null);
+    const [bankInfoPopup, setBankInfoPopup] = useState<any>(null);
 
     const fetchEmployees = async () => {
         setIsLoading(true);
@@ -72,8 +75,8 @@ export default function TeamManagement() {
                 <div className="p-4 border-b border-neutral-200 bg-neutral-50/50 flex flex-col sm:flex-row gap-4 justify-between items-center">
                     <div className="relative max-w-sm w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-                        <Input 
-                            placeholder="Search team members..." 
+                        <Input
+                            placeholder="Search team members..."
                             className="pl-9 bg-white"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -126,8 +129,8 @@ export default function TeamManagement() {
                             </tr>
                         ) : (
                             filteredEmployees.map((employee) => (
-                                <tr 
-                                    key={employee.employee_code} 
+                                <tr
+                                    key={employee.employee_code}
                                     className="hover:bg-neutral-50 transition-colors cursor-pointer"
                                     onClick={() => setSelectedId(employee.user_id)}
                                 >
@@ -154,9 +157,9 @@ export default function TeamManagement() {
                                         <div className="flex items-center gap-2">
                                             <Shield className="w-4 h-4 text-neutral-400" />
                                             <Badge variant="outline" className={`
-                                                ${employee.users.role_code === 'STAFF_POS' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
-                                                  employee.users.role_code === 'STAFF_INVENTORY' ? 'bg-orange-50 text-orange-700 border-orange-200' : 
-                                                  'bg-neutral-100 text-neutral-700 border-neutral-200'}
+                                                ${employee.users.role_code === 'STAFF_POS' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                    employee.users.role_code === 'STAFF_INVENTORY' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                                        'bg-neutral-100 text-neutral-700 border-neutral-200'}
                                             `}>
                                                 {employee.users.role_code.replace('_', ' ')}
                                             </Badge>
@@ -170,8 +173,8 @@ export default function TeamManagement() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <Badge variant={
-                                            employee.users.status_code === 'ACTIVE' ? 'default' : 
-                                            employee.users.status_code === 'INACTIVE' ? 'destructive' : 'secondary'
+                                            employee.users.status_code === 'ACTIVE' ? 'default' :
+                                                employee.users.status_code === 'INACTIVE' ? 'destructive' : 'secondary'
                                         }>
                                             {employee.users.status_code}
                                         </Badge>
@@ -187,9 +190,12 @@ export default function TeamManagement() {
                                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedId(employee.user_id); }}>
                                                     View Profile
                                                 </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setBankInfoPopup(employee); }}>
+                                                    View Bank Info
+                                                </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 {['SUPER_ADMIN', 'ADMIN'].includes(useAuthStore.getState().user?.role_code || '') && (
-                                                    <DropdownMenuItem 
+                                                    <DropdownMenuItem
                                                         className={employee.users.status_code === 'ACTIVE' ? "text-red-600" : "text-green-600"}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -201,17 +207,20 @@ export default function TeamManagement() {
                                                 )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
+
                                     </td>
                                 </tr>
                             ))
                         )}
                     </tbody>
                 </table>
+
+
             </div>
 
-            <EmployeeDetailSheet 
-                employeeId={selectedId} 
-                open={!!selectedId} 
+            <EmployeeDetailSheet
+                employeeId={selectedId}
+                open={!!selectedId}
                 onOpenChange={(open) => !open && setSelectedId(null)}
                 onUpdateSuccess={fetchEmployees}
             />
@@ -234,6 +243,52 @@ export default function TeamManagement() {
                     }}
                 />
             )}
+
+            {/* Modal Hiển thị nhanh Thông tin Ngân hàng */}
+            <Dialog open={!!bankInfoPopup} onOpenChange={(open) => !open && setBankInfoPopup(null)}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-indigo-700">
+                            <Wallet className="w-5 h-5" /> Thông Tin Ngân Hàng
+                        </DialogTitle>
+                        <DialogDescription>
+                            Dữ liệu nhận lương của nhân viên <strong className="text-slate-800">{bankInfoPopup?.users?.full_name}</strong>
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {bankInfoPopup && (
+                        <div className="py-2">
+                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center">
+                                {bankInfoPopup.bank_qr_code_url ? (
+                                    <div className="mb-4 p-2 bg-white border border-slate-200 rounded-lg shadow-sm">
+                                        <img src={bankInfoPopup.bank_qr_code_url} alt="QR Code" className="w-40 h-40 object-contain" />
+                                    </div>
+                                ) : (
+                                    <div className="mb-4 w-40 h-40 bg-slate-100 flex flex-col items-center justify-center text-slate-400 border border-dashed border-slate-300 rounded-lg">
+                                        <QrCode className="w-8 h-8 mb-2 opacity-50" />
+                                        <span className="text-xs">Chưa có mã QR</span>
+                                    </div>
+                                )}
+
+                                <div className="w-full space-y-2 text-sm">
+                                    <div className="flex justify-between border-b border-slate-200 pb-2">
+                                        <span className="text-slate-500">Ngân hàng:</span>
+                                        <span className="font-semibold">{bankInfoPopup.bank_name || <span className="text-red-500 italic">Chưa cập nhật</span>}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-slate-200 pb-2">
+                                        <span className="text-slate-500">Chủ tài khoản:</span>
+                                        <span className="font-semibold uppercase">{bankInfoPopup.bank_account_name || <span className="text-red-500 italic">Chưa cập nhật</span>}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Số tài khoản:</span>
+                                        <span className="font-semibold font-mono text-indigo-700">{bankInfoPopup.bank_account_no || <span className="text-red-500 italic">Chưa cập nhật</span>}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
