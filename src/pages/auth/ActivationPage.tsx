@@ -19,6 +19,7 @@ export default function ActivationPage() {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [faceDescriptor, setFaceDescriptor] = useState<string | null>(null);
 
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -69,10 +70,9 @@ export default function ActivationPage() {
         }
     };
 
-    const handleAvatarSelect = async (file: File) => {
-        // Fast-fail validation is already handled by AvatarUploader.
-        // We simply store the valid file locally until form submission.
+    const handleAvatarSelect = async (file: File, descriptor?: string) => {
         setAvatarFile(file);
+        if (descriptor) setFaceDescriptor(descriptor);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -93,12 +93,18 @@ export default function ActivationPage() {
             setConfirmError("");
         }
 
+        if (!avatarFile || !faceDescriptor) {
+            toast({ title: "Avatar Required", description: "Vui lòng chụp ảnh hoặc chọn ảnh rõ mặt.", variant: "destructive" });
+            return;
+        }
+
         setLoading(true);
         try {
             const formData = new FormData();
             formData.append("token", token as string);
             formData.append("tempPassword", tempPassword);
             formData.append("newPassword", newPassword);
+            formData.append("faceDescriptor", faceDescriptor);
             
             if (avatarFile) {
                 formData.append("file", avatarFile);
@@ -281,7 +287,7 @@ export default function ActivationPage() {
                         </div>
 
                         <div className="space-y-4 flex flex-col items-center pt-2">
-                            <Label className="self-start">Avatar Photo (Optional)</Label>
+                            <Label className="self-start">Avatar Photo <span className="text-red-500">*</span></Label>
                             <AvatarUploader
                                 key={avatarKey}
                                 onFileSelect={handleAvatarSelect}
@@ -291,7 +297,7 @@ export default function ActivationPage() {
 
                     </CardContent>
                     <CardFooter>
-                        <Button className="w-full bg-black hover:bg-neutral-800" type="submit" disabled={loading || uploading}>
+                        <Button className="w-full bg-black hover:bg-neutral-800" type="submit" disabled={loading || uploading || !avatarFile}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Activate Account
                         </Button>

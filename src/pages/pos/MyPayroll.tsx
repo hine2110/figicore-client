@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Banknote, Calendar, ChevronRight, AlertTriangle, CheckCircle2, FileText, ReceiptText } from 'lucide-react';
+import SignatureCanvas from 'react-signature-canvas';
+import { useRef } from 'react';
+import { Loader2, Banknote, Calendar, ChevronRight, AlertTriangle, CheckCircle2, FileText, ReceiptText, FileSignature } from 'lucide-react';
 import { axiosInstance } from '@/lib/axiosInstance';
 
 export default function MyPayroll() {
@@ -21,6 +23,10 @@ export default function MyPayroll() {
     const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
     const [disputeContent, setDisputeContent] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
+
+    const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+    const [isConfirmedMoney, setIsConfirmedMoney] = useState(false);
+    const sigCanvas = useRef<any>(null);
 
     const fetchPayrolls = async () => {
         setLoading(true);
@@ -92,6 +98,89 @@ export default function MyPayroll() {
         }
     };
 
+    const handleSignPayroll = async () => {
+        if (!isConfirmedMoney) {
+            toast({ title: "Chú ý", description: "Vui lòng tích chọn xác nhận đã nhận đủ tiền.", variant: "destructive" });
+            return;
+        }
+        if (sigCanvas.current?.isEmpty()) {
+            toast({ title: "Chú ý", description: "Vui lòng ký tên trước khi xác nhận.", variant: "destructive" });
+            return;
+        }
+
+        setActionLoading(true);
+        try {
+            // Lấy chuỗi base64 của chữ ký
+            const signatureData = sigCanvas.current.getCanvas().toDataURL('image/png');
+
+            await axiosInstance.post(`/payroll/my-payrolls/${selectedPayroll.payroll_id}/sign`, {
+                signature_data: signatureData
+            });
+
+            toast({ title: "Tuyệt vời!", description: "Bạn đã ký nhận lương thành công." });
+            setIsSignModalOpen(false);
+            setIsViewModalOpen(false);
+            fetchPayrolls();
+        } catch (error: any) {
+            console.error("CHI TIẾT LỖI KÝ TAY:", error);
+
+            toast({ title: "Lỗi", description: error.response?.data?.message || "Không thể ký nhận", variant: "destructive" });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleQuickSign = async () => {
+        if (!isConfirmedMoney) {
+            toast({ title: "Chú ý", description: "Vui lòng tích chọn xác nhận đã nhận đủ tiền.", variant: "destructive" });
+            return;
+        }
+
+        setActionLoading(true);
+        try {
+            // Tự động tạo một hình ảnh Canvas ẩn chứa chữ "Đã ký xác nhận"
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 150;
+            const ctx = canvas.getContext('2d');
+
+            if (ctx) {
+                // Tạo nền trong suốt hoặc màu nhạt
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Vẽ chữ ký (Style giống chữ viết tay/in đậm)
+                ctx.font = 'italic bold 32px "Times New Roman", serif';
+                ctx.fillStyle = '#4f46e5'; // Màu xanh indigo
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('Đã ký xác nhận (Ký nhanh)', canvas.width / 2, canvas.height / 2 - 15);
+
+                // Thêm timestamp để tăng tính minh bạch
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#64748b'; // Màu xám
+                ctx.fillText(`Timestamp: ${new Date().toLocaleString('vi-VN')}`, canvas.width / 2, canvas.height / 2 + 25);
+            }
+
+            // Lấy chuỗi base64
+            const quickSignatureData = canvas.toDataURL('image/png');
+
+            // Gửi thẳng lên API như chữ ký vẽ bình thường
+            await axiosInstance.post(`/payroll/my-payrolls/${selectedPayroll.payroll_id}/sign`, {
+                signature_data: quickSignatureData
+            });
+
+            toast({ title: "Tuyệt vời!", description: "Bạn đã ký nhận nhanh thành công." });
+            setIsSignModalOpen(false);
+            setIsViewModalOpen(false);
+            fetchPayrolls();
+        } catch (error: any) {
+            toast({ title: "Lỗi", description: error.response?.data?.message || "Không thể ký nhận", variant: "destructive" });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
             <div>
@@ -144,6 +233,7 @@ export default function MyPayroll() {
             {/* Modal Chi Tiết Tờ Phiếu Lương (Payslip) */}
             <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
                 <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden bg-slate-50">
+                    <DialogTitle className="sr-only">Chi tiết phiếu lương</DialogTitle>
                     {selectedPayroll && (
                         <>
                             {/* Header (Màu nền phụ thuộc trạng thái) */}
@@ -163,6 +253,17 @@ export default function MyPayroll() {
 
                             {/* Body: Chi tiết lương */}
                             <div className="p-6">
+                                {selectedPayroll.payment_start_date && (
+                                    <div className="mb-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 text-indigo-900">
+                                            <Calendar className="w-5 h-5" />
+                                            <span className="font-semibold">Lịch nhận lương dự kiến:</span>
+                                        </div>
+                                        <span className="font-bold text-indigo-700 bg-white px-3 py-1 rounded-lg border border-indigo-200 shadow-sm text-center">
+                                            {new Date(selectedPayroll.payment_start_date).toLocaleDateString('vi-VN')} - {new Date(selectedPayroll.payment_end_date).toLocaleDateString('vi-VN')}
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                                     <div className="p-4 border-b border-slate-100 flex justify-between bg-slate-50/50">
                                         <span className="font-semibold text-slate-700">Total recorded work hours</span>
@@ -197,6 +298,28 @@ export default function MyPayroll() {
                                     </div>
                                 </div>
 
+                                {/* Khu vực hiển thị chữ ký (Nếu đã ký) */}
+                                {selectedPayroll.signature_data && (
+                                    <div className="mt-4 p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex flex-col items-center justify-center gap-2">
+                                        <span className="text-sm font-semibold text-emerald-900">
+                                            <CheckCircle2 className="w-4 h-4 inline mr-1" />
+                                            Chữ ký xác nhận của bạn
+                                        </span>
+                                        <div className="bg-white border border-emerald-200 rounded-lg p-2 shadow-sm">
+                                            <img
+                                                src={selectedPayroll.signature_data}
+                                                alt="Chữ ký của bạn"
+                                                className="max-h-24 object-contain"
+                                            />
+                                        </div>
+                                        {selectedPayroll.signed_at && (
+                                            <span className="text-xs text-emerald-600 font-medium">
+                                                Thời gian ký: {new Date(selectedPayroll.signed_at).toLocaleString('vi-VN')}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Lời nhắc nhở */}
                                 {selectedPayroll.status_code === 'SENT_FOR_REVIEW' && (
                                     <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 flex gap-2">
@@ -212,38 +335,64 @@ export default function MyPayroll() {
                                 )}
                             </div>
 
-                            {/* Footer: Các nút hành động (Chỉ hiện khi SENT_FOR_REVIEW) */}
-                            {selectedPayroll.status_code === 'SENT_FOR_REVIEW' && (() => {
-                                // Kiểm tra xem nhân viên đã từng khiếu nại phiếu lương này chưa
-                                const hasDisputed = selectedPayroll.payroll_disputes && selectedPayroll.payroll_disputes.length > 0;
+                            {/* Footer: Action Buttons */}
+                            <div className="p-4 border-t bg-white flex flex-col gap-3">
+                                {selectedPayroll.status_code === 'SENT_FOR_REVIEW' && (() => {
+                                    const hasDisputed = selectedPayroll.payroll_disputes && selectedPayroll.payroll_disputes.length > 0;
+                                    return (
+                                        <div className="w-full flex flex-col gap-3">
+                                            {hasDisputed && (
+                                                <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200 flex items-start gap-2">
+                                                    <AlertTriangle className="w-5 h-5 shrink-0" />
+                                                    <p>You have used your dispute right <b>1-time limit</b> for this payslip. Management has reviewed and re-issued the final version. Please verify and Confirm.</p>
+                                                </div>
+                                            )}
+                                            
+                                            {selectedPayroll.payment_start_date && (
+                                                <p className="text-sm text-center text-slate-500 italic">
+                                                    * Payment has been scheduled. You must <b className="text-emerald-600">"Confirm Accuracy"</b> to unlock the signing feature.
+                                                </p>
+                                            )}
 
-                                return (
-                                    <div className="p-4 border-t bg-white flex flex-col gap-3">
-                                        {hasDisputed && (
-                                            <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200 flex items-start gap-2">
-                                                <AlertTriangle className="w-5 h-5 shrink-0" />
-                                                <p>You have used your dispute right <b>1-time limit</b> for this payslip. Management has reviewed and re-issued the final version. Please verify and Confirm.</p>
+                                            <div className="flex justify-end gap-3">
+                                                {!hasDisputed && (
+                                                    <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setIsDisputeModalOpen(true)}>
+                                                        <AlertTriangle className="w-4 h-4 mr-2" /> Discrepancy (Dispute)
+                                                    </Button>
+                                                )}
+                                                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleConfirmPayroll} disabled={actionLoading}>
+                                                    <CheckCircle2 className="w-4 h-4 mr-2" /> Confirm Accuracy
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* E-Signature Section (For APPROVED status) */}
+                                {selectedPayroll.status_code === 'APPROVED' && (
+                                    <div className="flex flex-col gap-2">
+                                        {selectedPayroll.can_sign ? (
+                                            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-12 text-lg" onClick={() => setIsSignModalOpen(true)}>
+                                                <FileSignature className="w-5 h-5 mr-2" /> Sign Payroll Receipt
+                                            </Button>
+                                        ) : (
+                                            <div className="text-center p-3 bg-slate-50 text-slate-500 rounded-lg text-sm border border-slate-200">
+                                                {selectedPayroll.payment_start_date ? (
+                                                    <span>The signing period has not started or has expired. <br />(Available from {new Date(selectedPayroll.payment_start_date).toLocaleDateString()} to {new Date(selectedPayroll.payment_end_date).toLocaleDateString()})</span>
+                                                ) : (
+                                                    <span>Waiting for Management to set the payment schedule...</span>
+                                                )}
                                             </div>
                                         )}
-                                        <div className="flex justify-end gap-3">
-                                            {/* ẨN NÚT KHIẾU NẠI NẾU ĐÃ TỪNG KHIẾU NẠI */}
-                                            {!hasDisputed && (
-                                                <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setIsDisputeModalOpen(true)}>
-                                                    <AlertTriangle className="w-4 h-4 mr-2" /> Discrepancy (Dispute)
-                                                </Button>
-                                            )}
-                                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleConfirmPayroll} disabled={actionLoading}>
-                                                <CheckCircle2 className="w-4 h-4 mr-2" /> Confirm Accuracy
-                                            </Button>
-                                        </div>
                                     </div>
-                                );
-                            })()}
-                            {selectedPayroll.status_code !== 'SENT_FOR_REVIEW' && (
-                                <div className="p-4 border-t bg-white flex justify-end">
-                                    <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>Close</Button>
-                                </div>
-                            )}
+                                )}
+
+                                {selectedPayroll.status_code !== 'SENT_FOR_REVIEW' && selectedPayroll.status_code !== 'APPROVED' && (
+                                    <div className="flex justify-end">
+                                        <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>Close</Button>
+                                    </div>
+                                )}
+                            </div>
                         </>
                     )}
                 </DialogContent>
@@ -273,6 +422,79 @@ export default function MyPayroll() {
                         <Button variant="destructive" onClick={handleSendDispute} disabled={actionLoading}>
                             Submit Dispute
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal Vẽ Chữ Ký Điện Tử */}
+            <Dialog open={isSignModalOpen} onOpenChange={(open) => { setIsSignModalOpen(open); if (!open) setIsConfirmedMoney(false); }}>
+                <DialogContent className="sm:max-w-[500px] bg-white">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl text-center font-bold text-indigo-900 uppercase">Ký Nhận Điện Tử</DialogTitle>
+                        <DialogDescription className="text-center">
+                            Biên lai lương Tháng {selectedPayroll?.month}/{selectedPayroll?.year}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4 space-y-4">
+                        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-emerald-900 text-center">
+                            <p className="text-sm mb-1">Số tiền thực lãnh</p>
+                            <p className="text-3xl font-bold font-mono">{formatCurrency(selectedPayroll?.final_salary || 0)}</p>
+                        </div>
+
+                        {/* Ràng buộc trách nhiệm */}
+                        <label className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded-lg cursor-pointer hover:bg-red-100 transition-colors">
+                            <input
+                                type="checkbox"
+                                className="mt-1 w-5 h-5 accent-red-600 rounded"
+                                checked={isConfirmedMoney}
+                                onChange={(e) => setIsConfirmedMoney(e.target.checked)}
+                            />
+                            <span className="text-sm font-medium text-red-900">
+                                Tôi xác nhận đã nhận đủ số tiền trên vào tài khoản ngân hàng. Chữ ký này có giá trị pháp lý tương đương biên nhận.
+                            </span>
+                        </label>
+
+                        {/* Khung vẽ chữ ký */}
+                        <div>
+                            <p className="text-sm font-semibold text-slate-700 mb-2">Chữ ký của bạn:</p>
+                            <div className="border-2 border-dashed border-slate-300 rounded-lg overflow-hidden bg-slate-50 relative">
+                                <SignatureCanvas
+                                    ref={sigCanvas}
+                                    penColor="blue"
+                                    canvasProps={{ className: "w-full h-[200px] cursor-crosshair" }}
+                                />
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="absolute bottom-2 right-2 text-xs h-7 text-slate-500 hover:text-red-600"
+                                    onClick={() => sigCanvas.current?.clear()}
+                                >
+                                    Xóa ký lại
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="flex flex-col sm:flex-row sm:justify-between items-center w-full gap-3">
+                        {/* Nút Ký Nhanh */}
+                        <Button
+                            variant="secondary"
+                            className="w-full sm:w-auto bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
+                            onClick={handleQuickSign}
+                            disabled={actionLoading}
+                        >
+                            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "⚡ Ký nhanh (Tự động)"}
+                        </Button>
+
+                        {/* Các nút Hủy & Gửi chữ ký vẽ */}
+                        <div className="flex w-full sm:w-auto gap-2">
+                            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setIsSignModalOpen(false)}>Hủy</Button>
+                            <Button className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleSignPayroll} disabled={actionLoading}>
+                                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileSignature className="w-4 h-4 mr-2" />}
+                                Gửi Chữ Ký Vẽ
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -33,7 +33,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 const userSchema = z.object({
   full_name: z.string().min(1, "Full Name is required"),
-  phone: z.string().min(10, "Phone invalid").regex(/^0[0-9]*$/, "Start with 0"),
+  phone: z.string().regex(/^0\d{9}$/, "Phone must be 10 digits starting with 0"),
   role_code: z.enum(["MANAGER", "STAFF_POS", "STAFF_INVENTORY"]),
   base_salary: z.coerce.number().positive("Must be > 0"),
   // Email and Code are not input by user

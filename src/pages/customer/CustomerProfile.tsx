@@ -53,7 +53,7 @@ const profileSchema = z.object({
     full_name: z.string()
         .min(2, "Full name must be at least 2 characters")
         .regex(/^[\p{L}\s]+$/u, "Name cannot contain special characters or numbers"),
-    phone: z.string().min(10, "Phone number is invalid").max(11, "Phone number is invalid"),
+    phone: z.string().regex(/^0\d{9}$/, "Phone must be 10 digits starting with 0"),
     dob: z.date().optional().nullable(),
 });
 
@@ -306,8 +306,8 @@ export default function CustomerProfile() {
             });
 
             // Success: Update store & UI
-            const updatedUser = { 
-                ...user, 
+            const updatedUser = {
+                ...user,
                 full_name: values.full_name,
                 phone: values.phone,
                 dob: values.dob ? values.dob.toISOString().split('T')[0] : user?.dob

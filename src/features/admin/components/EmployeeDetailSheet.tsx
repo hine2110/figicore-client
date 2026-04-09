@@ -1,11 +1,12 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, Briefcase, DollarSign, Calendar, Shield, Hash } from "lucide-react";
+import { Mail, Phone, Briefcase, DollarSign, Calendar, Shield, Hash, ChevronLeft, ChevronRight, Wallet, QrCode } from "lucide-react";
 import { Employee, employeesService } from "@/services/employees.service";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
 
 interface EmployeeDetailSheetProps {
     employeeId: number | null;
@@ -19,8 +20,11 @@ export default function EmployeeDetailSheet({ employeeId, open, onOpenChange }: 
     const [employee, setEmployee] = useState<Employee | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
+    const [viewPage, setViewPage] = useState<0 | 1>(0); // 0: Personal, 1: Bank
+
     useEffect(() => {
         if (open && employeeId) {
+            setViewPage(0); // Reset lật trang về Thông tin chung
             fetchEmployeeDetails(employeeId);
         } else {
             setEmployee(null);
@@ -77,88 +81,155 @@ export default function EmployeeDetailSheet({ employeeId, open, onOpenChange }: 
                                     {employee.job_title_code}
                                 </Badge>
                                 <Badge variant={
-                                    employee.users.status_code === 'ACTIVE' ? 'default' : 
-                                    employee.users.status_code === 'INACTIVE' ? 'destructive' : 'secondary'
+                                    employee.users.status_code === 'ACTIVE' ? 'default' :
+                                        employee.users.status_code === 'INACTIVE' ? 'destructive' : 'secondary'
                                 }>
                                     {employee.users.status_code}
                                 </Badge>
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-neutral-200 overflow-hidden divide-y divide-neutral-100">
-                            <div className="p-4 flex items-center gap-4 hover:bg-neutral-50/50 transition-colors">
-                                <Mail className="w-5 h-5 text-neutral-400" />
-                                <div className="flex-1 overflow-hidden">
-                                    <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Email Address</p>
-                                    <p className="text-sm font-medium text-neutral-900 truncate" title={employee.users.email}>{employee.users.email}</p>
-                                </div>
-                            </div>
-                            
-                            <div className="p-4 flex items-center gap-4 hover:bg-neutral-50/50 transition-colors">
-                                <Phone className="w-5 h-5 text-neutral-400" />
-                                <div className="flex-1">
-                                    <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Phone Number</p>
-                                    <p className="text-sm font-medium text-neutral-900">{employee.users.phone}</p>
-                                </div>
-                            </div>
+                        {/* THANH ĐIỀU HƯỚNG LẬT TRANG (LEFT / RIGHT) */}
+                        <div className="flex items-center justify-between bg-slate-100/70 border border-slate-200 p-1.5 rounded-xl mb-4">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewPage(0)}
+                                disabled={viewPage === 0}
+                                className={`h-8 ${viewPage === 0 ? "opacity-30" : "hover:bg-white hover:shadow-sm"}`}
+                            >
+                                <ChevronLeft className="w-4 h-4 mr-1" />
+                            </Button>
 
-                            {/* Address - Assuming users.addresses is now fetched if update in backend worked */}
-                            {(employee.users as any).addresses && (employee.users as any).addresses.length > 0 && (
-                                <div className="p-4 flex items-start gap-4 hover:bg-neutral-50/50 transition-colors">
-                                    <div className="w-5 h-5 flex items-center justify-center pt-0.5">
-                                        <Briefcase className="w-4 h-4 text-neutral-400" />{/* Using Briefcase icon for generic 'Office/Location' or MapPin if available */}
+                            <span className="font-semibold text-sm text-slate-700 flex items-center gap-2 transition-all">
+                                {viewPage === 0 ? "Thông tin chung" : <><Wallet className="w-4 h-4 text-indigo-600" /> Tài khoản nhận lương</>}
+                            </span>
+
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewPage(1)}
+                                disabled={viewPage === 1}
+                                className={`h-8 ${viewPage === 1 ? "opacity-30" : "hover:bg-white hover:shadow-sm"}`}
+                            >
+                                <ChevronRight className="w-4 h-4 ml-1" />
+                            </Button>
+                        </div>
+
+                        {/* NỘI DUNG TRANG CHÍNH */}
+                        <div className="relative min-h-[300px]">
+
+                            {/* TRANG 0: THÔNG TIN CHUNG */}
+                            {viewPage === 0 && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
+                                    <div className="rounded-xl border border-neutral-200 overflow-hidden divide-y divide-neutral-100">
+                                        <div className="p-4 flex items-center gap-4 hover:bg-neutral-50/50 transition-colors">
+                                            <Mail className="w-5 h-5 text-neutral-400" />
+                                            <div className="flex-1 overflow-hidden">
+                                                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Email Address</p>
+                                                <p className="text-sm font-medium text-neutral-900 truncate" title={employee.users.email}>{employee.users.email}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 flex items-center gap-4 hover:bg-neutral-50/50 transition-colors">
+                                            <Phone className="w-5 h-5 text-neutral-400" />
+                                            <div className="flex-1">
+                                                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Phone Number</p>
+                                                <p className="text-sm font-medium text-neutral-900">{employee.users.phone}</p>
+                                            </div>
+                                        </div>
+
+                                        {(employee.users as any).addresses && (employee.users as any).addresses.length > 0 && (
+                                            <div className="p-4 flex items-start gap-4 hover:bg-neutral-50/50 transition-colors">
+                                                <div className="w-5 h-5 flex items-center justify-center pt-0.5">
+                                                    <Briefcase className="w-4 h-4 text-neutral-400" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Address</p>
+                                                    <p className="text-sm font-medium text-neutral-900 line-clamp-2">
+                                                        {(employee.users as any).addresses[0].detail_address}, {(employee.users as any).addresses[0].ward_code},...
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="p-4 flex items-center gap-4 hover:bg-neutral-50/50 transition-colors">
+                                            <Shield className="w-5 h-5 text-neutral-400" />
+                                            <div className="flex-1">
+                                                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">System Role</p>
+                                                <p className="text-sm font-medium text-neutral-900">{employee.users.role_code}</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Address</p>
-                                        <p className="text-sm font-medium text-neutral-900 line-clamp-2">
-                                            {(employee.users as any).addresses[0].detail_address}, {(employee.users as any).addresses[0].ward_code},...
-                                        </p>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/30">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Hash className="w-4 h-4 text-neutral-400" />
+                                                <p className="text-xs font-medium text-neutral-500">Employee Code</p>
+                                            </div>
+                                            <p className="text-lg font-bold text-neutral-900 font-mono">
+                                                {employee.employee_code}
+                                            </p>
+                                        </div>
+
+                                        <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/30">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <DollarSign className="w-4 h-4 text-neutral-400" />
+                                                <p className="text-xs font-medium text-neutral-500">Base Salary</p>
+                                            </div>
+                                            <p className="text-lg font-bold text-neutral-900">
+                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(employee.base_salary || 0))}
+                                            </p>
+                                        </div>
+
+                                        <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/30 col-span-2">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Calendar className="w-4 h-4 text-neutral-400" />
+                                                <p className="text-xs font-medium text-neutral-500">Employment Start Date</p>
+                                            </div>
+                                            <p className="text-lg font-bold text-neutral-900">
+                                                {employee.start_date ? format(new Date(employee.start_date), 'MMMM dd, yyyy') : 'N/A'}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="p-4 flex items-center gap-4 hover:bg-neutral-50/50 transition-colors">
-                                <Shield className="w-5 h-5 text-neutral-400" />
-                                <div className="flex-1">
-                                    <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">System Role</p>
-                                    <p className="text-sm font-medium text-neutral-900">{employee.users.role_code}</p>
+                            {/* TRANG 1: THÔNG TIN NGÂN HÀNG */}
+                            {viewPage === 1 && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center">
+                                        {(employee as any).bank_qr_code_url ? (
+                                            <div className="mb-6 p-2 bg-white border border-slate-200 rounded-lg shadow-sm">
+                                                <img src={(employee as any).bank_qr_code_url} alt="QR Code" className="w-44 h-44 object-contain" />
+                                            </div>
+                                        ) : (
+                                            <div className="mb-6 w-44 h-44 bg-slate-100 flex flex-col items-center justify-center text-slate-400 border border-dashed border-slate-300 rounded-lg">
+                                                <QrCode className="w-10 h-10 mb-2 opacity-50" />
+                                                <span className="text-sm">Chưa có mã QR</span>
+                                            </div>
+                                        )}
+
+                                        <div className="w-full space-y-3 text-sm">
+                                            <div className="flex justify-between border-b border-slate-200 pb-3">
+                                                <span className="text-slate-500">Ngân hàng:</span>
+                                                <span className="font-semibold text-slate-900">{(employee as any).bank_name || <span className="text-red-500 italic font-normal">Chưa cập nhật</span>}</span>
+                                            </div>
+                                            <div className="flex justify-between border-b border-slate-200 pb-3">
+                                                <span className="text-slate-500">Chủ tài khoản:</span>
+                                                <span className="font-semibold text-slate-900 uppercase">{(employee as any).bank_account_name || <span className="text-red-500 italic font-normal">Chưa cập nhật</span>}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-slate-500">Số tài khoản:</span>
+                                                <span className="font-semibold font-mono text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md text-base">{(employee as any).bank_account_no || <span className="text-red-500 italic font-normal text-sm">Chưa cập nhật</span>}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
                         </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/30">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Hash className="w-4 h-4 text-neutral-400" />
-                                    <p className="text-xs font-medium text-neutral-500">Employee Code</p>
-                                </div>
-                                <p className="text-lg font-bold text-neutral-900 font-mono">
-                                    {employee.employee_code}
-                                </p>
-                            </div>
-
-                            <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/30">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <DollarSign className="w-4 h-4 text-neutral-400" />
-                                    <p className="text-xs font-medium text-neutral-500">Base Salary</p>
-                                </div>
-                                <p className="text-lg font-bold text-neutral-900">
-                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(employee.base_salary || 0))}
-                                </p>
-                            </div>
-
-                            <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/30 col-span-2">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Calendar className="w-4 h-4 text-neutral-400" />
-                                    <p className="text-xs font-medium text-neutral-500">Employment Start Date</p>
-                                </div>
-                                <p className="text-lg font-bold text-neutral-900">
-                                    {employee.start_date ? format(new Date(employee.start_date), 'MMMM dd, yyyy') : 'N/A'}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Account activation/deactivation buttons have been removed as per user request */}
                     </div>
                 ) : (
                     <div className="text-center py-10 text-neutral-500">Employee not found.</div>

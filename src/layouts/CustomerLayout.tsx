@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { io } from 'socket.io-client';
-import { NotificationBell } from './CustomerLayout/components/NotificationBell';
+import { NotificationBell } from '@/components/shared/NotificationBell';
 import { AIChatBox } from '@/components/customer/AIChatBox';
 import {
     DropdownMenu,

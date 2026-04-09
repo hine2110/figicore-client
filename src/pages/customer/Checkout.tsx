@@ -137,7 +137,7 @@ export default function Checkout() {
             // Fetch Wallet Balance + My Vouchers
             try {
                 const [walletRes, voucherRes] = await Promise.all([
-                    api.get('/wallet'),
+                    api.get('/wallets/my-wallet'),
                     VouchersService.getMyVouchers().catch(() => []),
                 ]);
                 setWalletBalance(Number(walletRes.data.balance_available) || 0);
@@ -338,6 +338,16 @@ export default function Checkout() {
         return sum + o.order_items.reduce((itemSum: number, item: any) => itemSum + Number(item.total_price), 0);
     }, 0);
 
+    // ── RETAIL-ONLY SUB-TOTAL ──────────────────────────────────────────────
+    const retailSubtotal = useMemo(() => {
+        return orders.reduce((sum, o) => {
+            return sum + o.order_items.reduce((itemSum: number, item: any) => {
+                const tc = item.product_variants?.products?.type_code;
+                return tc === 'RETAIL' ? itemSum + Number(item.total_price) : itemSum;
+            }, 0);
+        }, 0);
+    }, [orders]);
+
     let calculatedDiscount = orders.reduce((sum, o) => sum + Number(o.discount_amount || 0), 0);
     
     // Fallback display if discount_amount is 0 but promo exists (legacy fallback)
@@ -360,11 +370,13 @@ export default function Checkout() {
         if (!selectedVoucher) return 0;
         const promo = selectedVoucher.promotions;
         if (!promo || promo.discount_type === 'FREE_SHIP') return 0;
+        
+        // Retail-only rule: Discount applies to retail portions only
         if (promo.discount_type === 'PERCENTAGE') {
-            return Math.round(subtotal * (Number(promo.discount_value) / 100));
+            return Math.round(retailSubtotal * (Number(promo.discount_value) / 100));
         }
-        return Number(promo.discount_value) || 0;
-    }, [selectedVoucher, subtotal]);
+        return Math.min(retailSubtotal, Number(promo.discount_value) || 0); // Cannot discount more than retail value
+    }, [selectedVoucher, retailSubtotal]);
 
     // BUG FIXED: Backend authoritative checkout already subtracted vouchers from 'total_amount'.
     // grandTotal should simply be rawTotalAmount (the sum of order.total_amount)
@@ -479,41 +491,6 @@ export default function Checkout() {
                                     </Card>
                                 );
                             })}
-
-                            {/* VOUCHER PICKER */}
-                            {!isAuctionOrder && (
-                                <Card className="border border-violet-100 shadow-sm rounded-2xl bg-white">
-                                    <CardHeader className="bg-violet-50/50 border-b border-violet-100 pb-4">
-                                        <CardTitle className="text-lg flex items-center gap-2 font-bold text-slate-800">
-                                            <TicketPercent className="w-5 h-5 text-violet-600" /> Voucher của tôi
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="p-6">
-                                        {selectedVoucher ? (
-                                            <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-xl px-4 py-3">
-                                                <div>
-                                                    <div className="font-mono font-bold text-violet-800">{selectedVoucher.promotions?.code}</div>
-                                                    <div className="text-xs text-violet-600 mt-0.5">
-                                                        {selectedVoucher.promotions?.discount_type === 'PERCENTAGE'
-                                                            ? `Giảm ${selectedVoucher.promotions?.discount_value}%`
-                                                            : selectedVoucher.promotions?.discount_type === 'FREE_SHIP'
-                                                            ? 'Miễn phí vận chuyển'
-                                                            : `Giảm ${new Intl.NumberFormat('vi-VN').format(Number(selectedVoucher.promotions?.discount_value))}đ`}
-                                                    </div>
-                                                </div>
-                                                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-500 rounded-full" onClick={() => setSelectedVoucher(null)}>
-                                                    <X className="w-4 h-4" />
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <Button variant="outline" className="w-full border-dashed border-violet-300 text-violet-600 hover:bg-violet-50 hover:text-violet-700 h-12" onClick={() => setShowVoucherDialog(true)} disabled={myVouchers.length === 0}>
-                                                <TicketPercent className="w-4 h-4 mr-2" />
-                                                {myVouchers.length > 0 ? `Chọn voucher (${myVouchers.length} khả dụng)` : 'Bạn chưa có voucher'}
-                                            </Button>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            )}
 
                             {/* PAYMENT METHOD */}
                             <Card className="border border-slate-100 shadow-sm rounded-2xl bg-white">
@@ -796,7 +773,9 @@ export default function Checkout() {
                                 promo?.discount_type === 'PERCENTAGE' ? `${promo.discount_value}% OFF` :
                                 `${new Intl.NumberFormat('vi-VN').format(Number(promo?.discount_value))}đ OFF`;
 
-                            const canApply = !promo?.min_order_value || grandTotal >= Number(promo.min_order_value);
+                            const meetsMinOrder = !promo?.min_order_value || retailSubtotal >= Number(promo.min_order_value);
+                            const canApply = retailSubtotal > 0 && meetsMinOrder;
+
                             return (
                                 <button
                                     key={v.id}
@@ -811,12 +790,19 @@ export default function Checkout() {
                                         </div>
                                         {isSelected && <CheckCircle2 className="w-5 h-5 text-violet-600 shrink-0" />}
                                     </div>
-                                    {promo?.min_order_value && Number(promo.min_order_value) > 0 && (
-                                        <div className={`text-xs mt-2 ${canApply ? 'text-slate-400' : 'text-red-500'}`}>
-                                            Đơn tối thiểu: {new Intl.NumberFormat('vi-VN').format(Number(promo.min_order_value))}đ
-                                            {!canApply && ' (Chưa đủ điều kiện)'}
-                                        </div>
-                                    )}
+                                    <div className="mt-2">
+                                        {promo?.min_order_value && Number(promo.min_order_value) > 0 && (
+                                            <div className={`text-xs ${meetsMinOrder ? 'text-slate-400' : 'text-red-500 font-bold'}`}>
+                                                Đơn Retail tối thiểu: {new Intl.NumberFormat('vi-VN').format(Number(promo.min_order_value))}đ
+                                                {!meetsMinOrder && ' (Chưa đủ điều kiện)'}
+                                            </div>
+                                        )}
+                                        {retailSubtotal === 0 && (
+                                            <div className="text-[10px] text-amber-600 font-bold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 inline-block uppercase">
+                                                Cần có sản phẩm Retail trong đơn hàng
+                                            </div>
+                                        )}
+                                    </div>
                                     {promo?.end_date && (
                                         <div className="text-xs text-slate-400 mt-1">
                                             HSD: {new Date(promo.end_date).toLocaleDateString('vi-VN')}

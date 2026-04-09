@@ -76,6 +76,9 @@ export default function PromotionEditPage() {
         enabled: !!id,
     });
 
+    // Detect AI-generated promotion — price-range apply section is locked
+    const isAiPromotion = !!(promoData?.name?.startsWith('[AI Clearance]'));
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema) as any,
         defaultValues: {
@@ -291,6 +294,17 @@ export default function PromotionEditPage() {
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handlePreSubmit)} className="space-y-5">
 
+                            {/* AI LOCK BANNER */}
+                            {isAiPromotion && (
+                                <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                    <span className="text-xl leading-none shrink-0">🤖</span>
+                                    <div>
+                                        <p className="font-semibold">AI-Generated Promotion — Product Assignment Locked</p>
+                                        <p className="text-amber-700 mt-0.5">This promotion was created by AI for a specific product. You can edit the name, discount value, and schedule, but the product assignment is managed by AI only.</p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Tên */}
                             <FormField
                                 control={form.control}
@@ -353,25 +367,46 @@ export default function PromotionEditPage() {
                             </div>
 
                             {/* is_recurring */}
-                            <FormField
-                                control={form.control}
-                                name="is_recurring"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-orange-200 bg-orange-50 p-4">
-                                        <div className="space-y-0.5">
-                                            <FormLabel className="text-base font-semibold text-orange-900">🔁 Repeat Daily</FormLabel>
-                                            <FormDescription className="text-orange-700">
-                                                ON: repeats every day in the same time window. OFF: runs only in the selected date range.
-                                            </FormDescription>
-                                        </div>
-                                        <FormControl>
-                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
+                            {(() => {
+                                const watchedStart = form.watch('start_datetime');
+                                const watchedEnd = form.watch('end_datetime');
+                                const startT = watchedStart?.split('T')[1]?.slice(0, 5);
+                                const endT = watchedEnd?.split('T')[1]?.slice(0, 5);
+                                const isSameTime = !!(startT && endT && startT === endT);
+                                return (
+                                <FormField
+                                    control={form.control}
+                                    name="is_recurring"
+                                    render={({ field }) => (
+                                        <FormItem className={`flex flex-row items-center justify-between rounded-lg border p-4 ${isSameTime ? 'border-slate-200 bg-slate-50 opacity-60' : 'border-orange-200 bg-orange-50'}`}>
+                                            <div className="space-y-0.5">
+                                                <FormLabel className={`text-base font-semibold ${isSameTime ? 'text-slate-500' : 'text-orange-900'}`}>🔁 Repeat Daily</FormLabel>
+                                                <FormDescription className={isSameTime ? 'text-slate-400' : 'text-orange-700'}>
+                                                    ON: repeats every day in the same time window. OFF: runs only in the selected date range.
+                                                </FormDescription>
+                                                {isSameTime && (
+                                                    <p className="text-xs text-red-600 font-medium pt-1">
+                                                        ⚠️ Start time and end time are the same ({startT}). Repeat Daily would run 24/7 — please use different times to enable this option.
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <FormControl>
+                                                <Switch
+                                                    checked={isSameTime ? false : field.value}
+                                                    onCheckedChange={isSameTime ? undefined : field.onChange}
+                                                    disabled={isSameTime}
+                                                    className={isSameTime ? 'cursor-not-allowed' : ''}
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                );
+                            })()}
 
-                            {/* Price range auto-apply */}
+
+                            {/* Price range auto-apply — hidden for AI promotions */}
+                            {!isAiPromotion && (
                             <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
                                 <div>
                                     <h3 className="font-semibold text-base">Auto-Apply by Price Range</h3>
@@ -486,6 +521,7 @@ export default function PromotionEditPage() {
                                     </div>
                                 )}
                             </div>
+                            )}
 
                             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || isCheckingConflicts}>
                                 {(form.formState.isSubmitting || isCheckingConflicts) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -23,6 +23,7 @@ import { io } from "socket.io-client";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 
 
 // --- Types ---
@@ -235,14 +236,7 @@ export default function ManagerLayout() {
                     <div className="lg:hidden w-8"></div>
                     <div className="flex items-center gap-6">
                         {/* Notification Bell */}
-                        <Link to="/manager/returns" className="relative text-neutral-500 hover:text-neutral-900 transition-colors" onClick={() => setUnreadReturns(0)}>
-                            <Bell className="w-5 h-5" />
-                            {unreadReturns > 0 && (
-                                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
-                                    {unreadReturns}
-                                </span>
-                            )}
-                        </Link>
+                        <NotificationBell />
 
                         <div className="text-sm text-right hidden sm:block">
                             <p className="font-semibold text-neutral-900">Store Performance</p>

@@ -7,12 +7,15 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import api from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { io } from 'socket.io-client';
+import { useNavigate } from 'react-router-dom';
 
 export function NotificationBell() {
     const [notifications, setNotifications] = useState<any[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
     const { user } = useAuthStore();
+    const navigate = useNavigate();
+    const [open, setOpen] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -41,7 +44,13 @@ export function NotificationBell() {
     }, [user]);
 
     const handleOpenNotif = async (notif: any) => {
-        setSelectedNotif(notif);
+        setOpen(false); // Close dropdown
+
+        if (notif.target_url) {
+            navigate(notif.target_url);
+        } else {
+            setSelectedNotif(notif);
+        }
 
         // Mark as read
         if (!notif.is_read) {
@@ -73,7 +82,7 @@ export function NotificationBell() {
 
     return (
         <>
-            <DropdownMenu>
+            <DropdownMenu open={open} onOpenChange={setOpen}>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="relative">
                         {unreadCount > 0 ? (
