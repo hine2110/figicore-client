@@ -75,6 +75,7 @@ const formSchema = z.object({
     start_date: z.string().optional(),
     end_date: z.string().optional(),
     min_order_value: z.coerce.number().min(0).optional(),
+    max_discount_amount: z.coerce.number().min(0).optional(),
     apply_rank_code: z.string().optional(),
     max_quantity: z.coerce.number().min(1, "Must have at least 1").optional(),
     is_public: z.boolean().default(true),
@@ -121,6 +122,7 @@ export default function VoucherEditPage() {
             start_date: "",
             end_date: "",
             min_order_value: 0,
+            max_discount_amount: undefined,
             apply_rank_code: "ALL",
             max_quantity: undefined,
             is_public: true,
@@ -153,6 +155,7 @@ export default function VoucherEditPage() {
                 start_date: toLocalDatetimeStr(voucherData.start_date),
                 end_date: toLocalDatetimeStr(voucherData.end_date),
                 min_order_value: voucherData.min_order_value || 0,
+                max_discount_amount: voucherData.max_discount_amount || undefined,
                 apply_rank_code: voucherData.apply_rank_code || "ALL",
                 max_quantity: voucherData.max_quantity || undefined,
                 is_public: voucherData.is_public ?? true,
@@ -180,6 +183,7 @@ export default function VoucherEditPage() {
                 discount_type: watchType === 'FREE_SHIP' ? 'FREE_SHIP' : 'PERCENTAGE',
                 discount_value: watchType === 'FREE_SHIP' ? 0 : values.discount_value!,
                 min_order_value: values.min_order_value,
+                max_discount_amount: values.max_discount_amount,
                 apply_rank_code: values.apply_rank_code === 'ALL' ? undefined : values.apply_rank_code,
                 max_quantity: values.max_quantity || undefined,
                 is_public: values.is_public,
@@ -431,6 +435,28 @@ export default function VoucherEditPage() {
                                             </FormItem>
                                         )}
                                     />
+                                    {/* MAX DISCOUNT CAP — Only visible for Percentage */}
+                                    {watchType !== 'FREE_SHIP' && (
+                                        <FormField
+                                            control={form.control}
+                                            name="max_discount_amount"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Maximum Discount Cap (VND)</FormLabel>
+                                                    <FormControl>
+                                                        <Input 
+                                                            type="text" 
+                                                            placeholder="Leave blank for no limit" 
+                                                            value={formatNumberStr(field.value)}
+                                                            onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>Limits the discount for high-value orders (e.g., 10% up to 100k)</FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    )}
                                 </div>
 
                             <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 font-semibold h-12" disabled={form.formState.isSubmitting}>
