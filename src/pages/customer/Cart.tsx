@@ -69,10 +69,9 @@ export default function Cart() {
             // Check if voucher is within valid dates
             const isStarted = !startDate || startDate <= now;
             const isNotExpired = !endDate || endDate > now;
-            const isDateValid = isStarted && isNotExpired;
-
-            // Check condition AND date validity (Retail-only check)
-            if (isDateValid && (!promo.min_order_value || retailTotal >= Number(promo.min_order_value))) {
+            // Check if voucher is COLLECTED, valid dates AND retail condition
+            const isAvailable = uv.status === 'COLLECTED';
+            if (isAvailable && isStarted && isNotExpired && (!promo.min_order_value || retailTotal >= Number(promo.min_order_value))) {
                 if (promo.discount_type === 'FREE_SHIP') {
                     if (DEFAULT_SHIPPING_FEE > maxFreeShipAmount) {
                         maxFreeShipAmount = DEFAULT_SHIPPING_FEE;
@@ -83,6 +82,10 @@ export default function Cart() {
                     let currentDiscount = 0;
                     if (promo.discount_type === 'PERCENTAGE') {
                         currentDiscount = (retailTotal * (promo.discount_value || 0)) / 100;
+                        const maxCap = Number(promo.max_discount_amount);
+                        if (maxCap > 0) {
+                            currentDiscount = Math.min(currentDiscount, maxCap);
+                        }
                     } else {
                         currentDiscount = Number(promo.discount_value) || 0;
                     }
@@ -230,9 +233,11 @@ export default function Cart() {
                     return {
                         variant_id: Number(realVariantId),
                         quantity: Number(i.quantity),
-                        price: i.price, // Send discounted price
+                        // FORCE 0 for giveaways to avoid "Price Changed" error
+                        price: i.giveaway_claim_id ? 0 : i.price, 
                         payment_option: (i as any).payment_option || (i as any).paymentOption || 'DEPOSIT', // Fix: Send explicit option
                         livestreamId: (i as any).livestream_id || undefined, // Live pricing context
+                        giveaway_claim_id: i.giveaway_claim_id || undefined
                     };
                 })
             };
@@ -328,6 +333,10 @@ export default function Cart() {
             if (v) {
                 if (v.discount_type === 'PERCENTAGE') {
                     discount = (retailTotal * (Number(v.discount_value) || 0)) / 100;
+                    const maxCap = Number(v.max_discount_amount);
+                    if (maxCap > 0) {
+                        discount = Math.min(discount, maxCap);
+                    }
                 } else {
                     discount = Number(v.discount_value) || 0;
                 }
@@ -400,8 +409,12 @@ export default function Cart() {
                             )}
                         </div>
                     )}
-                    {/* LIVE PRICE badge */}
-                    {item.livestream_id && item.is_live && type_code !== 'PREORDER' && (
+                    {/* BADGES: Giveaway OR Live Price */}
+                    {item.giveaway_claim_id ? (
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-600/90 to-transparent pb-1 pt-2 flex items-center justify-center">
+                            <span className="text-white text-[9px] font-black uppercase tracking-wider">🎁 Giveaway</span>
+                        </div>
+                    ) : item.livestream_id && item.is_live && type_code !== 'PREORDER' && (
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-rose-600/80 to-transparent pb-1 pt-2 flex items-center justify-center">
                             <span className="text-white text-[9px] font-black uppercase tracking-wider">🔴 Live Price</span>
                         </div>
@@ -420,7 +433,7 @@ export default function Cart() {
                         <div className="flex items-center border border-slate-300/60 rounded-full px-3 py-1 bg-white/40 h-8" onClick={(e) => e.stopPropagation()}>
                             <button
                                 onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                disabled={item.quantity <= 1}
+                                disabled={item.quantity <= 1 || !!item.giveaway_claim_id}
                                 className="text-slate-500 hover:text-slate-900 disabled:opacity-30 px-1"
                             >
                                 <Minus className="w-3 h-3" />
@@ -428,8 +441,9 @@ export default function Cart() {
                             <span className="mx-3 text-sm font-bold w-4 text-center">{item.quantity}</span>
                             <button
                                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                // Disable if hitting Max User Limit (Preorder) OR Max Stock (Retail)
+                                // Disable if hitting Max User Limit (Preorder) OR Max Stock (Retail) OR is Giveaway
                                 disabled={
+                                    !!item.giveaway_claim_id ||
                                     (type_code === 'PREORDER' && item.max_qty_per_user && item.quantity >= item.max_qty_per_user) ||
                                     (type_code === 'RETAIL' && item.quantity >= (item.maxStock || 999))
                                 }
@@ -455,7 +469,18 @@ export default function Cart() {
 
                 {/* Delete Action */}
                 <button
-                    onClick={(e) => { e.stopPropagation(); removeFromCart(item.id); }}
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (item.giveaway_claim_id) {
+                            toast({ 
+                                title: "Prize Ownership Notice", 
+                                description: "Giveaway prizes cannot be removed from your cart. Please complete the 0đ checkout to receive your reward!",
+                                variant: "default"
+                            });
+                            return;
+                        }
+                        removeFromCart(item.id); 
+                    }}
                     className="text-slate-300 hover:text-red-500 transition-colors p-2 hover:bg-white/50 rounded-full self-start -mt-2 -mr-2"
                     title="Remove item"
                 >
@@ -612,7 +637,7 @@ export default function Cart() {
                                                                     <h4 className="font-bold text-sm text-orange-600 uppercase tracking-wider flex items-center gap-2">
                                                                         <div className="w-2 h-2 rounded-full bg-orange-500" /> Shop Discount (Select 1)
                                                                     </h4>
-                                                                    {myVouchers.filter(mv => mv.promotions.discount_type !== 'FREE_SHIP')
+                                                                    {myVouchers.filter(mv => mv.status === 'COLLECTED' && mv.promotions.discount_type !== 'FREE_SHIP')
                                                                         .sort((a, b) => {
                                                                             const isASelected = selectedDiscountCode === a.promotions.code;
                                                                             const isBSelected = selectedDiscountCode === b.promotions.code;
@@ -640,42 +665,53 @@ export default function Cart() {
                                                                                             setSelectedDiscountCode(isSelected ? null : mv.promotions.code!);
                                                                                         }
                                                                                     }}
-                                                                                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${isAvailableForThisOrder
-                                                                                        ? (isSelected ? 'border-orange-500 bg-orange-50' : 'border-white bg-white hover:border-orange-200')
-                                                                                        : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'}`}
+                                                                                    className={`ticket-container border-2 transition-all ${isAvailableForThisOrder
+                                                                                        ? (isSelected ? 'border-orange-500 ring-2 ring-orange-500/20' : 'border-transparent hover:border-orange-200')
+                                                                                        : 'opacity-50 grayscale cursor-not-allowed'}`}
                                                                                 >
-                                                                                    <div className="flex-1">
-                                                                                        <div className="font-bold text-lg text-slate-900">
-                                                                                            {mv.promotions.discount_type === 'PERCENTAGE'
-                                                                                                ? `${mv.promotions.discount_value}% OFF`
-                                                                                                : `${formatPrice(Number(mv.promotions.discount_value))} OFF`}
-                                                                                        </div>
-                                                                                        <div className="text-sm text-slate-500">
-                                                                                            Code: <span className="font-mono font-bold">{mv.promotions.code}</span>
-                                                                                        </div>
-                                                                                        <div className="text-xs text-slate-400 mt-1">
-                                                                                            {mv.promotions.min_order_value ? `Giá trị Retail tối thiểu: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'Không giới hạn chi tiêu'}
-                                                                                        </div>
-                                                                                        {retailTotal === 0 && (
-                                                                                            <div className="text-[10px] text-amber-600 font-bold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 inline-block uppercase">
-                                                                                                Chỉ áp dụng cho hàng Retail
-                                                                                            </div>
-                                                                                        )}
-                                                                                        {(!isStarted || !isNotExpired) && (
-                                                                                            <div className="text-xs text-red-500 font-medium mt-1">
-                                                                                                {!isNotExpired ? 'Đã hết hạn' : `Kích hoạt từ ngày ${startDate?.toLocaleDateString()}`}
-                                                                                            </div>
-                                                                                        )}
+                                                                                    {/* Left Section */}
+                                                                                    <div className="ticket-left !w-24 bg-orange-500">
+                                                                                        <TicketPercent className="w-8 h-8 mb-1" />
+                                                                                        <div className="ticket-brand-text">SHOP VOUCHER</div>
                                                                                     </div>
-                                                                                    <div className="shrink-0 ml-4">
-                                                                                        {isSelected && (
-                                                                                            <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
-                                                                                        )}
-                                                                                        {!isAvailableForThisOrder && (
-                                                                                            <span className="text-xs font-bold text-red-400">
-                                                                                                {retailTotal === 0 ? 'Retail Only' : (!meetsMinOrder ? 'Không đủ điều kiện' : (!isNotExpired ? 'Hết hạn' : 'Sắp tới'))}
+
+                                                                                    {/* Right Section */}
+                                                                                    <div className="ticket-right">
+                                                                                        <div className="flex justify-between items-start">
+                                                                                            <div className="space-y-0.5">
+                                                                                                <h4 className="font-bold text-slate-900 text-base md:text-lg">
+                                                                                                    {mv.promotions.discount_type === 'PERCENTAGE'
+                                                                                                        ? `Giảm ${mv.promotions.discount_value}%`
+                                                                                                        : `Giảm ${formatPrice(Number(mv.promotions.discount_value))}`}
+                                                                                                </h4>
+                                                                                                <div className="flex flex-col gap-0.5">
+                                                                                                    {Number(mv.promotions.max_discount_amount || 0) > 0 && (
+                                                                                                        <p className="text-[11px] text-orange-600 font-bold">
+                                                                                                            Giảm tối đa {formatPrice(Number(mv.promotions.max_discount_amount))}
+                                                                                                        </p>
+                                                                                                    )}
+                                                                                                    <p className="text-xs text-slate-500">
+                                                                                                        {mv.promotions.min_order_value 
+                                                                                                           ? `Đơn tối thiểu ${formatPrice(Number(mv.promotions.min_order_value))}`
+                                                                                                           : 'Không giới hạn đơn tối thiểu'}
+                                                                                                    </p>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            {isSelected && (
+                                                                                                <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs shadow-sm">✓</div>
+                                                                                            )}
+                                                                                        </div>
+
+                                                                                        <div className="mt-3 pt-2 border-t border-dashed border-slate-100 flex items-center justify-between">
+                                                                                            <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 uppercase">
+                                                                                                {mv.promotions.code}
                                                                                             </span>
-                                                                                        )}
+                                                                                            {endDate && (
+                                                                                                <span className="text-[10px] text-slate-400">
+                                                                                                    HSD: {endDate.toLocaleDateString('vi-VN')}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
                                                                             );
@@ -689,7 +725,7 @@ export default function Cart() {
                                                                     <h4 className="font-bold text-sm text-emerald-600 uppercase tracking-wider flex items-center gap-2">
                                                                         <div className="w-2 h-2 rounded-full bg-emerald-500" /> Free Shipping (Select 1)
                                                                     </h4>
-                                                                    {myVouchers.filter(mv => mv.promotions.discount_type === 'FREE_SHIP')
+                                                                    {myVouchers.filter(mv => mv.status === 'COLLECTED' && mv.promotions.discount_type === 'FREE_SHIP')
                                                                         .sort((a, b) => {
                                                                             const isASelected = selectedFreeShipCode === a.promotions.code;
                                                                             const isBSelected = selectedFreeShipCode === b.promotions.code;
@@ -793,7 +829,7 @@ export default function Cart() {
 
                                 <Button
                                     className="w-full bg-slate-900 hover:bg-black text-white h-14 text-lg rounded-2xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
-                                    disabled={totalAmount === 0 || isProcessing}
+                                    disabled={selectedItemIds.length === 0 || isProcessing}
                                     onClick={handleProceed}
                                 >
                                     {isProcessing ? 'Processing...' : 'Proceed to Payment'} <ArrowRight className="ml-2 w-5 h-5" />

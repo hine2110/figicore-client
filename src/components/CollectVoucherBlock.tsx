@@ -59,35 +59,65 @@ export default function CollectVoucherBlock() {
                 <TicketPercent className="w-5 h-5 text-orange-500" />
                 Available Vouchers
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
                 {vouchers.map((v) => (
-                    <Card key={v.promotion_id} className="border-orange-200 bg-orange-50/50">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-lg text-orange-600">
-                                {v.discount_type === 'PERCENTAGE' ? `${v.discount_value}% OFF` : `${new Intl.NumberFormat('vi-VN').format(Number(v.discount_value))}đ OFF`}
-                            </CardTitle>
-                            <CardDescription>
-                                {v.min_order_value ? `Min order: ${new Intl.NumberFormat('vi-VN').format(Number(v.min_order_value))}đ` : 'No minimum order'}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex justify-between items-end">
-                            <div className="text-sm font-medium">
-                                Code: <span className="font-bold uppercase">{v.code}</span>
+                    <div key={v.promotion_id} className="ticket-container group hover:shadow-lg transition-all duration-300">
+                        {/* Left Section (Brand/Icon) */}
+                        <div className="ticket-left">
+                            <TicketPercent className="w-8 h-8 mb-1" />
+                            <div className="ticket-brand-text">FIGI VOUCHER</div>
+                        </div>
+
+                        {/* Right Section (Details) */}
+                        <div className="ticket-right">
+                            <div className="flex justify-between items-start mb-1">
+                                <div className="space-y-0.5">
+                                    <h4 className="font-bold text-slate-900 text-sm md:text-base leading-tight">
+                                        {v.discount_type === 'PERCENTAGE' 
+                                            ? `Giảm ${v.discount_value}%` 
+                                            : `Giảm ${new Intl.NumberFormat('vi-VN').format(Number(v.discount_value))}đ`
+                                        }
+                                    </h4>
+                                    <div className="flex flex-col gap-0.5">
+                                        {Number(v.max_discount_amount || 0) > 0 && (
+                                            <p className="text-[11px] text-orange-600 font-medium">
+                                                Tối đa {new Intl.NumberFormat('vi-VN').format(Number(v.max_discount_amount))}đ
+                                            </p>
+                                        )}
+                                        <p className="text-[11px] text-slate-500">
+                                            Đơn tối thiểu {new Intl.NumberFormat('vi-VN').format(Number(v.min_order_value || 0))}đ
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button 
+                                    size="sm" 
+                                    variant={v.is_collected ? "outline" : "default"}
+                                    className={`h-7 px-3 text-[10px] uppercase font-bold tracking-wider rounded-md ${
+                                        v.is_collected 
+                                            ? "bg-slate-100 text-slate-400 border-none" 
+                                            : "bg-[#ee4d2d] hover:bg-[#d73211] text-white"
+                                    }`}
+                                    onClick={() => collectMutation.mutate(v.promotion_id)}
+                                    disabled={v.is_collected || !v.can_collect || v.is_out_of_stock || collectMutation.isPending}
+                                >
+                                    {collectMutation.isPending && collectMutation.variables === v.promotion_id ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (v.is_collected ? 'Đã Lưu' : (v.is_out_of_stock ? 'Hết' : 'Lưu'))}
+                                </Button>
                             </div>
-                            <Button 
-                                size="sm" 
-                                variant={v.is_collected ? "outline" : "default"}
-                                className={v.is_collected ? "bg-white text-gray-500 cursor-not-allowed" : "bg-orange-600 hover:bg-orange-700"}
-                                onClick={() => collectMutation.mutate(v.promotion_id)}
-                                disabled={v.is_collected || !v.can_collect || v.is_out_of_stock || collectMutation.isPending}
-                            >
-                                {collectMutation.isPending && collectMutation.variables === v.promotion_id ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : null}
-                                {v.is_collected ? 'Saved' : (v.is_out_of_stock ? 'Out of Stock' : (!v.can_collect ? 'Locked' : 'Collect'))}
-                            </Button>
-                        </CardContent>
-                    </Card>
+                            
+                            <div className="mt-2 pt-2 border-t border-dashed border-slate-100 flex items-center justify-between">
+                                <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 uppercase">
+                                    {v.code}
+                                </span>
+                                {v.end_date && (
+                                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                                        HSD: {new Date(v.end_date).toLocaleDateString('vi-VN')}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 ))}
             </div>
         </div>
