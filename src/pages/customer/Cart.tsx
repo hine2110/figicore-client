@@ -233,9 +233,11 @@ export default function Cart() {
                     return {
                         variant_id: Number(realVariantId),
                         quantity: Number(i.quantity),
-                        price: i.price, // Send discounted price
+                        // FORCE 0 for giveaways to avoid "Price Changed" error
+                        price: i.giveaway_claim_id ? 0 : i.price, 
                         payment_option: (i as any).payment_option || (i as any).paymentOption || 'DEPOSIT', // Fix: Send explicit option
                         livestreamId: (i as any).livestream_id || undefined, // Live pricing context
+                        giveaway_claim_id: i.giveaway_claim_id || undefined
                     };
                 })
             };
@@ -407,8 +409,12 @@ export default function Cart() {
                             )}
                         </div>
                     )}
-                    {/* LIVE PRICE badge */}
-                    {item.livestream_id && item.is_live && type_code !== 'PREORDER' && (
+                    {/* BADGES: Giveaway OR Live Price */}
+                    {item.giveaway_claim_id ? (
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-600/90 to-transparent pb-1 pt-2 flex items-center justify-center">
+                            <span className="text-white text-[9px] font-black uppercase tracking-wider">🎁 Giveaway</span>
+                        </div>
+                    ) : item.livestream_id && item.is_live && type_code !== 'PREORDER' && (
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-rose-600/80 to-transparent pb-1 pt-2 flex items-center justify-center">
                             <span className="text-white text-[9px] font-black uppercase tracking-wider">🔴 Live Price</span>
                         </div>
@@ -427,7 +433,7 @@ export default function Cart() {
                         <div className="flex items-center border border-slate-300/60 rounded-full px-3 py-1 bg-white/40 h-8" onClick={(e) => e.stopPropagation()}>
                             <button
                                 onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                disabled={item.quantity <= 1}
+                                disabled={item.quantity <= 1 || !!item.giveaway_claim_id}
                                 className="text-slate-500 hover:text-slate-900 disabled:opacity-30 px-1"
                             >
                                 <Minus className="w-3 h-3" />
@@ -435,8 +441,9 @@ export default function Cart() {
                             <span className="mx-3 text-sm font-bold w-4 text-center">{item.quantity}</span>
                             <button
                                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                // Disable if hitting Max User Limit (Preorder) OR Max Stock (Retail)
+                                // Disable if hitting Max User Limit (Preorder) OR Max Stock (Retail) OR is Giveaway
                                 disabled={
+                                    !!item.giveaway_claim_id ||
                                     (type_code === 'PREORDER' && item.max_qty_per_user && item.quantity >= item.max_qty_per_user) ||
                                     (type_code === 'RETAIL' && item.quantity >= (item.maxStock || 999))
                                 }
@@ -462,7 +469,18 @@ export default function Cart() {
 
                 {/* Delete Action */}
                 <button
-                    onClick={(e) => { e.stopPropagation(); removeFromCart(item.id); }}
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (item.giveaway_claim_id) {
+                            toast({ 
+                                title: "Prize Ownership Notice", 
+                                description: "Giveaway prizes cannot be removed from your cart. Please complete the 0đ checkout to receive your reward!",
+                                variant: "default"
+                            });
+                            return;
+                        }
+                        removeFromCart(item.id); 
+                    }}
                     className="text-slate-300 hover:text-red-500 transition-colors p-2 hover:bg-white/50 rounded-full self-start -mt-2 -mr-2"
                     title="Remove item"
                 >
@@ -811,7 +829,7 @@ export default function Cart() {
 
                                 <Button
                                     className="w-full bg-slate-900 hover:bg-black text-white h-14 text-lg rounded-2xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
-                                    disabled={totalAmount === 0 || isProcessing}
+                                    disabled={selectedItemIds.length === 0 || isProcessing}
                                     onClick={handleProceed}
                                 >
                                     {isProcessing ? 'Processing...' : 'Proceed to Payment'} <ArrowRight className="ml-2 w-5 h-5" />
