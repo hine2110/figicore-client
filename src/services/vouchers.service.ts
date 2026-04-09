@@ -7,6 +7,7 @@ export interface Voucher {
     discount_value?: number;
     discount_type?: string;
     min_order_value?: number;
+    max_discount_amount?: number;
     apply_rank_code?: string;
     max_quantity?: number;
     collected_quantity?: number;
@@ -39,6 +40,7 @@ export interface CreateVoucherDto {
     discount_value?: number;
     discount_type?: string;
     min_order_value?: number;
+    max_discount_amount?: number;
     apply_rank_code?: string;
     max_quantity?: number;
     is_public?: boolean;
