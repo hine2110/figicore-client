@@ -136,7 +136,7 @@ export function NotificationBell() {
                                             {n.content}
                                         </p>
                                         <p className="text-[10px] text-gray-400 mt-1">
-                                            {new Date(n.created_at).toLocaleString('en-US', {
+                                            {new Date(n.created_at).toLocaleString('vi-VN', {
                                                 month: 'short', day: 'numeric',
                                                 hour: '2-digit', minute: '2-digit'
                                             })}
@@ -174,7 +174,7 @@ export function NotificationBell() {
                             {selectedNotif?.content}
                         </p>
                         <p className="text-xs text-gray-400 mt-4 border-t pt-3">
-                            {selectedNotif?.created_at && new Date(selectedNotif.created_at).toLocaleString('en-US', {
+                            {selectedNotif?.created_at && new Date(selectedNotif.created_at).toLocaleString('vi-VN', {
                                 weekday: 'short', month: 'short', day: 'numeric',
                                 hour: '2-digit', minute: '2-digit'
                             })}

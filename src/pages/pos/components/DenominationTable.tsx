@@ -46,9 +46,9 @@ export default function DenominationTable({ onChange }: DenominationTableProps) 
             <table className="w-full text-sm text-left">
                 <thead className="bg-neutral-50 border-b border-neutral-100">
                     <tr>
-                        <th className="px-4 py-2 font-bold text-neutral-500 uppercase text-[10px] tracking-wider">Mệnh giá (VND)</th>
-                        <th className="px-4 py-2 font-bold text-neutral-500 uppercase text-[10px] tracking-wider w-24 text-center">Số lượng</th>
-                        <th className="px-4 py-2 font-bold text-neutral-500 uppercase text-[10px] tracking-wider text-right">Thành tiền</th>
+                        <th className="px-4 py-2 font-bold text-neutral-500 uppercase text-[10px] tracking-wider">Denomination (VND)</th>
+                        <th className="px-4 py-2 font-bold text-neutral-500 uppercase text-[10px] tracking-wider w-24 text-center">Quantity</th>
+                        <th className="px-4 py-2 font-bold text-neutral-500 uppercase text-[10px] tracking-wider text-right">Subtotal</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-50">

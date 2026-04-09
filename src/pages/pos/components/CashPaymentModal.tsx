@@ -101,7 +101,7 @@ export default function CashPaymentModal({
                                 className="h-10 px-4 rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold text-xs"
                             >
                                 <UserPlus className="w-4 h-4 mr-2" />
-                                Đăng ký TV
+                                Register Member
                             </Button>
                         )}
                     </div>

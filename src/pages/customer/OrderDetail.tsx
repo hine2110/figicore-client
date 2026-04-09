@@ -49,7 +49,7 @@ export default function OrderDetail() {
     };
 
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
-    const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', {
+    const formatDate = (d: string) => new Date(d).toLocaleDateString('vi-VN', {
         year: 'numeric', month: 'long', day: 'numeric',
         hour: '2-digit', minute: '2-digit'
     });

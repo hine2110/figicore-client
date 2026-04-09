@@ -2,7 +2,7 @@ export const ROLE_LANDING_PATHS: Record<string, string> = {
     SUPER_ADMIN: '/admin/dashboard',
     MANAGER: '/manager/dashboard',
     STAFF_INVENTORY: '/warehouse/dashboard',
-    STAFF_POS: '/pos/dashboard',
+    STAFF_POS: '/pos/sessions',
     CUSTOMER: '/customer/home',
 };
 

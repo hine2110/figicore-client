@@ -50,7 +50,9 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const profileSchema = z.object({
-    full_name: z.string().min(2, "Full name must be at least 2 characters"),
+    full_name: z.string()
+        .min(2, "Full name must be at least 2 characters")
+        .regex(/^[\p{L}\s]+$/u, "Name cannot contain special characters or numbers"),
     phone: z.string().min(10, "Phone number is invalid").max(11, "Phone number is invalid"),
     dob: z.date().optional().nullable(),
 });
@@ -270,7 +272,6 @@ export default function CustomerProfile() {
         try {
             await authService.updateProfile({
                 full_name: values.full_name,
-                phone: values.phone,
                 dob: values.dob ? values.dob.toISOString().split('T')[0] : undefined
             });
 
@@ -341,18 +342,30 @@ export default function CustomerProfile() {
                 title: "File too large",
                 description: "Avatar image must be less than 2MB.",
             });
+            // Reset input so same file can be selected again
+            e.target.value = '';
             return;
         }
 
         setIsUploading(true);
         try {
             const res = await userService.uploadAvatar(file);
-            if (res.data?.url) {
-                const updatedUser = { ...user, avatar_url: res.data.url };
+            const userResponse = res.data || res; // Handle both wrapped and unwrapped API responses
+
+            if (userResponse?.avatar_url) {
+                // Add a timestamp query param to completely bypass the browser's image cache.
+                // This guarantees the UI updates instantly without requiring an F5 refresh.
+                const newUrl = `${userResponse.avatar_url.split('?')[0]}?t=${Date.now()}`;
+                const updatedUser = { ...user, avatar_url: newUrl };
                 setUser(updatedUser as any);
                 toast({
                     title: "Avatar Updated",
                     description: "Your profile picture has been changed.",
+                });
+            } else {
+                toast({
+                    title: "Avatar Uploaded",
+                    description: "Please refresh the page to see changes (F5).",
                 });
             }
         } catch (error: any) {
@@ -364,6 +377,8 @@ export default function CustomerProfile() {
             });
         } finally {
             setIsUploading(false);
+            // Reset file input value so that the user can upload the same file again if they want
+            e.target.value = '';
         }
     };
 

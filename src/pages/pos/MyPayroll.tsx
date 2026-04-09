@@ -28,7 +28,7 @@ export default function MyPayroll() {
             const res = await axiosInstance.get('/payroll/my-payrolls');
             setPayrolls(res.data || []);
         } catch (error) {
-            toast({ title: "Lỗi", description: "Không thể tải danh sách phiếu lương.", variant: "destructive" });
+            toast({ title: "Error", description: "Failed to load payroll list.", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -46,11 +46,11 @@ export default function MyPayroll() {
         setActionLoading(true);
         try {
             await axiosInstance.patch(`/payroll/my-payrolls/${selectedPayroll.payroll_id}/confirm`);
-            toast({ title: "Đã xác nhận!", description: "Phiếu lương của bạn đã được chốt và gửi đến Quản lý để thanh toán." });
+            toast({ title: "Confirmed!", description: "Your payslip has been finalized and sent to Management for payment." });
             setIsViewModalOpen(false);
             fetchPayrolls(); // Refresh list
         } catch (error: any) {
-            toast({ title: "Lỗi", description: error.response?.data?.message || "Không thể xác nhận", variant: "destructive" });
+            toast({ title: "Error", description: error.response?.data?.message || "Could not confirm", variant: "destructive" });
         } finally {
             setActionLoading(false);
         }
@@ -58,7 +58,7 @@ export default function MyPayroll() {
 
     const handleSendDispute = async () => {
         if (!disputeContent.trim()) {
-            toast({ title: "Lỗi", description: "Vui lòng nhập lý do thắc mắc.", variant: "destructive" });
+            toast({ title: "Error", description: "Please enter the reason for the dispute.", variant: "destructive" });
             return;
         }
         setActionLoading(true);
@@ -67,12 +67,12 @@ export default function MyPayroll() {
                 payroll_id: selectedPayroll.payroll_id,
                 content: disputeContent
             });
-            toast({ title: "Đã gửi khiếu nại", description: "Thắc mắc của bạn đã được gửi. Quản lý sẽ xem xét và phản hồi lại." });
+            toast({ title: "Dispute Submitted", description: "Your concern has been submitted. Management will review and respond." });
             setIsDisputeModalOpen(false);
             setIsViewModalOpen(false);
             fetchPayrolls();
         } catch (error: any) {
-            toast({ title: "Thất bại", description: error.response?.data?.message || "Lỗi hệ thống", variant: "destructive" });
+            toast({ title: "Failed", description: error.response?.data?.message || "System error", variant: "destructive" });
         } finally {
             setActionLoading(false);
         }
@@ -84,10 +84,10 @@ export default function MyPayroll() {
 
     const getStatusUI = (statusCode: string) => {
         switch (statusCode) {
-            case 'SENT_FOR_REVIEW': return { label: 'Cần bạn xác nhận', color: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200' };
-            case 'PENDING_APPROVAL': return { label: 'Chờ sếp thanh toán', color: 'bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200' };
-            case 'DISPUTED': return { label: 'Đang khiếu nại', color: 'bg-red-100 text-red-800 hover:bg-red-100 border-red-200' };
-            case 'PAID': return { label: 'Đã thanh toán', color: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200' };
+            case 'SENT_FOR_REVIEW': return { label: 'Action Required', color: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200' };
+            case 'PENDING_APPROVAL': return { label: 'Pending Payment', color: 'bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200' };
+            case 'DISPUTED': return { label: 'Under Dispute', color: 'bg-red-100 text-red-800 hover:bg-red-100 border-red-200' };
+            case 'PAID': return { label: 'Paid', color: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200' };
             default: return { label: statusCode, color: 'bg-gray-100 text-gray-800' };
         }
     };
@@ -95,8 +95,8 @@ export default function MyPayroll() {
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
             <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Sổ Lương Của Tôi</h1>
-                <p className="text-neutral-500 text-sm mt-1">Xem chi tiết phiếu lương hàng tháng và báo cáo sai sót nếu có.</p>
+                <h1 className="text-2xl font-bold text-neutral-900">My Payroll</h1>
+                <p className="text-neutral-500 text-sm mt-1">View monthly payslip details and report any discrepancies.</p>
             </div>
 
             {loading ? (
@@ -104,7 +104,7 @@ export default function MyPayroll() {
             ) : payrolls.length === 0 ? (
                 <div className="text-center py-16 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
                     <ReceiptText className="w-12 h-12 mx-auto text-neutral-300 mb-3" />
-                    <p className="text-neutral-500 font-medium">Bạn chưa có phiếu lương nào được phát hành.</p>
+                    <p className="text-neutral-500 font-medium">No payslips have been issued yet.</p>
                 </div>
             ) : (
                 <div className="grid gap-4">
@@ -119,17 +119,17 @@ export default function MyPayroll() {
                                 <CardContent className="p-5 flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex flex-col items-center justify-center font-bold">
-                                            <span className="text-xs uppercase font-medium">Tháng</span>
+                                            <span className="text-[10px] uppercase font-medium">Month</span>
                                             <span className="text-lg leading-none">{payroll.month}</span>
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="font-bold text-neutral-900">Lương Tháng {payroll.month}/{payroll.year}</h3>
+                                                <h3 className="font-bold text-neutral-900">Salary Month {payroll.month}/{payroll.year}</h3>
                                                 <Badge variant="outline" className={statusUI.color}>{statusUI.label}</Badge>
                                             </div>
                                             <div className="flex items-center gap-4 text-sm text-neutral-500">
-                                                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {payroll.total_work_hours} giờ làm</span>
-                                                <span className="flex items-center gap-1 font-medium text-emerald-600"><Banknote className="w-3.5 h-3.5" /> Thực lãnh: {formatCurrency(payroll.final_salary)}</span>
+                                                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {payroll.total_work_hours}H work</span>
+                                                <span className="flex items-center gap-1 font-medium text-emerald-600"><Banknote className="w-3.5 h-3.5" /> Net Take-home: {formatCurrency(payroll.final_salary)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -150,8 +150,8 @@ export default function MyPayroll() {
                             <div className={`p-6 text-white ${selectedPayroll.status_code === 'SENT_FOR_REVIEW' ? 'bg-amber-600' : 'bg-slate-800'}`}>
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <h2 className="text-2xl font-bold uppercase tracking-wider">Phiếu Lương</h2>
-                                        <p className="opacity-90">Kỳ lương: Tháng {selectedPayroll.month}/{selectedPayroll.year}</p>
+                                        <h2 className="text-2xl font-bold uppercase tracking-wider">Payslip</h2>
+                                        <p className="opacity-90">Payroll Period: Month {selectedPayroll.month}/{selectedPayroll.year}</p>
                                     </div>
                                     <div className="text-right">
                                         <Badge className="bg-white/20 text-white hover:bg-white/30 border-none shadow-none">
@@ -165,8 +165,8 @@ export default function MyPayroll() {
                             <div className="p-6">
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                                     <div className="p-4 border-b border-slate-100 flex justify-between bg-slate-50/50">
-                                        <span className="font-semibold text-slate-700">Tổng giờ công ghi nhận</span>
-                                        <span className="font-bold font-mono">{selectedPayroll.total_work_hours} giờ</span>
+                                        <span className="font-semibold text-slate-700">Total recorded work hours</span>
+                                        <span className="font-bold font-mono">{selectedPayroll.total_work_hours}H</span>
                                     </div>
 
                                     {/* List các khoản cộng / trừ */}
@@ -190,7 +190,7 @@ export default function MyPayroll() {
 
                                     {/* Tổng thực lãnh */}
                                     <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
-                                        <span className="font-bold uppercase tracking-wider">Thực Lãnh</span>
+                                        <span className="font-bold uppercase tracking-wider">Net Take-home</span>
                                         <span className="text-xl font-bold font-mono text-emerald-400">
                                             {formatCurrency(selectedPayroll.final_salary)}
                                         </span>
@@ -201,13 +201,13 @@ export default function MyPayroll() {
                                 {selectedPayroll.status_code === 'SENT_FOR_REVIEW' && (
                                     <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 flex gap-2">
                                         <AlertTriangle className="w-5 h-5 shrink-0" />
-                                        <p>Vui lòng kiểm tra kỹ các khoản lương. Nếu có sai sót, hãy bấm <b>"Khiếu nại"</b>. Nếu đã chính xác, vui lòng <b>"Xác nhận"</b> để quản lý tiến hành thanh toán.</p>
+                                        <p>Please review your earnings carefully. If there are any discrepancies, click <b>"Dispute"</b>. If accurate, please <b>"Confirm"</b> for management to process payment.</p>
                                     </div>
                                 )}
                                 {selectedPayroll.status_code === 'DISPUTED' && (
                                     <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 flex gap-2">
                                         <AlertTriangle className="w-5 h-5 shrink-0" />
-                                        <p>Bạn đã gửi khiếu nại cho phiếu lương này. Hệ thống đang tạm khóa phiếu lương cho đến khi Quản lý xử lý xong.</p>
+                                        <p>You have submitted a dispute for this payslip. The system has temporarily locked this payslip until Management resolving it.</p>
                                     </div>
                                 )}
                             </div>
@@ -222,18 +222,18 @@ export default function MyPayroll() {
                                         {hasDisputed && (
                                             <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200 flex items-start gap-2">
                                                 <AlertTriangle className="w-5 h-5 shrink-0" />
-                                                <p>Bạn đã sử dụng quyền khiếu nại <b>1 lần duy nhất</b> cho phiếu lương này. Quản lý đã xử lý và gửi lại bản cuối cùng. Vui lòng kiểm tra và bấm Xác nhận.</p>
+                                                <p>You have used your dispute right <b>1-time limit</b> for this payslip. Management has reviewed and re-issued the final version. Please verify and Confirm.</p>
                                             </div>
                                         )}
                                         <div className="flex justify-end gap-3">
                                             {/* ẨN NÚT KHIẾU NẠI NẾU ĐÃ TỪNG KHIẾU NẠI */}
                                             {!hasDisputed && (
                                                 <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setIsDisputeModalOpen(true)}>
-                                                    <AlertTriangle className="w-4 h-4 mr-2" /> Có sai sót (Khiếu nại)
+                                                    <AlertTriangle className="w-4 h-4 mr-2" /> Discrepancy (Dispute)
                                                 </Button>
                                             )}
                                             <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleConfirmPayroll} disabled={actionLoading}>
-                                                <CheckCircle2 className="w-4 h-4 mr-2" /> Xác nhận đúng
+                                                <CheckCircle2 className="w-4 h-4 mr-2" /> Confirm Accuracy
                                             </Button>
                                         </div>
                                     </div>
@@ -241,7 +241,7 @@ export default function MyPayroll() {
                             })()}
                             {selectedPayroll.status_code !== 'SENT_FOR_REVIEW' && (
                                 <div className="p-4 border-t bg-white flex justify-end">
-                                    <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>Đóng</Button>
+                                    <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>Close</Button>
                                 </div>
                             )}
                         </>
@@ -254,24 +254,24 @@ export default function MyPayroll() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle className="text-red-600 flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5" /> Báo cáo sai sót phiếu lương
+                            <AlertTriangle className="w-5 h-5" /> Report Payroll Discrepancy
                         </DialogTitle>
                         <DialogDescription>
-                            Ghi rõ khoản tiền nào bị tính sai (Ví dụ: Thiếu giờ làm ngày 15/03, phạt đi trễ không đúng,...).
+                            Specify which amount is incorrect (e.g., Missing work hours on 15/03, incorrect late penalty, etc.).
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                         <Textarea
-                            placeholder="Nhập chi tiết vấn đề bạn gặp phải..."
+                            placeholder="Enter details of the issue you encountered..."
                             className="min-h-[120px]"
                             value={disputeContent}
                             onChange={(e) => setDisputeContent(e.target.value)}
                         />
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsDisputeModalOpen(false)}>Hủy</Button>
+                        <Button variant="ghost" onClick={() => setIsDisputeModalOpen(false)}>Cancel</Button>
                         <Button variant="destructive" onClick={handleSendDispute} disabled={actionLoading}>
-                            Gửi khiếu nại
+                            Submit Dispute
                         </Button>
                     </DialogFooter>
                 </DialogContent>

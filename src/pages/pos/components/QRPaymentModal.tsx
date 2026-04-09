@@ -56,8 +56,8 @@ export default function QRPaymentModal({
             console.log(`🔔 [POS QR] ${eventName} received. Payment confirmed!`);
             setIsPaid(true);
             toast({
-                title: '✅ Thanh toán thành công!',
-                description: `Đơn hàng QR đã được xác nhận.`,
+                title: '✅ Payment Successful!',
+                description: `QR order has been confirmed.`,
                 className: 'bg-emerald-600 text-white border-emerald-700',
             });
 
@@ -83,10 +83,10 @@ export default function QRPaymentModal({
         setIsCancelling(true);
         try {
             await cancelOrder(orderId);
-            toast({ title: 'Đã hủy đơn hàng', description: 'Kho hàng đã được hoàn trả.' });
+            toast({ title: 'Order Cancelled', description: 'Inventory has been returned.' });
             onClose();
         } catch (e) {
-            toast({ title: 'Lỗi', description: 'Không thể hủy đơn hàng.', variant: 'destructive' });
+            toast({ title: 'Error', description: 'Could not cancel order.', variant: 'destructive' });
         } finally {
             setIsCancelling(false);
         }
@@ -104,10 +104,10 @@ export default function QRPaymentModal({
                             <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
                                 <QrCode className="w-6 h-6 text-white" />
                             </div>
-                            THANH TOÁN QR
+                            QR PAYMENT
                         </DialogTitle>
                         <p className="text-blue-100/80 text-xs mt-1 font-medium">
-                            Mở app ngân hàng và quét mã QR bên dưới
+                            Open your banking app and scan the QR code below
                         </p>
                     </DialogHeader>
                 </div>
@@ -119,7 +119,7 @@ export default function QRPaymentModal({
                         {isPaid ? (
                             <div className="w-52 h-52 flex flex-col items-center justify-center bg-emerald-50 rounded-xl">
                                 <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-3 animate-in zoom-in duration-500" />
-                                <p className="font-bold text-emerald-700 text-sm">Đã thanh toán!</p>
+                                <p className="font-bold text-emerald-700 text-sm">Paid!</p>
                             </div>
                         ) : (
                             <img
@@ -134,7 +134,7 @@ export default function QRPaymentModal({
                     <div className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
                         {/* Account */}
                         <div className="flex justify-between items-center">
-                            <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Số tài khoản</span>
+                            <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Account Number</span>
                             <div className="flex items-center gap-2">
                                 <span className="font-bold text-slate-800 text-sm">{accountNo}</span>
                                 <button
@@ -149,7 +149,7 @@ export default function QRPaymentModal({
 
                         {/* Amount */}
                         <div className="flex justify-between items-center">
-                            <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Số tiền</span>
+                            <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Amount</span>
                             <div className="flex items-center gap-2">
                                 <span className="font-extrabold text-blue-600 text-base tracking-tight">
                                     {totalAmount.toLocaleString('vi-VN')}₫
@@ -166,7 +166,7 @@ export default function QRPaymentModal({
 
                         {/* Transfer content */}
                         <div className="flex justify-between items-center">
-                            <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Nội dung CK</span>
+                            <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Reference</span>
                             <div className="flex items-center gap-2">
                                 <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded text-xs tracking-wide">
                                     {transferContent}
@@ -188,7 +188,7 @@ export default function QRPaymentModal({
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" />
                             </div>
-                            <p className="text-blue-700 text-[12px] font-semibold">Đang chờ xác nhận...</p>
+                            <p className="text-blue-700 text-[12px] font-semibold">Waiting for confirmation...</p>
                         </div>
                     )}
                 </div>
@@ -202,9 +202,9 @@ export default function QRPaymentModal({
                         disabled={isCancelling || isPaid}
                     >
                         {isCancelling ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang hủy...</>
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Cancelling...</>
                         ) : (
-                            <><X className="w-4 h-4 mr-2" /> Hủy đơn hàng</>
+                            <><X className="w-4 h-4 mr-2" /> Cancel Order</>
                         )}
                     </Button>
                     <p className="text-[11px] text-center mt-2 text-slate-400 font-medium">

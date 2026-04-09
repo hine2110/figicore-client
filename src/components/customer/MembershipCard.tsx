@@ -18,7 +18,7 @@ interface RankConfig {
 const RANKS: RankConfig[] = [
     {
         code: 'BRONZE',
-        label: 'Newbie Collector',
+        label: 'Newbie Member',
         threshold: 0,
         color: 'text-orange-900 bg-orange-200',
         icon: Trophy,
@@ -26,24 +26,24 @@ const RANKS: RankConfig[] = [
     },
     {
         code: 'SILVER',
-        label: 'Active Collector',
-        threshold: 100,
+        label: 'Silver Member',
+        threshold: 200,
         color: 'text-gray-700 bg-gray-100',
         icon: ArrowUpCircle,
         benefits: ['2% Discount', 'Birthday Gift']
     },
     {
         code: 'GOLD',
-        label: 'Elite Collector',
-        threshold: 500,
+        label: 'Gold Member',
+        threshold: 1000,
         color: 'text-yellow-900 bg-yellow-200',
         icon: Crown,
         benefits: ['5% Discount', 'Pre-order Priority', 'Free Shipping > 1M']
     },
     {
         code: 'DIAMOND',
-        label: 'Legendary Collector',
-        threshold: 2000,
+        label: 'Diamond Member',
+        threshold: 5000,
         color: 'text-cyan-700 bg-cyan-100',
         icon: Gift,
         benefits: ['10% Discount', 'Private Assistant', 'Free Shipping All', 'Exclusive Events']
@@ -60,9 +60,11 @@ export default function MembershipCard({ user }: MembershipCardProps) {
     const currentPoints = Number((user as any)?.loyalty_points ?? user?.customers?.loyalty_points ?? 0);
     const currentRankCode = (user as any)?.current_rank_code ?? user?.customers?.current_rank_code ?? 'BRONZE';
 
-    // Find current rank index based on code, fallback to 0
-    const currentRankIndex = RANKS.findIndex(r => r.code === currentRankCode);
-    const safeRankIndex = currentRankIndex === -1 ? 0 : currentRankIndex;
+    // Determine effective rank index based on points for calculation accuracy
+    // This handles scenarios where the DB rank_code is out of sync with recent points
+    const effectiveRankIndex = [...RANKS].reverse().findIndex(r => currentPoints >= r.threshold);
+    const safeRankIndex = effectiveRankIndex !== -1 ? (RANKS.length - 1 - effectiveRankIndex) : 0;
+    const currentRank = RANKS[safeRankIndex];
 
     const nextRankIndex = safeRankIndex + 1 < RANKS.length ? safeRankIndex + 1 : -1;
     const nextRank = nextRankIndex !== -1 ? RANKS[nextRankIndex] : null;
@@ -131,13 +133,13 @@ export default function MembershipCard({ user }: MembershipCardProps) {
                         <div className="col-span-5 pl-4">Benefits</div>
                     </div>
                     {RANKS.map((rank) => (
-                        <div key={rank.code} className={`grid grid-cols-12 p-3 border-b last:border-0 border-neutral-100 items-center ${rank.code === currentRankCode ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : ''}`}>
+                        <div key={rank.code} className={`grid grid-cols-12 p-3 border-b last:border-0 border-neutral-100 items-center ${rank.code === currentRank.code ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : ''}`}>
                             <div className="col-span-4 flex items-center gap-2">
                                 <rank.icon className={`w-4 h-4 ${rank.color.split(' ')[0]}`} />
-                                <span className={rank.code === currentRankCode ? 'font-bold text-blue-900' : 'text-neutral-700'}>
+                                <span className={rank.code === currentRank.code ? 'font-bold text-blue-900' : 'text-neutral-700'}>
                                     {rank.label}
                                 </span>
-                                {rank.code === currentRankCode && <Badge className="ml-1 h-5 text-[10px] px-1 bg-blue-600">YOU</Badge>}
+                                {rank.code === currentRank.code && <Badge className="ml-1 h-5 text-[10px] px-1 bg-blue-600">YOU</Badge>}
                             </div>
                             <div className="col-span-3 text-right text-neutral-600 font-mono text-xs">
                                 {rank.threshold} pts

@@ -35,33 +35,47 @@ interface ExistingUser {
 
 export default function RegisterCustomerModal({ open, onClose, onSuccess }: RegisterCustomerModalProps) {
     const [step, setStep] = useState<ModalStep>('form');
-    const [formData, setFormData] = useState({ full_name: '', phone: '', email: '' });
+    const [formData, setFormData] = useState({ full_name: '', phone: '' });
     const [existingUser, setExistingUser] = useState<ExistingUser | null>(null);
     const [editedName, setEditedName] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
 
-    const validatePhone = (): boolean => {
-        const newErrors: Record<string, string> = {};
-        if (!formData.phone.trim()) {
-            newErrors.phone = 'Số điện thoại là bắt buộc';
-        } else if (!/^0\d{9}$/.test(formData.phone)) {
-            newErrors.phone = 'SĐT không hợp lệ (10 chữ số bắt đầu bằng 0)';
+    const validatePhone = (phone: string) => {
+        const cleanPhone = phone.replace(/\D/g, "");
+        if (!phone.trim()) return 'Phone number is required';
+        if (!/^0(3|5|7|8|9)\d{8}$/.test(cleanPhone)) {
+            return 'Invalid VN mobile number (10 digits, starts with 03, 05, 07, 08, 09)';
         }
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        return '';
+    };
+
+    const handlePhoneChange = (value: string) => {
+        const cleanValue = value.replace(/\D/g, "").slice(0, 10);
+        setFormData(prev => ({ ...prev, phone: cleanValue }));
+
+        if (cleanValue.length === 10) {
+            const error = validatePhone(cleanValue);
+            setErrors(prev => ({ ...prev, phone: error }));
+        } else if (errors.phone) {
+            setErrors(prev => ({ ...prev, phone: '' }));
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validatePhone()) return;
+        const phoneError = validatePhone(formData.phone);
+
+        if (phoneError) {
+            setErrors({ phone: phoneError });
+            return;
+        }
 
         setLoading(true);
         try {
             const response = await registerCustomer({
                 full_name: formData.full_name.trim() || 'Khách POS',
-                phone: formData.phone.trim(),
-                email: formData.email.trim() || undefined
+                phone: formData.phone.trim()
             });
 
             // Backend returns existing user if phone already found
@@ -71,13 +85,13 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                 setEditedName(existing.full_name || '');
                 setStep('existing_found');
             } else {
-                toast.success('Đăng ký hội viên mới thành công!');
+                toast.success('New member registered successfully!');
                 onSuccess(response.data);
                 handleClose();
             }
         } catch (error: any) {
-            const message = error.response?.data?.message || 'Đăng ký thất bại';
-            if (message.includes('phone') || message.includes('điện thoại')) {
+            const message = error.response?.data?.message || 'Registration failed';
+            if (message.includes('phone') || message.includes('phone number')) {
                 setErrors({ phone: message });
             } else if (message.includes('email')) {
                 setErrors({ email: message });
@@ -99,11 +113,11 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                 phone: existingUser.phone,
                 email: existingUser.email || undefined
             });
-            toast.success(`Đã chọn khách hàng: ${response.data.full_name}`);
+            toast.success(`Selected customer: ${response.data.full_name}`);
             onSuccess(response.data);
             handleClose();
         } catch {
-            toast.error('Có lỗi xảy ra, vui lòng thử lại.');
+            toast.error('An error occurred, please try again.');
         } finally {
             setLoading(false);
         }
@@ -111,7 +125,7 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
 
     const handleClose = () => {
         if (!loading) {
-            setFormData({ full_name: '', phone: '', email: '' });
+            setFormData({ full_name: '', phone: '' });
             setErrors({});
             setStep('form');
             setExistingUser(null);
@@ -121,7 +135,7 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
     };
 
     const getRankLabel = (code: string) => {
-        const map: Record<string, string> = { BRONZE: '🥉 Đồng', SILVER: '🥈 Bạc', GOLD: '🥇 Vàng', PLATINUM: '💎 Bạch Kim' };
+        const map: Record<string, string> = { BRONZE: '🥉 Member', SILVER: '🥈 Silver Member', GOLD: '🥇 Gold Member', DIAMOND: '💎 Diamond Member' };
         return map[code] || code;
     };
 
@@ -133,7 +147,7 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                         <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
                             <UserPlus className="w-5 h-5" />
                         </div>
-                        {step === 'form' ? 'Đăng ký Hội viên' : 'Khách hàng đã có tài khoản'}
+                        {step === 'form' ? 'Register Member' : 'Existing Customer Found'}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -142,17 +156,18 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                         {/* Phone */}
                         <div className="space-y-2">
                             <Label htmlFor="phone" className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                                Số điện thoại <span className="text-red-500">*</span>
+                                Phone Number <span className="text-red-500">*</span>
                             </Label>
                             <div className="relative">
                                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
                                 <Input
                                     id="phone"
-                                    placeholder="VD: 0901234567"
+                                    placeholder="Ex: 0901234567"
                                     value={formData.phone}
-                                    onChange={(e) => {
-                                        setFormData({ ...formData, phone: e.target.value });
-                                        if (errors.phone) setErrors({ ...errors, phone: '' });
+                                    onChange={(e) => handlePhoneChange(e.target.value)}
+                                    onBlur={(e) => {
+                                        const error = validatePhone(e.target.value);
+                                        setErrors(prev => ({ ...prev, phone: error }));
                                     }}
                                     className={cn(
                                         "pl-9 h-11 bg-neutral-50 border-neutral-200 focus:bg-white transition-all text-base",
@@ -167,20 +182,20 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                                     <span className="w-1 h-1 bg-red-400 rounded-full"></span> {errors.phone}
                                 </p>
                             ) : (
-                                <p className="text-[10px] text-neutral-400 italic">Dùng để tích điểm và tra cứu lịch sử mua hàng</p>
+                                <p className="text-[10px] text-neutral-400 italic"></p>
                             )}
                         </div>
 
                         {/* Full Name */}
                         <div className="space-y-2">
                             <Label htmlFor="full_name" className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                                Họ và tên <span className="text-neutral-300 font-normal normal-case">(Tùy chọn)</span>
+                                Full Name <span className="text-neutral-300 font-normal normal-case">(Optional)</span>
                             </Label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
                                 <Input
                                     id="full_name"
-                                    placeholder="VD: Nguyễn Văn A"
+                                    placeholder="Ex: John Doe"
                                     value={formData.full_name}
                                     onChange={(e) => {
                                         setFormData({ ...formData, full_name: e.target.value });
@@ -198,13 +213,13 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                         {/* Buttons */}
                         <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 mt-2">
                             <Button type="button" variant="outline" onClick={handleClose} disabled={loading} className="rounded-xl border-neutral-200 text-neutral-600 hover:bg-neutral-50 h-11 px-6 font-medium">
-                                Hủy
+                                Cancel
                             </Button>
                             <Button type="submit" className="bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl px-8 h-11 font-bold shadow-lg shadow-neutral-900/20" disabled={loading}>
                                 {loading ? (
-                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang kiểm tra...</>
+                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Checking...</>
                                 ) : (
-                                    <><Search className="w-4 h-4 mr-2" />Kiểm tra & Đăng ký</>
+                                    <><Search className="w-4 h-4 mr-2" />Check & Register</>
                                 )}
                             </Button>
                         </div>
@@ -217,11 +232,11 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                         <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
                             <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                             <div>
-                                <p className="text-sm font-bold text-amber-800">Số điện thoại đã có tài khoản</p>
+                                <p className="text-sm font-bold text-amber-800">Phone number already exists</p>
                                 <p className="text-xs text-amber-600 mt-0.5">
                                     {existingUser.status_code === 'GUEST_POS'
-                                        ? 'Khách POS này có thể chưa có tên chính xác. Bạn có thể cập nhật tên bên dưới.'
-                                        : 'Đây là tài khoản chính thức. Bạn chỉ có thể xem thông tin.'}
+                                        ? 'This POS guest may not have an accurate name. You can update it below.'
+                                        : 'This is an official account. You can only view the information.'}
                                 </p>
                             </div>
                         </div>
@@ -230,7 +245,7 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                         <div className="space-y-3 p-4 rounded-xl bg-neutral-50 border border-neutral-100">
                             <div className="flex items-center gap-2 text-xs text-neutral-400 font-bold uppercase tracking-wider">
                                 <User className="w-3.5 h-3.5" />
-                                Thông tin khách hàng
+                                Customer Information
                             </div>
 
                             {/* Phone (read-only) */}
@@ -259,9 +274,9 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                         <div className="space-y-2">
                             <Label htmlFor="edit_name" className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5">
                                 <Edit3 className="w-3.5 h-3.5" />
-                                Tên hiển thị
+                                Display Name
                                 {existingUser.status_code !== 'GUEST_POS' && (
-                                    <span className="font-normal normal-case text-neutral-300">(Không thể chỉnh sửa)</span>
+                                    <span className="font-normal normal-case text-neutral-300">(Read-only)</span>
                                 )}
                             </Label>
                             <div className="relative">
@@ -272,18 +287,18 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                                     onChange={(e) => setEditedName(e.target.value)}
                                     className="pl-9 h-11 bg-neutral-50 border-neutral-200 focus:bg-white transition-all text-base"
                                     disabled={loading || existingUser.status_code !== 'GUEST_POS'}
-                                    placeholder="Nhập tên khách hàng"
+                                    placeholder="Enter customer name"
                                 />
                             </div>
                             {existingUser.status_code === 'GUEST_POS' && (
-                                <p className="text-[10px] text-indigo-500 italic">Có thể cập nhật tên cho khách POS này.</p>
+                                <p className="text-[10px] text-indigo-500 italic">You can update the name for this POS guest.</p>
                             )}
                         </div>
 
                         {/* Buttons */}
                         <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
                             <Button type="button" variant="outline" onClick={() => setStep('form')} disabled={loading} className="rounded-xl border-neutral-200 text-neutral-600 hover:bg-neutral-50 h-11 px-5 font-medium">
-                                ← Quay lại
+                                ← Back
                             </Button>
                             <Button
                                 onClick={handleConfirmExisting}
@@ -291,9 +306,9 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
                                 disabled={loading}
                             >
                                 {loading ? (
-                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang xử lý...</>
+                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</>
                                 ) : (
-                                    <><CheckCircle2 className="w-4 h-4 mr-2 text-green-300" />Xác nhận chọn khách này</>
+                                    <><CheckCircle2 className="w-4 h-4 mr-2 text-green-300" />Confirm Selection</>
                                 )}
                             </Button>
                         </div>

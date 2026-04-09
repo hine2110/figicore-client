@@ -156,7 +156,11 @@ export default function SignIn() {
         break;
       case "password":
         if (!value) msg = "Password is required";
-        else if (value.length < 6) msg = "Minimum 6 characters";
+        else if (value.length < 8) msg = "Minimum 8 characters";
+        else if (!/[A-Z]/.test(value)) msg = "Needs at least 1 uppercase letter";
+        else if (!/[a-z]/.test(value)) msg = "Needs at least 1 lowercase letter";
+        else if (!/\d/.test(value)) msg = "Needs at least 1 number";
+        else if (!/[^A-Za-z0-9]/.test(value)) msg = "Needs at least 1 special character (@, #, $, etc.)";
         break;
       case "confirmPassword":
         if (!value) msg = "Required";
@@ -164,6 +168,8 @@ export default function SignIn() {
         break;
       case "fullName":
         if (!value.trim()) msg = "Full Name is required";
+        else if (value.trim().length < 2) msg = "Full name must be at least 2 characters";
+        else if (!/^[\p{L}\s]+$/u.test(value)) msg = "Name cannot contain special characters or numbers";
         break;
       case "otp":
         if (otpSent && (!value || value.length !== 6)) msg = "OTP must be 6 digits";

@@ -34,7 +34,7 @@ export const closeSession = async (
     return response.data;
 };
 
-export const getCurrentSession = async (): Promise<{ success: boolean; data: PosSession | null }> => {
+export const getCurrentSession = async (): Promise<{ success: boolean; data: PosSession | null; suggested_opening_cash?: number }> => {
     const response = await axiosInstance.get(`${API_BASE}/sessions/current`);
     return response.data;
 };

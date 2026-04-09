@@ -95,15 +95,29 @@ export default function CustomerDetailPage() {
                     <h1 className="text-xl font-bold text-neutral-900 mb-1 tracking-tight">{customer.full_name}</h1>
 
                     <div className="mb-4">
-                        <Badge variant="secondary" className={cn(
-                            "border px-3 py-1 text-xs font-bold tracking-wide shadow-sm uppercase",
-                            customer.rank_code === 'GOLD' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                                customer.rank_code === 'DIAMOND' ? 'bg-cyan-100 text-cyan-800 border-cyan-200' :
-                                    customer.rank_code === 'SILVER' ? 'bg-slate-100 text-slate-800 border-slate-200' :
-                                        'bg-orange-100 text-orange-800 border-orange-200'
-                        )}>
-                            {customer.rank_code || 'MEMBER'}
-                        </Badge>
+                        {(() => {
+                            const totalSpentValue = Number(profileData?.statistics?.total_spent || customer.total_spent || 0);
+                            let effectiveRankCode = 'BRONZE';
+                            if (totalSpentValue >= 50000000) effectiveRankCode = 'DIAMOND';
+                            else if (totalSpentValue >= 10000000) effectiveRankCode = 'GOLD';
+                            else if (totalSpentValue >= 2000000) effectiveRankCode = 'SILVER';
+
+                            const getRankLabel = (code: string) => {
+                                const map: Record<string, string> = { BRONZE: 'Newbie Member', SILVER: 'Silver Member', GOLD: 'Gold Member', DIAMOND: 'Diamond Member' };
+                                return map[code] || code;
+                            };
+                            return (
+                                <Badge variant="secondary" className={cn(
+                                    "border px-3 py-1 text-xs font-bold tracking-wide shadow-sm uppercase",
+                                    effectiveRankCode === 'GOLD' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                        effectiveRankCode === 'DIAMOND' ? 'bg-cyan-100 text-cyan-800 border-cyan-200' :
+                                            effectiveRankCode === 'SILVER' ? 'bg-slate-100 text-slate-800 border-slate-200' :
+                                                'bg-orange-100 text-orange-800 border-orange-200'
+                                )}>
+                                    {getRankLabel(effectiveRankCode)}
+                                </Badge>
+                            );
+                        })()}
                     </div>
 
                     {/* Rank Progress Card */}
@@ -118,19 +132,19 @@ export default function CustomerDetailPage() {
                             let targetIcon = Trophy;
 
                             if (totalSpent < 2000000) {
-                                nextRankLabel = 'SILVER';
+                                nextRankLabel = 'Silver Member';
                                 nextRankThreshold = 2000000;
                                 currentRankThreshold = 0;
                                 targetColorClass = 'from-slate-300 to-slate-500';
                                 targetIcon = Sparkles;
                             } else if (totalSpent < 10000000) {
-                                nextRankLabel = 'GOLD';
+                                nextRankLabel = 'Gold Member';
                                 nextRankThreshold = 10000000;
                                 currentRankThreshold = 2000000;
                                 targetColorClass = 'from-yellow-400 to-yellow-600';
                                 targetIcon = Crown;
                             } else if (totalSpent < 50000000) {
-                                nextRankLabel = 'DIAMOND';
+                                nextRankLabel = 'Diamond Member';
                                 nextRankThreshold = 50000000;
                                 currentRankThreshold = 10000000;
                                 targetColorClass = 'from-cyan-400 to-cyan-600';
