@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from "react-router-dom";
-import { Trash2, Minus, Plus, ArrowRight, ShoppingBag, ShieldCheck } from "lucide-react";
+import { Trash2, Minus, Plus, ArrowRight, ShoppingBag, ShieldCheck, TicketPercent, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import CustomerLayout from "@/layouts/CustomerLayout";
@@ -11,8 +11,6 @@ import { calculateFinalPrice } from "@/lib/utils";
 import { useQuery } from '@tanstack/react-query';
 import { VouchersService } from '@/services/vouchers.service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { TicketPercent } from 'lucide-react';
-
 export default function Cart() {
     const navigate = useNavigate();
     const { items, updateQuantity, removeFromCart, fetchCart } = useCartStore();
@@ -597,7 +595,11 @@ export default function Cart() {
                                     </div>
                                     <div className="flex justify-between text-slate-600">
                                         <span>Shipping</span>
-                                        <span className="text-sm italic text-slate-400">Calculated at Payment</span>
+                                        {selectedFreeShipCode ? (
+                                            <span className="font-medium text-slate-900">{formatPrice(30000)}</span>
+                                        ) : (
+                                            <span className="text-sm italic text-slate-400">Calculated at Payment</span>
+                                        )}
                                     </div>
 
                                     {/* Voucher System */}
@@ -670,7 +672,7 @@ export default function Cart() {
                                                                                         : 'opacity-50 grayscale cursor-not-allowed'}`}
                                                                                 >
                                                                                     {/* Left Section */}
-                                                                                    <div className="ticket-left !w-24 bg-orange-500">
+                                                                                    <div className="ticket-left !w-24 ticket-left-discount">
                                                                                         <TicketPercent className="w-8 h-8 mb-1" />
                                                                                         <div className="ticket-brand-text">SHOP VOUCHER</div>
                                                                                     </div>
@@ -753,40 +755,52 @@ export default function Cart() {
                                                                                             setSelectedFreeShipCode(isSelected ? null : mv.promotions.code!);
                                                                                         }
                                                                                     }}
-                                                                                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${isAvailableForThisOrder
-                                                                                        ? (isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-white bg-white hover:border-emerald-200')
-                                                                                        : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'}`}
+                                                                                    className={`ticket-container border-2 transition-all ${isAvailableForThisOrder
+                                                                                        ? (isSelected ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-transparent hover:border-emerald-200')
+                                                                                        : 'opacity-50 grayscale cursor-not-allowed'}`}
                                                                                 >
-                                                                                    <div className="flex-1">
-                                                                                        <div className="font-bold text-lg text-emerald-700 uppercase">
-                                                                                            MIỄN PHÍ VẬN CHUYỂN
-                                                                                        </div>
-                                                                                        <div className="text-sm text-slate-500">
-                                                                                            Code: <span className="font-mono font-bold">{mv.promotions.code}</span>
-                                                                                        </div>
-                                                                                        <div className="text-xs text-slate-400 mt-1">
-                                                                                            {mv.promotions.min_order_value ? `Giá trị Retail tối thiểu: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'Không giới hạn chi tiêu'}
-                                                                                        </div>
-                                                                                        {retailTotal === 0 && (
-                                                                                            <div className="text-[10px] text-amber-600 font-bold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 inline-block uppercase">
-                                                                                                Chỉ áp dụng cho hàng Retail
-                                                                                            </div>
-                                                                                        )}
-                                                                                        {(!isStarted || !isNotExpired) && (
-                                                                                            <div className="text-xs text-red-500 font-medium mt-1">
-                                                                                                {!isNotExpired ? 'Đã hết hạn' : `Kích hoạt từ ngày ${startDate?.toLocaleDateString()}`}
-                                                                                            </div>
-                                                                                        )}
+                                                                                    {/* Left Section */}
+                                                                                    <div className="ticket-left !w-24 ticket-left-freeship">
+                                                                                        <Truck className="w-8 h-8 mb-1" />
+                                                                                        <div className="ticket-brand-text">FREE SHIP</div>
                                                                                     </div>
-                                                                                    <div className="shrink-0 ml-4">
-                                                                                        {isSelected && (
-                                                                                            <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-bold">✓</div>
-                                                                                        )}
-                                                                                        {!isAvailableForThisOrder && (
-                                                                                            <span className="text-xs font-bold text-red-400">
-                                                                                                {retailTotal === 0 ? 'Retail Only' : (!meetsMinOrder ? 'Không đủ điều kiện' : (!isNotExpired ? 'Hết hạn' : 'Sắp tới'))}
+
+                                                                                    {/* Right Section */}
+                                                                                    <div className="ticket-right">
+                                                                                        <div className="flex justify-between items-start">
+                                                                                            <div className="space-y-0.5">
+                                                                                                <h4 className="font-bold text-emerald-700 text-base md:text-lg uppercase">
+                                                                                                    MIỄN PHÍ VẬN CHUYỂN
+                                                                                                </h4>
+                                                                                                <div className="flex flex-col gap-0.5">
+                                                                                                    <p className="text-xs text-slate-500">
+                                                                                                        Code: <span className="font-mono font-bold">{mv.promotions.code}</span>
+                                                                                                    </p>
+                                                                                                    <div className="text-[10px] text-slate-400 mt-1">
+                                                                                                        {mv.promotions.min_order_value ? `Giá trị Retail tối thiểu: ${formatPrice(Number(mv.promotions.min_order_value))}` : 'Không giới hạn chi tiêu'}
+                                                                                                    </div>
+                                                                                                    {retailTotal === 0 && (
+                                                                                                        <div className="text-[10px] text-amber-600 font-bold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 inline-block uppercase">
+                                                                                                            Chỉ áp dụng cho hàng Retail
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            {isSelected && (
+                                                                                                <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs shadow-sm">✓</div>
+                                                                                            )}
+                                                                                        </div>
+
+                                                                                        <div className="mt-3 pt-2 border-t border-dashed border-slate-100 flex items-center justify-between">
+                                                                                            <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 uppercase">
+                                                                                                {mv.promotions.code}
                                                                                             </span>
-                                                                                        )}
+                                                                                            {endDate && (
+                                                                                                <span className="text-[10px] text-slate-400">
+                                                                                                    HSD: {endDate.toLocaleDateString('vi-VN')}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
                                                                             );
@@ -822,7 +836,9 @@ export default function Cart() {
                                     <div className="flex justify-between items-baseline">
                                         <span className="text-lg font-bold text-slate-900">Total</span>
                                         <span className="text-3xl font-serif font-bold text-slate-900">
-                                            {formatPrice(Math.max(0, totalAmount - voucherDiscountAmount.discount))}
+                                            {formatPrice(Math.max(0, 
+                                                totalAmount + (selectedFreeShipCode ? 30000 : 0) - voucherDiscountAmount.discount - voucherDiscountAmount.freeship
+                                            ))}
                                         </span>
                                     </div>
                                 </div>
