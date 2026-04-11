@@ -544,12 +544,9 @@ export default function FlashSaleCreatePage() {
                                                                         <Input 
                                                                             type="text" 
                                                                             value={f.value !== undefined && f.value !== null ? Number(f.value).toLocaleString('vi-VN') : ''}
-                                                                            onChange={(e) => {
-                                                                                const rawValue = e.target.value.replace(/\D/g, '');
-                                                                                f.onChange(rawValue ? Number(rawValue) : 0);
-                                                                            }}
-                                                                            className={`text-center ${fieldState.error ? 'border-red-500 bg-red-50 text-red-600 focus-visible:ring-red-500' : 'border-orange-200'}`} 
-                                                                            title={fieldState.error?.message}
+                                                                            disabled
+                                                                            className={`text-center bg-slate-50 font-semibold ${fieldState.error ? 'border-red-500 text-red-600' : 'border-orange-100 text-slate-500'}`} 
+                                                                            title="Computed from Discount %"
                                                                         />
                                                                     </FormControl>
                                                                 </FormItem>
