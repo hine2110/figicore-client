@@ -295,7 +295,16 @@ export default function PromotionCreatePage() {
                                     <FormItem>
                                         <FormLabel>Discount (%) <span className="text-red-500">*</span></FormLabel>
                                         <FormControl>
-                                            <Input type="number" min={1} max={100} placeholder="e.g. 20" {...field} />
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                max={100}
+                                                onKeyDown={(e) => {
+                                                    if (['-', 'e', 'E', '+'].includes(e.key)) e.preventDefault();
+                                                }}
+                                                placeholder="e.g. 20"
+                                                {...field}
+                                            />
                                         </FormControl>
                                         <FormDescription>Enter percentage, e.g. 20 (means -20%)</FormDescription>
                                         <FormMessage />

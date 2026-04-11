@@ -301,7 +301,15 @@ export default function VoucherEditPage() {
                                             <FormItem>
                                                 <FormLabel>Discount Value (%)</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" placeholder="e.g. 15" {...field} />
+                                                    <Input
+                                                        type="number"
+                                                        min={0}
+                                                        onKeyDown={(e) => {
+                                                            if (['-', 'e', 'E', '+'].includes(e.key)) e.preventDefault();
+                                                        }}
+                                                        placeholder="e.g. 15"
+                                                        {...field}
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -402,6 +410,10 @@ export default function VoucherEditPage() {
                                                     <FormControl>
                                                         <Input 
                                                             type="number" 
+                                                            min={1}
+                                                            onKeyDown={(e) => {
+                                                                if (['-', 'e', 'E', '+'].includes(e.key)) e.preventDefault();
+                                                            }}
                                                             placeholder="Leave blank for unlimited" 
                                                             value={field.value === undefined || field.value === null ? "" : field.value}
                                                             onChange={(e) => {

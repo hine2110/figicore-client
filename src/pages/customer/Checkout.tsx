@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Copy, CheckCircle2, AlertCircle, X, ShoppingCart } from "lucide-react";
+import { Loader2, ArrowLeft, MapPin, CreditCard, ShieldCheck, QrCode, Wallet, Clock, Package, Copy, CheckCircle2, AlertCircle, X, ShoppingCart, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -363,9 +363,9 @@ export default function Checkout() {
         }
     }
 
+    const totalOriginalShipping = orders.reduce((sum, o) => sum + Number(o.original_shipping_fee || 30000), 0);
     let calculatedFreeShip = 0;
     if (appliedShippingPromo && appliedShippingPromo.discount_type === 'FREE_SHIP') {
-        const totalOriginalShipping = orders.reduce((sum, o) => sum + Number(o.original_shipping_fee || 30000), 0);
         calculatedFreeShip = totalOriginalShipping - totalShipping;
     }
 
@@ -575,9 +575,11 @@ export default function Checkout() {
                                                 <span>Subtotal (All Shipments)</span>
                                                 <span className="font-medium text-slate-900">{formatPrice(subtotal)}</span>
                                             </div>
-                                            <div className="flex justify-between text-slate-600">
+                                            <div className="flex justify-between text-slate-600 font-medium">
                                                 <span>Total Shipping</span>
-                                                <span className="font-medium text-slate-900">{formatPrice(totalShipping)}</span>
+                                                <span className="font-bold text-slate-900">
+                                                    {formatPrice(appliedShippingPromo ? totalOriginalShipping : totalShipping)}
+                                                </span>
                                             </div>
 
                                             {totalDeposit > 0 && (
@@ -630,14 +632,14 @@ export default function Checkout() {
                                                         <div className="flex items-start justify-between">
                                                             <div className="flex flex-col">
                                                                 <span className="text-emerald-600 font-medium flex items-center gap-1.5">
-                                                                    <TicketPercent className="w-4 h-4" /> Free Shipping Applied
+                                                                    <Truck className="w-4 h-4" /> Free Shipping Applied
                                                                 </span>
                                                                 <span className="text-xs text-slate-500 font-mono mt-0.5 ml-5">
                                                                     Code: {appliedShippingPromo.code}
                                                                 </span>
                                                             </div>
                                                             <span className="font-bold text-emerald-600">
-                                                                -{formatPrice(calculatedFreeShip)}
+                                                                -{formatPrice(calculatedFreeShip > 0 ? calculatedFreeShip : 30000)}
                                                             </span>
                                                         </div>
                                                     )}
@@ -788,8 +790,8 @@ export default function Checkout() {
                                     className={`ticket-container border-2 transition-all cursor-pointer ${isSelected ? (isFreeShip ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-violet-500 ring-2 ring-violet-500/20') : canApply ? 'border-transparent hover:border-slate-300' : 'opacity-50 grayscale cursor-not-allowed'}`}
                                 >
                                     {/* Left Section */}
-                                    <div className={`ticket-left !w-24 ${isFreeShip ? 'bg-emerald-500' : 'bg-violet-600'}`}>
-                                        {isFreeShip ? <ShoppingCart className="w-8 h-8 mb-1" /> : <TicketPercent className="w-8 h-8 mb-1" />}
+                                    <div className={`ticket-left !w-24 ${isFreeShip ? 'ticket-left-freeship' : 'ticket-left-discount'}`}>
+                                        {isFreeShip ? <Truck className="w-8 h-8 mb-1" /> : <TicketPercent className="w-8 h-8 mb-1" />}
                                         <div className="ticket-brand-text">{isFreeShip ? 'FREE SHIP' : 'SHOP VOUCHER'}</div>
                                     </div>
 
