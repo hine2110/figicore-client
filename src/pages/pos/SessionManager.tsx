@@ -29,6 +29,8 @@ export default function SessionManager() {
 
     const [closeDialogVisible, setCloseDialogVisible] = useState(false);
     const [openingCash, setOpeningCash] = useState('');
+    const [suggestedOpeningCash, setSuggestedOpeningCash] = useState<number>(0);
+    const [openingNote, setOpeningNote] = useState('');
 
     // New states for Advanced Closing
     const [actualCashTotal, setActualCashTotal] = useState(0);
@@ -66,6 +68,7 @@ export default function SessionManager() {
                 }
             } else if (sessionRes.suggested_opening_cash !== undefined) {
                 // Auto-fill opening cash from system suggestions (first of day = 2M, else last closed shift)
+                setSuggestedOpeningCash(sessionRes.suggested_opening_cash);
                 setOpeningCash(formatVNDInput(sessionRes.suggested_opening_cash.toString()));
             }
 
@@ -82,6 +85,8 @@ export default function SessionManager() {
 
     const handleOpenSession = async () => {
         const cashAmount = parseVNDInput(openingCash);
+        const discrepancy = cashAmount - suggestedOpeningCash;
+
         if (cashAmount < 0 || (openingCash === '' && isNaN(cashAmount))) {
             toast.error('Invalid Amount', {
                 description: 'Please enter a valid cash amount',
@@ -89,13 +94,21 @@ export default function SessionManager() {
             return;
         }
 
+        if (discrepancy !== 0 && !openingNote.trim()) {
+            toast.error('Note Required', {
+                description: 'Opening cash mismatch. Please enter the reason for the discrepancy.',
+            });
+            return;
+        }
+
         setActionLoading(true);
         try {
-            await openSession(cashAmount);
+            await openSession(cashAmount, openingNote || undefined);
             toast.success('Session Opened', {
                 description: 'Your shift has started successfully',
             });
             setOpeningCash('');
+            setOpeningNote('');
             loadData();
         } catch (error: any) {
             toast.error('Error', {
@@ -167,6 +180,10 @@ export default function SessionManager() {
     const mustHaveInDrawer = cashSalesApp + openingCashValue - expensesValue;
     const variance = actualCashTotal - mustHaveInDrawer;
     const amountToWithdraw = mustHaveInDrawer - openingCashValue;
+
+    const currentOpeningCashInput = parseVNDInput(openingCash);
+    const openingDiscrepancy = currentOpeningCashInput - suggestedOpeningCash;
+    const isOpeningDiscrepant = openingDiscrepancy !== 0;
 
     if (loading && page === 1 && !currentSession) {
         return (
@@ -271,10 +288,38 @@ export default function SessionManager() {
                                         />
                                     </div>
                                 </div>
+
+                                {isOpeningDiscrepant && (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className={`p-4 rounded-xl flex items-center justify-between ${openingDiscrepancy > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'}`}>
+                                            <div className="flex items-center gap-2 text-sm font-bold">
+                                                <AlertCircle className="w-4 h-4" />
+                                                Cash Discrepancy (vs. Last Shift):
+                                            </div>
+                                            <div className="font-black">
+                                                {openingDiscrepancy > 0 ? '+' : ''}{openingDiscrepancy.toLocaleString('vi-VN')}₫
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="opening-note" className="text-[10px] font-black text-neutral-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                                Discrepancy Note <span className="text-rose-500">*</span>
+                                            </Label>
+                                            <Textarea
+                                                id="opening-note"
+                                                placeholder="e.g., Added small change, previous shift error..."
+                                                className="resize-none h-20 rounded-xl border-neutral-200 focus:ring-4 focus:ring-indigo-500/10 transition-all text-sm"
+                                                value={openingNote}
+                                                onChange={(e) => setOpeningNote(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
                                 <Button
                                     className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black shadow-xl shadow-indigo-100 transition-all active:scale-[0.98]"
                                     onClick={handleOpenSession}
-                                    disabled={actionLoading}
+                                    disabled={actionLoading || (isOpeningDiscrepant && !openingNote.trim())}
                                 >
                                     {actionLoading ? 'Starting...' : 'Open New Shift'}
                                 </Button>

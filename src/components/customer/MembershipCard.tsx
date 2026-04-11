@@ -18,7 +18,7 @@ interface RankConfig {
 const RANKS: RankConfig[] = [
     {
         code: 'BRONZE',
-        label: 'Newbie Member',
+        label: 'Bronze Member',
         threshold: 0,
         color: 'text-orange-900 bg-orange-200',
         icon: Trophy,

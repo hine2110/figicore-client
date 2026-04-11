@@ -103,7 +103,7 @@ export default function CustomerDetailPage() {
                             else if (totalSpentValue >= 2000000) effectiveRankCode = 'SILVER';
 
                             const getRankLabel = (code: string) => {
-                                const map: Record<string, string> = { BRONZE: 'Newbie Member', SILVER: 'Silver Member', GOLD: 'Gold Member', DIAMOND: 'Diamond Member' };
+                                const map: Record<string, string> = { BRONZE: 'Bronze Member', SILVER: 'Silver Member', GOLD: 'Gold Member', DIAMOND: 'Diamond Member' };
                                 return map[code] || code;
                             };
                             return (

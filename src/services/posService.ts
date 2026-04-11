@@ -9,9 +9,10 @@ import type {
 const API_BASE = '/pos';
 
 // Session Management
-export const openSession = async (opening_cash: number) => {
+export const openSession = async (opening_cash: number, note?: string) => {
     const response = await axiosInstance.post(`${API_BASE}/sessions/open`, {
         opening_cash,
+        note,
     });
     return response.data;
 };

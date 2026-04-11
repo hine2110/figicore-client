@@ -331,10 +331,47 @@ export const AIChatBox: React.FC = () => {
                                                         <ReactMarkdown
                                                             remarkPlugins={[remarkGfm]}
                                                             components={{
-                                                                p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-                                                                ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-2" {...props} />,
-                                                                ol: ({ node, ...props }) => <ol className="list-decimal ml-4 mb-2" {...props} />,
-                                                                li: ({ node, ...props }) => <li className="mb-3 pb-2 border-b border-indigo-50/30 last:border-0 clear-both" {...props} />,
+                                                                 p: ({ node, children, ...props }) => {
+                                                                     const childrenArray = React.Children.toArray(children);
+                                                                     const hasImage = childrenArray.some((child: any) => 
+                                                                         child.type === 'img' || (child.props && child.props.node?.tagName === 'img')
+                                                                     );
+
+                                                                     if (hasImage) {
+                                                                         // Find the image and the rest of content
+                                                                         const img = childrenArray.find((child: any) => 
+                                                                             child.type === 'img' || (child.props && child.props.node?.tagName === 'img')
+                                                                         );
+                                                                         const rest = childrenArray.filter(child => child !== img);
+
+                                                                         return (
+                                                                             <div className="flex gap-3 items-start w-full py-1" {...props}>
+                                                                                 {img}
+                                                                                 <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                                                                                     {rest}
+                                                                                 </div>
+                                                                             </div>
+                                                                         );
+                                                                     }
+
+                                                                     return (
+                                                                         <p className="mb-2 last:mb-0 leading-relaxed" {...props}>
+                                                                             {children}
+                                                                         </p>
+                                                                     );
+                                                                 },
+                                                                 ul: ({ node, ...props }) => <ul className="list-none m-0 p-0 space-y-3 mb-4 last:mb-0" {...props} />,
+                                                                 ol: ({ node, ...props }) => <ol className="list-decimal ml-4 mb-2" {...props} />,
+                                                                 li: ({ node, children, ...props }) => {
+                                                                     return (
+                                                                         <li 
+                                                                             className="group/item pb-3 border-b border-indigo-50/50 last:border-0 last:pb-0 list-none" 
+                                                                             {...props}
+                                                                         >
+                                                                             {children}
+                                                                         </li>
+                                                                     );
+                                                                 },
                                                                 strong: ({ node, ...props }) => <strong className="font-bold text-indigo-900" {...props} />,
                                                                 a: ({ node, ...props }) => {
                                                                     const href = props.href || '';
@@ -355,13 +392,15 @@ export const AIChatBox: React.FC = () => {
                                                                         />
                                                                     );
                                                                 },
-                                                                img: ({ node, ...props }) => (
-                                                                    <img
-                                                                        {...props}
-                                                                        className="w-14 h-14 object-cover rounded-md border border-gray-200 shadow-sm float-right ml-3 mb-1"
-                                                                        alt={props.alt || 'Product'}
-                                                                    />
-                                                                ),
+                                                                 img: ({ node, ...props }) => (
+                                                                     <div className="shrink-0">
+                                                                         <img
+                                                                             {...props}
+                                                                             className="w-16 h-16 object-cover rounded-xl border border-indigo-100 shadow-sm transition-all duration-300 group-hover/item:shadow-md group-hover/item:scale-105"
+                                                                             alt={props.alt || 'Product'}
+                                                                         />
+                                                                     </div>
+                                                                 ),
                                                             }}
                                                         >
                                                             {msg.parts}

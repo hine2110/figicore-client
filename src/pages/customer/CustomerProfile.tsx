@@ -61,10 +61,10 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 // Rank Config from Seed Data
 const RANK_CONFIG: Record<string, { label: string; className: string }> = {
-    'BRONZE': { label: 'Newbie Collector', className: 'bg-orange-200 text-orange-900 border-orange-400' },
-    'SILVER': { label: 'Active Collector', className: 'bg-gray-100 text-gray-700' },
-    'GOLD': { label: 'Elite Collector', className: 'bg-yellow-200 text-yellow-900 border-yellow-500' },
-    'DIAMOND': { label: 'Legendary Collector', className: 'bg-cyan-100 text-cyan-700' },
+    'BRONZE': { label: 'Bronze Member', className: 'bg-orange-200 text-orange-900 border-orange-400' },
+    'SILVER': { label: 'Silver Member', className: 'bg-gray-100 text-gray-700' },
+    'GOLD': { label: 'Gold Member', className: 'bg-yellow-200 text-yellow-900 border-yellow-500' },
+    'DIAMOND': { label: 'Diamond Member', className: 'bg-cyan-100 text-cyan-700' },
 };
 
 export default function CustomerProfile() {
