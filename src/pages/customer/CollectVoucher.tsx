@@ -4,39 +4,34 @@ import { VouchersService } from '@/services/vouchers.service';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle2, AlertCircle, ShoppingBag, TicketPercent } from 'lucide-react';
 import CustomerLayout from '@/layouts/CustomerLayout';
+import { useAuthStore } from '@/store/useAuthStore';
 
 type State = 'loading' | 'success' | 'error';
 
 export default function CollectVoucher() {
     const { promotionId } = useParams<{ promotionId: string }>();
     const navigate = useNavigate();
+    const { isAuthenticated } = useAuthStore();
 
     const [state, setState] = useState<State>('loading');
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [voucherCode, setVoucherCode] = useState<string>('');
 
     useEffect(() => {
+        if (isAuthenticated && promotionId) {
+            navigate(`/customer/home?collectVoucherId=${promotionId}`, { replace: true });
+            return;
+        }
+
         if (!promotionId) {
             setState('error');
             setErrorMessage('Liên kết voucher không hợp lệ.');
             return;
         }
 
-        const collect = async () => {
-            try {
-                const res = await VouchersService.collect(Number(promotionId));
-                // Backend returns { message, voucher } or similar
-                setVoucherCode(res?.code || res?.voucher?.code || '');
-                setState('success');
-            } catch (err: any) {
-                const msg = err?.response?.data?.message || 'Không thể lấy voucher. Vui lòng thử lại.';
-                setErrorMessage(msg);
-                setState('error');
-            }
-        };
-
-        collect();
-    }, [promotionId]);
+        // Note: Collection is now handled by CustomerHome via query param redirect
+        // This component acts as a redirect bridge for authenticated users.
+    }, [promotionId, isAuthenticated, navigate]);
 
     return (
         <CustomerLayout activePage="home">

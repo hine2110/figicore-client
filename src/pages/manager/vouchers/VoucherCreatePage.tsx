@@ -233,7 +233,15 @@ export default function VoucherCreatePage() {
                                         <FormItem>
                                             <FormLabel>Discount Value (%) <span className="text-red-500">*</span></FormLabel>
                                             <FormControl>
-                                                <Input type="number" placeholder="e.g. 15" {...field} />
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    onKeyDown={(e) => {
+                                                        if (['-', 'e', 'E', '+'].includes(e.key)) e.preventDefault();
+                                                    }}
+                                                    placeholder="e.g. 15"
+                                                    {...field}
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -327,7 +335,15 @@ export default function VoucherCreatePage() {
                                             <FormItem>
                                                 <FormLabel>Maximum Claims Allowed</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" placeholder="Leave blank for unlimited" {...field} />
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        onKeyDown={(e) => {
+                                                            if (['-', 'e', 'E', '+'].includes(e.key)) e.preventDefault();
+                                                        }}
+                                                        placeholder="Leave blank for unlimited"
+                                                        {...field}
+                                                    />
                                                 </FormControl>
                                                 <FormDescription>Total max times this voucher can be collected</FormDescription>
                                                 <FormMessage />

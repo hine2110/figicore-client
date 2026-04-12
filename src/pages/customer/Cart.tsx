@@ -154,7 +154,7 @@ export default function Cart() {
         // Precision Timer (based on next event)
         const delay = calculateNextEvent();
         let precisionTimer: NodeJS.Timeout | null = null;
-        
+
         if (delay > 0 && delay < 24 * 3600 * 1000) {
             // Buffer with +1.5s to ensure server clock caught up
             precisionTimer = setTimeout(() => {
@@ -237,7 +237,7 @@ export default function Cart() {
                         variant_id: Number(realVariantId),
                         quantity: Number(i.quantity),
                         // FORCE 0 for giveaways to avoid "Price Changed" error
-                        price: i.giveaway_claim_id ? 0 : i.price, 
+                        price: i.giveaway_claim_id ? 0 : i.price,
                         payment_option: (i as any).payment_option || (i as any).paymentOption || 'DEPOSIT', // Fix: Send explicit option
                         livestreamId: (i as any).livestream_id || undefined, // Live pricing context
                         giveaway_claim_id: i.giveaway_claim_id || undefined
@@ -472,17 +472,17 @@ export default function Cart() {
 
                 {/* Delete Action */}
                 <button
-                    onClick={(e) => { 
-                        e.stopPropagation(); 
+                    onClick={(e) => {
+                        e.stopPropagation();
                         if (item.giveaway_claim_id) {
-                            toast({ 
-                                title: "Prize Ownership Notice", 
+                            toast({
+                                title: "Prize Ownership Notice",
                                 description: "Giveaway prizes cannot be removed from your cart. Please complete the 0đ checkout to receive your reward!",
                                 variant: "default"
                             });
                             return;
                         }
-                        removeFromCart(item.id); 
+                        removeFromCart(item.id);
                     }}
                     className="text-slate-300 hover:text-red-500 transition-colors p-2 hover:bg-white/50 rounded-full self-start -mt-2 -mr-2"
                     title="Remove item"
@@ -600,7 +600,11 @@ export default function Cart() {
                                     </div>
                                     <div className="flex justify-between text-slate-600">
                                         <span>Shipping</span>
-                                        <span className="text-sm italic text-slate-400">Calculated at Payment</span>
+                                        {selectedFreeShipCode ? (
+                                            <span className="font-medium text-slate-900">{formatPrice(30000)}</span>
+                                        ) : (
+                                            <span className="text-sm italic text-slate-400">Calculated at Payment</span>
+                                        )}
                                     </div>
 
                                     {/* Voucher System */}
@@ -663,9 +667,9 @@ export default function Cart() {
                                                                                     const isSelected = selectedDiscountCode === mv.promotions.code;
 
                                                                                     return (
-                                                                                        <VoucherCard 
-                                                                                            key={mv.id} 
-                                                                                            mv={mv} 
+                                                                                        <VoucherCard
+                                                                                            key={mv.id}
+                                                                                            mv={mv}
                                                                                             type="discount"
                                                                                             isSelected={isSelected}
                                                                                             isAvailableForThisOrder={isAvailableForThisOrder}
@@ -712,9 +716,9 @@ export default function Cart() {
                                                                                     const isSelected = selectedFreeShipCode === mv.promotions.code;
 
                                                                                     return (
-                                                                                        <VoucherCard 
-                                                                                            key={mv.id} 
-                                                                                            mv={mv} 
+                                                                                        <VoucherCard
+                                                                                            key={mv.id}
+                                                                                            mv={mv}
                                                                                             type="freeship"
                                                                                             isSelected={isSelected}
                                                                                             isAvailableForThisOrder={isAvailableForThisOrder}
@@ -731,7 +735,7 @@ export default function Cart() {
                                                                     </LayoutGroup>
                                                                 </div>
                                                             )}
-</>
+                                                        </>
                                                     )}
                                                 </div>
                                                 <div className="p-4 bg-white border-t border-slate-100 flex justify-end">
@@ -760,7 +764,9 @@ export default function Cart() {
                                     <div className="flex justify-between items-baseline">
                                         <span className="text-lg font-bold text-slate-900">Total</span>
                                         <span className="text-3xl font-serif font-bold text-slate-900">
-                                            {formatPrice(Math.max(0, totalAmount - voucherDiscountAmount.discount))}
+                                            {formatPrice(Math.max(0,
+                                                totalAmount + (selectedFreeShipCode ? 30000 : 0) - voucherDiscountAmount.discount - voucherDiscountAmount.freeship
+                                            ))}
                                         </span>
                                     </div>
                                 </div>
