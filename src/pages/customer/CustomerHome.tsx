@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { productsService } from '@/services/products.service';
 import { customersService } from '@/services/customers.service';
 import { calculateFinalPrice } from '@/lib/utils';
@@ -25,10 +25,18 @@ import { livestreamsService } from '@/services/livestreams.service';
 import LivestreamPreviewCard from '@/components/customer/LivestreamPreviewCard';
 import FlashSaleSection from '@/components/flash-sale/FlashSaleSection';
 import { PromotionsService } from '@/services/promotions.service';
+import { useSearchParams } from 'react-router-dom';
+import { useToast } from "@/components/ui/use-toast";
+import { VouchersService } from '@/services/vouchers.service';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function CustomerHome() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const collectVoucherId = searchParams.get('collectVoucherId');
 
     // Data States
     const [retailProducts, setRetailProducts] = useState<any[]>([]);
@@ -102,6 +110,45 @@ export default function CustomerHome() {
         const id = setInterval(refreshFlashSales, 60_000);
         return () => clearInterval(id);
     }, [refreshFlashSales]);
+
+    // 🎁 Handle background voucher collection from email link
+    const lastCollectedIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!collectVoucherId || !user || lastCollectedIdRef.current === collectVoucherId) return;
+
+        lastCollectedIdRef.current = collectVoucherId;
+
+        const collect = async () => {
+            try {
+                const res = await VouchersService.collect(Number(collectVoucherId));
+                const code = res?.code || res?.voucher?.code || '';
+                
+                toast({
+                    title: "Voucher Collected! 🎉",
+                    description: `Mã: ${code}. Voucher đã được thêm vào ví của bạn.`,
+                    duration: 5000,
+                });
+
+                // 🔄 Refresh the available vouchers list
+                queryClient.invalidateQueries({ queryKey: ['collectible_vouchers'] });
+            } catch (err: any) {
+                const msg = err?.response?.data?.message || 'Không thể lấy voucher. Vui lòng thử lại sau.';
+                toast({
+                    variant: "destructive",
+                    title: "Lỗi nhận voucher",
+                    description: msg,
+                });
+            } finally {
+                // Clean up URL to prevent re-collection
+                const newParams = new URLSearchParams(searchParams);
+                newParams.delete('collectVoucherId');
+                setSearchParams(newParams, { replace: true });
+            }
+        };
+
+        collect();
+    }, [collectVoucherId, user, toast, searchParams, setSearchParams]);
 
     // Helpers
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
