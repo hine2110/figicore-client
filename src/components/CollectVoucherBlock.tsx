@@ -64,9 +64,12 @@ export default function CollectVoucherBlock() {
                     const isFreeShip = v.discount_type === 'FREE_SHIP';
                     
                     return (
-                        <div key={v.promotion_id} className="ticket-container group hover:shadow-lg transition-all duration-300">
+                        <div 
+                            key={v.promotion_id} 
+                            className={`ticket-container group hover:shadow-lg transition-all duration-300 ${!v.can_collect ? 'opacity-75 grayscale-[0.5]' : ''}`}
+                        >
                             {/* Left Section (Brand/Icon) */}
-                            <div className={`ticket-left ${isFreeShip ? 'ticket-left-freeship' : 'ticket-left-discount'}`}>
+                            <div className={`ticket-left ${isFreeShip ? 'ticket-left-freeship' : 'ticket-left-discount'} ${!v.can_collect ? 'bg-slate-400 grayscale' : ''}`}>
                                 {isFreeShip ? (
                                     <Truck className="w-8 h-8 mb-1" />
                                 ) : (
@@ -81,7 +84,9 @@ export default function CollectVoucherBlock() {
                             <div className="ticket-right">
                                 <div className="flex justify-between items-start mb-1">
                                     <div className="space-y-0.5">
-                                        <h4 className={`font-bold text-sm md:text-base leading-tight ${isFreeShip ? 'text-emerald-700' : 'text-slate-900'}`}>
+                                        <h4 className={`font-bold text-sm md:text-base leading-tight ${
+                                            !v.can_collect ? 'text-slate-500' : (isFreeShip ? 'text-emerald-700' : 'text-slate-900')
+                                        }`}>
                                             {isFreeShip 
                                                 ? 'Miễn phí vận chuyển'
                                                 : v.discount_type === 'PERCENTAGE' 
@@ -90,6 +95,11 @@ export default function CollectVoucherBlock() {
                                             }
                                         </h4>
                                         <div className="flex flex-col gap-0.5">
+                                            {!v.can_collect && v.apply_rank_code && (
+                                                <p className="text-[10px] text-rose-500 font-bold uppercase tracking-tight">
+                                                    Yêu cầu hạng {v.apply_rank_code}
+                                                </p>
+                                            )}
                                             {!isFreeShip && Number(v.max_discount_amount || 0) > 0 && (
                                                 <p className="text-[11px] text-orange-600 font-medium">
                                                     Tối đa {new Intl.NumberFormat('vi-VN').format(Number(v.max_discount_amount))}đ
@@ -104,7 +114,7 @@ export default function CollectVoucherBlock() {
                                         size="sm" 
                                         variant={v.is_collected ? "outline" : "default"}
                                         className={`h-7 px-3 text-[10px] uppercase font-bold tracking-wider rounded-md ${
-                                            v.is_collected 
+                                            v.is_collected || !v.can_collect
                                                 ? "bg-slate-100 text-slate-400 border-none" 
                                                 : isFreeShip
                                                     ? "bg-[#10b981] hover:bg-[#059669] text-white"
@@ -115,7 +125,11 @@ export default function CollectVoucherBlock() {
                                     >
                                         {collectMutation.isPending && collectMutation.variables === v.promotion_id ? (
                                             <Loader2 className="w-3 h-3 animate-spin" />
-                                        ) : (v.is_collected ? 'Đã Lưu' : (v.is_out_of_stock ? 'Hết' : 'Lưu'))}
+                                        ) : (
+                                            v.is_collected ? 'Đã Lưu' : 
+                                            !v.can_collect ? 'Khóa' :
+                                            v.is_out_of_stock ? 'Hết' : 'Lưu'
+                                        )}
                                     </Button>
                                 </div>
                                 
