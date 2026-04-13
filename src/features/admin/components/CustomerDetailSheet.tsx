@@ -1,7 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, MapPin, Wallet, Trophy } from "lucide-react";
+import { Mail, Phone, MapPin, Wallet, Trophy, CalendarIcon } from "lucide-react";
 import { Customer, customersService } from "@/services/customers.service";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
@@ -127,6 +127,18 @@ export default function CustomerDetailSheet({ customerId, open, onOpenChange, on
                                 <div className="flex-1">
                                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Phone</p>
                                     <p className="text-sm font-medium text-neutral-900">{customer.phone}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="p-4 flex items-center gap-4 hover:bg-neutral-50/50 transition-colors">
+                                <CalendarIcon className="w-5 h-5 text-neutral-400" />
+                                <div className="flex-1">
+                                    <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Date of Birth</p>
+                                    <p className="text-sm font-medium text-neutral-900">
+                                        {(customer as any).dob 
+                                            ? new Date((customer as any).dob).toLocaleDateString('en-GB') 
+                                            : <span className="text-neutral-400 italic">Not provided</span>}
+                                    </p>
                                 </div>
                             </div>
                         </div>

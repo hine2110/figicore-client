@@ -138,7 +138,10 @@ export default function FlashSaleCreatePage() {
                 return;
             }
 
-            const allVariants = products.flatMap((p: any) => 
+            // Exclude BLINDBOX and PREORDER from Flash Sale
+            const filteredProducts = products.filter((p: any) => p.type_code !== 'BLINDBOX' && p.type_code !== 'PREORDER');
+
+            const allVariants = filteredProducts.flatMap((p: any) => 
                 (p.product_variants || []).map((v: any) => ({
                     ...v,
                     product_name: p.name
