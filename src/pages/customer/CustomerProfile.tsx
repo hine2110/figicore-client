@@ -602,7 +602,7 @@ export default function CustomerProfile() {
                                                                 <div className="grid grid-cols-3 gap-2">
                                                                     {/* Day Select */}
                                                                     <Select
-                                                                        value={field.value ? field.value.getDate().toString() : ""}
+                                                                        value={field.value ? field.value.getDate().toString() : undefined}
                                                                         onValueChange={(val) => handleDobChange('day', val)}
                                                                         disabled={!!user?.dob}
                                                                     >
@@ -620,7 +620,7 @@ export default function CustomerProfile() {
 
                                                                     {/* Month Select */}
                                                                     <Select
-                                                                        value={field.value ? field.value.getMonth().toString() : ""}
+                                                                        value={field.value ? field.value.getMonth().toString() : undefined}
                                                                         onValueChange={(val) => handleDobChange('month', val)}
                                                                         disabled={!!user?.dob}
                                                                     >
@@ -638,7 +638,7 @@ export default function CustomerProfile() {
 
                                                                     {/* Year Select */}
                                                                     <Select
-                                                                        value={field.value ? field.value.getFullYear().toString() : ""}
+                                                                        value={field.value ? field.value.getFullYear().toString() : undefined}
                                                                         onValueChange={(val) => handleDobChange('year', val)}
                                                                         disabled={!!user?.dob}
                                                                     >

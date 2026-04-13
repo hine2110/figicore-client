@@ -455,8 +455,41 @@ export default function RetailShop() {
                     </div>
                 </div>
 
+                {/* --- QUICK CATEGORY CHIPS (iOS 26 Style) --- */}
+                {!isFlashSaleFilter && !isVisualSearch && (
+                    <div className="max-w-7xl mx-auto px-4 mb-4 relative z-10">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-4 no-scrollbar">
+                            <button
+                                onClick={() => updateFilter('category_id', 'all')}
+                                className={cn(
+                                    "px-6 py-2.5 rounded-2xl text-sm font-medium whitespace-nowrap transition-all duration-300 backdrop-blur-md border",
+                                    selectedCategory === 'all'
+                                        ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/20"
+                                        : "bg-white/50 text-slate-600 border-white/40 hover:bg-white/80 active:scale-95"
+                                )}
+                            >
+                                All Collections
+                            </button>
+                            {categories.map((cat: any) => (
+                                <button
+                                    key={cat.category_id}
+                                    onClick={() => updateFilter('category_id', String(cat.category_id))}
+                                    className={cn(
+                                        "px-6 py-2.5 rounded-2xl text-sm font-medium whitespace-nowrap transition-all duration-300 backdrop-blur-md border",
+                                        selectedCategory === String(cat.category_id)
+                                            ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20"
+                                            : "bg-white/50 text-slate-600 border-white/40 hover:bg-white/80 active:scale-95"
+                                    )}
+                                >
+                                    {cat.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* MYSTERY HOOK SECTION */}
-                <BlindBoxPromoSection />
+                {!isFlashSaleFilter && !isVisualSearch && <BlindBoxPromoSection />}
 
                 {/* --- PRODUCT GRID (Glass Cards) --- */}
                 <div className="container mx-auto px-4 relative z-10 max-w-7xl pt-4">

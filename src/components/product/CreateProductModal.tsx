@@ -603,7 +603,8 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                                                 <TableRow className="h-8 hover:bg-transparent">
                                                     <TableHead className="h-8 py-0 font-bold text-purple-900">Zone / Tier Name</TableHead>
                                                     <TableHead className="h-8 py-0 font-bold text-purple-900">Chance</TableHead>
-                                                    <TableHead className="h-8 py-0 font-bold text-purple-900 text-center">In Stock</TableHead>
+                                                    <TableHead className="h-8 py-0 font-bold text-purple-900 text-center">Good</TableHead>
+                                                    <TableHead className="h-8 py-0 font-bold text-purple-900 text-center">Defect</TableHead>
                                                     <TableHead className="h-8 py-0 font-bold text-purple-900">Value Range</TableHead>
                                                 </TableRow>
                                             </TableHeader>
@@ -616,7 +617,10 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                                                             <TableCell className="py-1 font-semibold">{tier.name || `Zone ${idx + 1}`}</TableCell>
                                                             <TableCell className="py-1 text-purple-700 font-bold whitespace-nowrap">{tier.probability}%</TableCell>
                                                             <TableCell className="py-1 text-center font-bold text-blue-600">
-                                                                {tier.stock_count ?? 0}
+                                                                {tier.stock_good ?? 0}
+                                                            </TableCell>
+                                                            <TableCell className="py-1 text-center font-bold text-orange-600">
+                                                                {tier.stock_defect ?? 0}
                                                             </TableCell>
                                                             <TableCell className="py-1">
                                                                 {formatPrice(tier.min || tier.value_min)} - {formatPrice(tier.max || tier.value_max)}
