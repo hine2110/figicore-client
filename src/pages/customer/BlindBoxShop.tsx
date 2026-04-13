@@ -197,27 +197,27 @@ export default function BlindBoxShop() {
             `}</style>
 
             <div className="relative min-h-[calc(100vh-64px)] w-full flex flex-col bg-[#0A0A0B] overflow-hidden select-none">
-                
+
                 {/* 1. CINEMATIC BACKGROUND ELEMENTS (Snow / Particles) */}
                 <div className="absolute inset-0 z-0">
                     <div className="absolute inset-0 cinematic-vignette" />
                     <div className="absolute top-0 left-0 w-full h-full arcane-glow" />
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] opacity-[0.05] mix-blend-overlay" />
-                    
+
                     {/* Snow Particles */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         {[...Array(30)].map((_, i) => (
                             <motion.div
                                 key={i}
                                 initial={{ opacity: 0, y: -20, x: Math.random() * 100 + "%" }}
-                                animate={{ 
+                                animate={{
                                     opacity: [0, 0.6, 0],
                                     y: ["0vh", "100vh"],
                                     x: [null, (Math.random() - 0.5) * 50 + "px"]
                                 }}
-                                transition={{ 
-                                    duration: 15 + Math.random() * 25, 
-                                    repeat: Infinity, 
+                                transition={{
+                                    duration: 15 + Math.random() * 25,
+                                    repeat: Infinity,
                                     ease: "linear",
                                     delay: Math.random() * 10
                                 }}
@@ -229,10 +229,10 @@ export default function BlindBoxShop() {
 
                 {/* 2. MAIN SCENIC CONTENT */}
                 <div className="flex-1 container mx-auto px-10 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center z-10 pb-20">
-                    
+
                     {/* LEFT SIDE: 3D CAROUSEL (7 Cols) */}
                     <div className="lg:col-span-7 relative h-[55vh] flex flex-col items-center justify-center carousel-perspective">
-                        
+
                         <AnimatePresence initial={false}>
                             {products.map((p, index) => {
                                 const style = getCardStyle(index);
@@ -258,7 +258,7 @@ export default function BlindBoxShop() {
                                         <div className="relative w-full h-full group">
                                             {/* Outer Border / Frame */}
                                             <div className={`absolute inset-0 border rounded-[3rem] transition-all duration-700 ${activeIndex === index ? 'border-amber-500/20 scale-105' : 'border-white/5'}`} />
-                                            
+
                                             {/* The Container */}
                                             <div className="w-full h-full bg-[#1A1A1C]/20 backdrop-blur-sm rounded-[2.8rem] flex items-center justify-center p-10 overflow-hidden relative">
                                                 <img
@@ -266,7 +266,7 @@ export default function BlindBoxShop() {
                                                     alt={p.name}
                                                     className="w-full h-full object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.8)] transition-transform duration-700 group-hover:scale-110"
                                                 />
-                                                
+
                                                 {/* Active Box Extra Shine */}
                                                 {activeIndex === index && (
                                                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-amber-500/[0.03] to-transparent animate-pulse" />
@@ -275,9 +275,9 @@ export default function BlindBoxShop() {
 
                                             {/* Floor Shadow Refined */}
                                             {activeIndex === index && (
-                                                <motion.div 
+                                                <motion.div
                                                     layoutId="floor-shadow"
-                                                    className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-64 h-16 bg-black/80 blur-[40px] rounded-full opacity-60 z-[-1]" 
+                                                    className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-64 h-16 bg-black/80 blur-[40px] rounded-full opacity-60 z-[-1]"
                                                 />
                                             )}
                                         </div>
@@ -289,10 +289,10 @@ export default function BlindBoxShop() {
                         {/* NAV INDICATORS (No Arrows) */}
                         <div className="absolute bottom-[-60px] flex items-center gap-3">
                             {products.map((_, i) => (
-                                <button 
-                                    key={i} 
+                                <button
+                                    key={i}
                                     onClick={() => handleSelect(i)}
-                                    className={`h-1 transition-all duration-700 rounded-full ${activeIndex === i ? 'w-10 bg-amber-500/40' : 'w-2 bg-white/5 hover:bg-white/10'}`} 
+                                    className={`h-1 transition-all duration-700 rounded-full ${activeIndex === i ? 'w-10 bg-amber-500/40' : 'w-2 bg-white/5 hover:bg-white/10'}`}
                                 />
                             ))}
                         </div>
@@ -300,9 +300,9 @@ export default function BlindBoxShop() {
 
                     {/* RIGHT SIDE: ARCANE ARTIFACT CARD (5 Cols) */}
                     <div className="lg:col-span-12 lg:hidden h-24" /> {/* Spacer for mobile */}
-                    
+
                     <div className="lg:col-span-5 flex justify-center lg:justify-end">
-                        <motion.div 
+                        <motion.div
                             key={product.product_id}
                             initial={{ opacity: 0, x: 50, scale: 0.95 }}
                             animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -337,19 +337,19 @@ export default function BlindBoxShop() {
                                         <div className="flex items-center gap-4">
                                             <span className="text-[9px] font-mono-tag text-zinc-600 uppercase tracking-widest">Quantity</span>
                                             <div className="flex items-center bg-white/[0.03] border border-white/5 rounded-xl p-1">
-                                                <button 
+                                                <button
                                                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                                                     className="quantity-btn"
                                                 >
                                                     <Minus className="w-3 h-3" />
                                                 </button>
-                                                <input 
-                                                    type="text" 
-                                                    value={quantity} 
-                                                    readOnly 
-                                                    className="quantity-input" 
+                                                <input
+                                                    type="text"
+                                                    value={quantity}
+                                                    readOnly
+                                                    className="quantity-input"
                                                 />
-                                                <button 
+                                                <button
                                                     onClick={() => setQuantity(Math.min(20, quantity + 1))}
                                                     className="quantity-btn"
                                                 >
@@ -458,11 +458,11 @@ export default function BlindBoxShop() {
                                                             <span className="text-3xl font-luxury-serif italic text-white">{row.rate}</span>
                                                         </div>
                                                         <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden">
-                                                            <motion.div 
+                                                            <motion.div
                                                                 initial={{ width: 0 }}
                                                                 whileInView={{ width: row.rate }}
                                                                 transition={{ duration: 1.5, delay: i * 0.2 }}
-                                                                className={`h-full ${row.color}`} 
+                                                                className={`h-full ${row.color}`}
                                                             />
                                                         </div>
                                                     </div>

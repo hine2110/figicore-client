@@ -8,9 +8,11 @@ import {
     Filter,
     Search,
     ArrowUpDown,
-    Lock
+    Lock,
+    X,
+    Sparkles
 } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { productsService } from '@/services/products.service';
 import { cn } from '@/lib/utils';
@@ -31,6 +33,7 @@ import {
 
 export default function PreOrderShop() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Data States
@@ -38,6 +41,7 @@ export default function PreOrderShop() {
     const [loading, setLoading] = useState(true);
     const [brands, setBrands] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
+    const [isVisualSearch, setIsVisualSearch] = useState(false);
 
     // Filter States
     const [searchText, setSearchText] = useState(searchParams.get('search') || '');
@@ -98,8 +102,22 @@ export default function PreOrderShop() {
 
     // Fetch Products
     useEffect(() => {
+        // Check for visual search results first
+        if (location.state?.isVisualSearch && location.state?.visualSearchData) {
+            const filtered = location.state.visualSearchData.filter(
+                (p: any) => p.type_code === 'PREORDER'
+            );
+            if (filtered.length > 0) {
+                setProducts(filtered);
+                setIsVisualSearch(true);
+                setLoading(false);
+                return;
+            }
+        }
+
         const fetchProducts = async () => {
             setLoading(true);
+            setIsVisualSearch(false);
             try {
                 const params: any = {
                     limit: 1000,
@@ -124,7 +142,7 @@ export default function PreOrderShop() {
         };
 
         fetchProducts();
-    }, [searchParams]);
+    }, [searchParams, location.state]);
 
     const updateFilter = (key: string, value: string) => {
         setSearchParams(prev => {
@@ -196,6 +214,27 @@ export default function PreOrderShop() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Visual Search Banner */}
+                    {isVisualSearch && (
+                        <div className="mb-8 flex items-center justify-between gap-4 px-6 py-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                            <div className="flex items-center gap-3">
+                                <Sparkles className="w-4 h-4 text-amber-400" />
+                                <span className="font-mono text-xs text-amber-400 uppercase tracking-widest">
+                                    Visual Search — {products.length} Pre-Order matched
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    navigate(location.pathname, { replace: true, state: {} });
+                                    setIsVisualSearch(false);
+                                }}
+                                className="font-mono text-[10px] text-slate-500 hover:text-amber-400 uppercase tracking-widest transition-colors flex items-center gap-1"
+                            >
+                                <X className="w-3 h-3" /> View All
+                            </button>
+                        </div>
+                    )}
 
                     {/* 2. MINIMALIST FILTER BAR */}
                     <div className="sticky top-24 z-40 mb-16">

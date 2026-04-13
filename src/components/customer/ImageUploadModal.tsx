@@ -45,8 +45,22 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ isOpen, onCl
       const { products, metadata } = response;
 
       if (products && products.length > 0) {
+        // Determine the most common product type in results
+        const typeCounts: Record<string, number> = {};
+        products.forEach((p: any) => {
+          const type = p.type_code || 'RETAIL';
+          typeCounts[type] = (typeCounts[type] || 0) + 1;
+        });
+        const dominantType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0][0];
+
+        const typeRouteMap: Record<string, string> = {
+          RETAIL: '/customer/retail',
+          PREORDER: '/customer/preorder',
+        };
+        const targetRoute = typeRouteMap[dominantType] || '/customer/retail';
+
         onClose();
-        navigate('/customer/retail?visual_search=true', {
+        navigate(`${targetRoute}?visual_search=true`, {
           state: {
             visualSearchData: products,
             isVisualSearch: true,
