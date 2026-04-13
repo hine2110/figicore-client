@@ -161,11 +161,7 @@ export default function ReturnInspection() {
                         ) : (
                             <div className="grid grid-cols-1 gap-4">
                                 {incomingPackages.map(req => (
-                                    <ReturnCard key={req.return_id} req={req}>
-                                        <Button size="sm" onClick={() => handleReceive(req.return_id)} disabled={actionLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto">
-                                            <ClipboardCheck className="w-4 h-4 mr-2" /> Mark as Received (Scanning Area)
-                                        </Button>
-                                    </ReturnCard>
+                                    <ReturnCard key={req.return_id} req={req} />
                                 ))}
                             </div>
                         )}
