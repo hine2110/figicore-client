@@ -59,7 +59,7 @@ export default function SalaryConfiguration() {
             });
             setEmployees(res.data?.data || []);
         } catch (error) {
-            toast({ title: "Lỗi", description: "Không thể tải danh sách nhân viên", variant: "destructive" });
+            toast({ title: "Error", description: "Could not load employee list", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -81,7 +81,7 @@ export default function SalaryConfiguration() {
 
     const handleUpdateSalary = async () => {
         if (!newSalary || isNaN(Number(newSalary)) || Number(newSalary) < 0) {
-            toast({ title: "Lỗi", description: "Vui lòng nhập mức lương hợp lệ", variant: "destructive" });
+            toast({ title: "Error", description: "Please enter a valid salary", variant: "destructive" });
             return;
         }
 
@@ -94,11 +94,11 @@ export default function SalaryConfiguration() {
                 note: note
             });
 
-            toast({ title: "Thành công", description: "Đã thiết lập mức lương mới cho nhân viên. Sẽ có hiệu lực từ tháng sau." });
+            toast({ title: "Success", description: "New salary set. Will take effect next month." });
             setIsUpdateModalOpen(false);
             fetchEmployees(); // Refresh data
         } catch (error: any) {
-            toast({ title: "Thất bại", description: error.response?.data?.message || "Lỗi hệ thống", variant: "destructive" });
+            toast({ title: "Failed", description: error.response?.data?.message || "System error", variant: "destructive" });
         } finally {
             setSubmitLoading(false);
         }
@@ -116,7 +116,7 @@ export default function SalaryConfiguration() {
             const res = await axiosInstance.get(`/payroll/salary-configs/${userId}`);
             setConfigs(res.data || []);
         } catch (error) {
-            toast({ title: "Lỗi", description: "Không thể tải danh sách phụ cấp", variant: "destructive" });
+            toast({ title: "Error", description: "Could not load allowances list", variant: "destructive" });
         } finally {
             setConfigLoading(false);
         }
@@ -124,7 +124,7 @@ export default function SalaryConfiguration() {
 
     const handleAddConfig = async () => {
         if (!configName || !configAmount || isNaN(Number(configAmount))) {
-            toast({ title: "Lỗi", description: "Vui lòng nhập tên và số tiền hợp lệ", variant: "destructive" });
+            toast({ title: "Error", description: "Please enter valid name and amount", variant: "destructive" });
             return;
         }
         try {
@@ -135,22 +135,22 @@ export default function SalaryConfiguration() {
                 amount: Number(configAmount),
                 is_recurring: true
             });
-            toast({ title: "Thành công", description: "Đã thêm cấu hình lương." });
+            toast({ title: "Success", description: "Salary configuration added." });
             setConfigName('');
             setConfigAmount('');
             fetchConfigs(selectedEmp.user_id); // Tải lại danh sách
         } catch (error) {
-            toast({ title: "Lỗi", description: "Không thể thêm cấu hình", variant: "destructive" });
+            toast({ title: "Error", description: "Could not add configuration", variant: "destructive" });
         }
     };
 
     const handleStopConfig = async (configId: number) => {
         try {
             await axiosInstance.patch(`/payroll/salary-configs/${configId}/stop`);
-            toast({ title: "Thành công", description: "Đã ngừng áp dụng khoản này." });
+            toast({ title: "Success", description: "Item removed." });
             fetchConfigs(selectedEmp!.user_id);
         } catch (error) {
-            toast({ title: "Lỗi", description: "Không thể ngừng cấu hình", variant: "destructive" });
+            toast({ title: "Error", description: "Could not stop configuration", variant: "destructive" });
         }
     };
 
@@ -162,7 +162,7 @@ export default function SalaryConfiguration() {
             const res = await axiosInstance.get(`/payroll/salary-history/${emp.user_id}`);
             setSalaryHistory(res.data || []);
         } catch (error) {
-            toast({ title: "Lỗi", description: "Không thể tải lịch sử lương", variant: "destructive" });
+            toast({ title: "Error", description: "Could not load salary history", variant: "destructive" });
         } finally {
             setHistoryLoading(false);
         }
@@ -191,10 +191,10 @@ export default function SalaryConfiguration() {
                 axiosInstance.post('/payroll/penalty-rules', { code: 'EARLY_LEAVE_PENALTY', value: 'Phạt về sớm', meta_data: { amount: Number(ruleEarlyLeave) } }),
                 axiosInstance.post('/payroll/penalty-rules', { code: 'CORRECTION_PENALTY', value: 'Phạt spam khiếu nại', meta_data: { amount: Number(ruleSpam), free_limit: Number(ruleLimit) } })
             ]);
-            toast({ title: "Thành công", description: "Đã lưu cấu hình luật phạt chung." });
+            toast({ title: "Success", description: "Penalty rules saved." });
             setIsRuleModalOpen(false);
         } catch (error) {
-            toast({ title: "Lỗi", description: "Không thể lưu luật phạt", variant: "destructive" });
+            toast({ title: "Error", description: "Could not save penalty rules", variant: "destructive" });
         } finally {
             setSavingRule(false);
         }
@@ -209,12 +209,12 @@ export default function SalaryConfiguration() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Thiết Lập Lương Căn Bản</h1>
-                    <p className="text-neutral-500 text-sm mt-1">Quản lý và cập nhật mức lương theo giờ cho toàn bộ nhân viên.</p>
+                    <h1 className="text-2xl font-bold text-neutral-900">Base Salary Configuration</h1>
+                    <p className="text-neutral-500 text-sm mt-1">Manage and update hourly rates for all employees.</p>
                 </div>
 
                 <Button variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={openPenaltyRulesModal}>
-                    <Gavel className="w-4 h-4 mr-2" /> Cấu hình Luật Phạt
+                    <Gavel className="w-4 h-4 mr-2" /> Penalty Rules Configuration
                 </Button>
             </div>
 
@@ -223,7 +223,7 @@ export default function SalaryConfiguration() {
                     <div className="relative w-full max-w-sm">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-500" />
                         <Input
-                            placeholder="Tìm tên hoặc email..."
+                            placeholder="Search by name or email..."
                             className="pl-8 bg-neutral-50"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -237,11 +237,11 @@ export default function SalaryConfiguration() {
                         <Table>
                             <TableHeader className="bg-neutral-50">
                                 <TableRow>
-                                    <TableHead>Mã NV</TableHead>
-                                    <TableHead>Nhân viên</TableHead>
-                                    <TableHead>Vai trò</TableHead>
-                                    <TableHead className="text-right">Lương theo giờ (VNĐ/h)</TableHead>
-                                    <TableHead className="text-center">Hành động</TableHead>
+                                    <TableHead>EMP ID</TableHead>
+                                    <TableHead>Employee</TableHead>
+                                    <TableHead>Role</TableHead>
+                                    <TableHead className="text-right">Hourly Rate (VND/h)</TableHead>
+                                    <TableHead className="text-center">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -255,7 +255,7 @@ export default function SalaryConfiguration() {
                                         <TableCell><Badge variant="secondary">{emp.users?.role_code}</Badge></TableCell>
                                         <TableCell className="text-right font-medium">
                                             {emp.base_salary === 0 ? (
-                                                <span className="text-red-500 text-xs italic">Chưa thiết lập</span>
+                                                <span className="text-red-500 text-xs italic">Not configured</span>
                                             ) : (
                                                 <span className="text-emerald-600">{formatCurrency(emp.base_salary)}</span>
                                             )}
@@ -263,14 +263,14 @@ export default function SalaryConfiguration() {
                                         <TableCell className="text-center">
                                             <div className="flex justify-center gap-2">
                                                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openUpdateModal(emp)}>
-                                                    <Edit3 className="w-3.5 h-3.5 mr-1" /> Cập nhật lương
+                                                    <Edit3 className="w-3.5 h-3.5 mr-1" /> Update Salary
                                                 </Button>
                                                 {/* Nút này sẽ làm ở bước sau để gán Phụ cấp chuyên cần */}
                                                 <Button size="sm" variant="ghost" className="h-8 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" onClick={() => openAllowanceModal(emp)}>
-                                                    <Settings2 className="w-3.5 h-3.5 mr-1" /> Phụ cấp
+                                                    <Settings2 className="w-3.5 h-3.5 mr-1" /> Allowances
                                                 </Button>
                                                 <Button size="sm" variant="ghost" className="h-8 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100" onClick={() => openHistoryModal(emp)}>
-                                                    <History className="w-3.5 h-3.5 mr-1" /> Lịch sử
+                                                    <History className="w-3.5 h-3.5 mr-1" /> History
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -286,52 +286,52 @@ export default function SalaryConfiguration() {
             <Dialog open={isUpdateModalOpen} onOpenChange={setIsUpdateModalOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>Cập nhật lương nhân viên</DialogTitle>
+                        <DialogTitle>Update Employee Salary</DialogTitle>
                         <DialogDescription>
-                            Thiết lập mức lương cho <b>{selectedEmp?.users?.full_name}</b>. Lương mới sẽ có hiệu lực từ đầu tháng sau.
+                            Set the hourly rate for <b>{selectedEmp?.users?.full_name}</b>. The new rate will take effect next month.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="space-y-2">
-                            <Label>Lương theo giờ (VNĐ/h) <span className="text-red-500">*</span></Label>
+                            <Label>Hourly Rate (VND/h) <span className="text-red-500">*</span></Label>
                             <div className="relative">
                                 <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-500" />
                                 <Input
                                     type="number"
                                     className="pl-8 font-mono"
-                                    placeholder="VD: 25000"
+                                    placeholder="e.g: 25000"
                                     value={newSalary}
                                     onChange={(e) => setNewSalary(e.target.value)}
                                 />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>Lý do thay đổi <span className="text-red-500">*</span></Label>
+                            <Label>Reason for change <span className="text-red-500">*</span></Label>
                             <Select value={reasonCode} onValueChange={setReasonCode}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="NEW_HIRE">Nhân viên mới (Thiết lập lần đầu)</SelectItem>
-                                    <SelectItem value="ANNUAL_REVIEW">Đánh giá định kỳ (Tăng lương)</SelectItem>
-                                    <SelectItem value="PROMOTION">Thăng chức</SelectItem>
-                                    <SelectItem value="CORRECTION">Điều chỉnh sai sót</SelectItem>
+                                    <SelectItem value="NEW_HIRE">New hire (First time setup)</SelectItem>
+                                    <SelectItem value="ANNUAL_REVIEW">Periodic review (Salary increase)</SelectItem>
+                                    <SelectItem value="PROMOTION">Promotion</SelectItem>
+                                    <SelectItem value="CORRECTION">Correction</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label>Ghi chú thêm (Không bắt buộc)</Label>
+                            <Label>Additional notes (Optional)</Label>
                             <Input
-                                placeholder="VD: Thử việc 2 tháng..."
+                                placeholder="e.g: Probations for 2 months..."
                                 value={note}
                                 onChange={(e) => setNote(e.target.value)}
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsUpdateModalOpen(false)}>Hủy</Button>
+                        <Button variant="outline" onClick={() => setIsUpdateModalOpen(false)}>Cancel</Button>
                         <Button onClick={handleUpdateSalary} disabled={submitLoading}>
-                            {submitLoading ? "Đang lưu..." : "Xác nhận lưu"}
+                            {submitLoading ? "Saving..." : "Confirm Save"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -340,20 +340,20 @@ export default function SalaryConfiguration() {
             <Dialog open={isAllowanceModalOpen} onOpenChange={setIsAllowanceModalOpen}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>Quản lý Phụ Cấp & Khấu Trừ</DialogTitle>
+                        <DialogTitle>Manage Allowances & Deductions</DialogTitle>
                         <DialogDescription>
-                            Thiết lập các khoản tiền cố định hàng tháng cho <b>{selectedEmp?.users?.full_name}</b>.
+                            Set fixed monthly amounts for <b>{selectedEmp?.users?.full_name}</b>.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-6 py-2">
                         {/* Danh sách đang áp dụng */}
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-neutral-500">Đang áp dụng</Label>
+                            <Label className="text-xs font-bold uppercase text-neutral-500">Currently Applied</Label>
                             {configLoading ? (
                                 <div className="text-center py-4"><Loader2 className="w-5 h-5 animate-spin mx-auto text-neutral-400" /></div>
                             ) : configs.length === 0 ? (
-                                <div className="text-sm text-neutral-500 italic py-2 border border-dashed rounded-md text-center bg-neutral-50">Chưa có khoản phụ cấp nào.</div>
+                                <div className="text-sm text-neutral-500 italic py-2 border border-dashed rounded-md text-center bg-neutral-50">No allowances currently configured.</div>
                             ) : (
                                 <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                                     {configs.map(cfg => (
@@ -367,7 +367,7 @@ export default function SalaryConfiguration() {
                                                 </div>
                                             </div>
                                             <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 px-2" onClick={() => handleStopConfig(cfg.config_id)}>
-                                                Hủy bỏ
+                                                Remove
                                             </Button>
                                         </div>
                                     ))}
@@ -377,28 +377,28 @@ export default function SalaryConfiguration() {
 
                         {/* Form thêm mới */}
                         <div className="bg-neutral-50 p-4 rounded-lg border space-y-4">
-                            <Label className="text-xs font-bold uppercase text-neutral-500">Thêm khoản mới</Label>
+                            <Label className="text-xs font-bold uppercase text-neutral-500">Add New Item</Label>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs">Loại</Label>
+                                    <Label className="text-xs">Type</Label>
                                     <Select value={configType} onValueChange={setConfigType}>
                                         <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="ALLOWANCE">Phụ cấp (Cộng)</SelectItem>
-                                            <SelectItem value="DEDUCTION">Khấu trừ (Trừ)</SelectItem>
+                                            <SelectItem value="ALLOWANCE">Allowance (Add)</SelectItem>
+                                            <SelectItem value="DEDUCTION">Deduction (Subtract)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs">Số tiền (VNĐ)</Label>
-                                    <Input type="number" className="bg-white font-mono text-sm" placeholder="VD: 1000000" value={configAmount} onChange={(e) => setConfigAmount(e.target.value)} />
+                                    <Label className="text-xs">Amount (VND)</Label>
+                                    <Input type="number" className="bg-white font-mono text-sm" placeholder="e.g: 1000000" value={configAmount} onChange={(e) => setConfigAmount(e.target.value)} />
                                 </div>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-xs">Tên khoản tiền (Sẽ in lên phiếu lương)</Label>
-                                <Input className="bg-white text-sm" placeholder="VD: Phụ cấp chuyên cần..." value={configName} onChange={(e) => setConfigName(e.target.value)} />
+                                <Label className="text-xs">Item Name (Will print on slip)</Label>
+                                <Input className="bg-white text-sm" placeholder="e.g: Attendance allowance..." value={configName} onChange={(e) => setConfigName(e.target.value)} />
                             </div>
-                            <Button className="w-full" onClick={handleAddConfig}>Thêm vào danh sách</Button>
+                            <Button className="w-full" onClick={handleAddConfig}>Add to List</Button>
                         </div>
                     </div>
                 </DialogContent>
@@ -407,9 +407,9 @@ export default function SalaryConfiguration() {
             <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}>
                 <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Lịch sử thay đổi lương</DialogTitle>
+                        <DialogTitle>Salary Change History</DialogTitle>
                         <DialogDescription>
-                            Hồ sơ biến động lương của <b>{selectedEmp?.users?.full_name}</b>.
+                            Salary change records for <b>{selectedEmp?.users?.full_name}</b>.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -418,7 +418,7 @@ export default function SalaryConfiguration() {
                             <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-neutral-400" /></div>
                         ) : salaryHistory.length === 0 ? (
                             <div className="text-center py-8 text-neutral-500 bg-neutral-50 rounded-lg border border-dashed">
-                                Nhân viên này chưa có lịch sử thay đổi lương nào.
+                                No salary change records found for this employee.
                             </div>
                         ) : (
                             <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
@@ -433,11 +433,11 @@ export default function SalaryConfiguration() {
                                                     {formatCurrency(item.new_salary)}/h
                                                 </div>
                                                 <time className="text-xs font-medium text-amber-600">
-                                                    {new Date(item.effective_date).toLocaleDateString('vi-VN')}
+                                                    {new Date(item.effective_date).toLocaleDateString('en-US')}
                                                 </time>
                                             </div>
                                             <div className="text-xs text-slate-500 mb-2">
-                                                Lương cũ: {formatCurrency(item.old_salary)}/h
+                                                Old salary: {formatCurrency(item.old_salary)}/h
                                             </div>
                                             <div className="text-sm text-slate-700 mb-2">
                                                 <Badge variant="secondary" className="font-normal text-[10px] bg-slate-100">{item.reason}</Badge>
@@ -448,7 +448,7 @@ export default function SalaryConfiguration() {
                                                 </div>
                                             )}
                                             <div className="text-[10px] text-slate-400 mt-2 text-right">
-                                                Bởi: {item.users?.full_name || 'Hệ thống'}
+                                                By: {item.users?.full_name || 'System'}
                                             </div>
                                         </div>
                                     </div>
@@ -463,42 +463,42 @@ export default function SalaryConfiguration() {
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-indigo-700">
-                            <Gavel className="w-5 h-5" /> Cấu Hình Luật Phạt Chung
+                            <Gavel className="w-5 h-5" /> General Penalty Rules Configuration
                         </DialogTitle>
                         <DialogDescription>
-                            Số tiền phạt dưới đây sẽ được <b>tự động trừ vào Phụ Cấp Chuyên Cần</b> của nhân viên khi chạy bảng lương.
+                            The penalty amounts below will be automatically deducted from the employee's <b>Attendance Allowance</b> when running payroll.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-semibold">Phạt đi trễ / Lần (VNĐ)</Label>
+                                <Label className="text-xs font-semibold">Late Penalty / Time (VND)</Label>
                                 <Input type="number" value={ruleLate} onChange={e => setRuleLate(e.target.value)} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-semibold">Phạt về sớm / Lần (VNĐ)</Label>
+                                <Label className="text-xs font-semibold">Early Leave Penalty / Time (VND)</Label>
                                 <Input type="number" value={ruleEarlyLeave} onChange={e => setRuleEarlyLeave(e.target.value)} />
                             </div>
                         </div>
                         <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg space-y-3">
-                            <Label className="text-xs font-bold text-orange-800 uppercase">Luật Phạt Báo Cáo Sai/Spam Khiếu Nại</Label>
+                            <Label className="text-xs font-bold text-orange-800 uppercase">Dispute Spam / False Report Penalties</Label>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs text-orange-700">Miễn phí (Số lần/tháng)</Label>
+                                    <Label className="text-xs text-orange-700">Free (Times/month)</Label>
                                     <Input type="number" value={ruleLimit} onChange={e => setRuleLimit(e.target.value)} className="bg-white" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs text-orange-700">Phạt từ lần vượt mức</Label>
+                                    <Label className="text-xs text-orange-700">Penalty per exceed</Label>
                                     <Input type="number" value={ruleSpam} onChange={e => setRuleSpam(e.target.value)} className="bg-white" />
                                 </div>
                             </div>
-                            <p className="text-[10px] text-orange-600/80 italic">* Khuyến khích nhân viên kiểm tra kỹ trước khi khiếu nại (Timesheet).</p>
+                            <p className="text-[10px] text-orange-600/80 italic">* Encouraging employees to check their timesheets carefully before disputing.</p>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsRuleModalOpen(false)}>Hủy</Button>
+                        <Button variant="outline" onClick={() => setIsRuleModalOpen(false)}>Cancel</Button>
                         <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleSaveRules} disabled={savingRule}>
-                            {savingRule ? "Đang lưu..." : "Lưu cấu hình"}
+                            {savingRule ? "Saving..." : "Save Configuration"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

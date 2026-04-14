@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import api from '@/services/api';
+import { axiosInstance } from '@/lib/axiosInstance';
 import { useAuthStore } from '@/store/useAuthStore';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +22,7 @@ export function NotificationBell() {
 
         const fetchNotifications = async () => {
             try {
-                const res = await api.get('/notifications');
+                const res = await axiosInstance.get('/notifications');
                 setNotifications(res.data);
                 setUnreadCount(res.data.filter((n: any) => !n.is_read).length);
             } catch (err) {
@@ -55,7 +55,7 @@ export function NotificationBell() {
         // Mark as read
         if (!notif.is_read) {
             try {
-                await api.patch(`/notifications/${notif.notification_id}/read`);
+                await axiosInstance.patch(`/notifications/${notif.notification_id}/read`);
                 setNotifications(prev =>
                     prev.map(n => n.notification_id === notif.notification_id ? { ...n, is_read: true } : n)
                 );
@@ -68,7 +68,7 @@ export function NotificationBell() {
 
     const handleReadAll = async () => {
         try {
-            await api.patch('/notifications/read-all');
+            await axiosInstance.patch('/notifications/read-all');
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
             setUnreadCount(0);
         } catch (err) {

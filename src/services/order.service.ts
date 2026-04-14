@@ -42,6 +42,11 @@ export const orderService = {
     },
 
     // Staff/Admin only
+    getDashboardKPIs: async (): Promise<any> => {
+        const response = await axiosInstance.get(`${BASE}/analytics/kpi`);
+        return response.data;
+    },
+
     getAllOrders: async (params: PaginationParams & { status?: string }): Promise<PaginatedResponse<OrderDTO>> => {
         const response = await axiosInstance.get(BASE, { params });
         return response.data;

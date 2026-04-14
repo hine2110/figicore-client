@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import CustomerLayout from '@/layouts/CustomerLayout';
 import BlindBoxDetail from './BlindBoxDetail'; // NEW IMPORT
@@ -11,7 +11,9 @@ import {
     ChevronRight,
     ShieldCheck,
     Truck,
-    RefreshCcw
+    RefreshCcw,
+    Users,
+    CalendarX2
 } from 'lucide-react';
 import { productsService } from '@/services/products.service';
 import { Separator } from '@/components/ui/separator';
@@ -31,6 +33,34 @@ export default function ProductDetail() {
     const [quantity, setQuantity] = useState(1);
     const [paymentMode, setPaymentMode] = useState<'DEPOSIT' | 'FULL_PAYMENT'>('DEPOSIT');
     const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+
+    // Countdown state — ticks every second for pre-order live timer
+    const [, setTick] = useState(0);
+    const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const startCountdown = useCallback(() => {
+        if (countdownRef.current) clearInterval(countdownRef.current);
+        countdownRef.current = setInterval(() => setTick(t => t + 1), 1000);
+    }, []);
+
+    useEffect(() => {
+        return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
+    }, []);
+
+    // Helper: compute countdown parts from a deadline ISO string
+    const getCountdown = (deadline: string | null | undefined) => {
+        if (!deadline) return null;
+        const diff = new Date(deadline).getTime() - Date.now();
+        if (diff <= 0) return { expired: true, days: 0, hours: 0, minutes: 0, seconds: 0 };
+        return {
+            expired: false,
+            days:    Math.floor(diff / 86400000),
+            hours:   Math.floor((diff % 86400000) / 3600000),
+            minutes: Math.floor((diff % 3600000) / 60000),
+            seconds: Math.floor((diff % 60000) / 1000),
+        };
+    };
+
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -62,7 +92,9 @@ export default function ProductDetail() {
         };
         fetchProduct();
         window.scrollTo(0, 0);
+        startCountdown(); // Start live 1-second tick for pre-order countdown
     }, [id]);
+
 
     // Fetch Related Products
     useEffect(() => {
@@ -604,7 +636,115 @@ export default function ProductDetail() {
 
                             <Separator className={isPreorder ? "bg-white/10" : "bg-slate-200"} />
 
-                            {/* Selectors - Glass Effect Restored */}
+                            {/* ── PRE-ORDER BOOKING STATUS PANEL ── */}
+                            {isPreorder && (() => {
+                                const cfg = ((selectedVariant || product.product_variants?.[0]) as any)?.product_preorder_configs as any;
+                                if (!cfg) return null;
+
+                                const totalSlots = cfg.total_slots ?? 0;
+                                const soldSlots  = cfg.sold_slots  ?? 0;
+                                const remaining  = totalSlots - soldSlots;
+                                const pct        = totalSlots > 0 ? Math.min(100, Math.round((soldSlots / totalSlots) * 100)) : 0;
+                                const cd         = getCountdown(cfg.booking_end_date);
+                                const isExpired  = cd?.expired ?? false;
+                                const isUrgent   = !isExpired && cd !== null && (cd.days < 2 || pct >= 80);
+                                const isExtended = (cfg.extension_count ?? 0) >= 1;
+
+                                const urgencyColor = isExpired  ? 'text-red-500'
+                                                   : isUrgent   ? 'text-red-400'
+                                                   : isExtended ? 'text-orange-400'
+                                                   :              'text-amber-500';
+                                const barColor = pct >= 80 ? 'bg-red-500'
+                                              : pct >= 50 ? 'bg-orange-400'
+                                              :              'bg-amber-500';
+
+                                return (
+                                    <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-sm p-5 space-y-5">
+
+                                        {/* SLOT PROGRESS */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="flex items-center gap-1.5 text-xs font-mono text-slate-400 uppercase tracking-widest">
+                                                    <Users className="w-3 h-3" />
+                                                    Slot Allocation
+                                                </span>
+                                                <span className={cn("text-sm font-bold font-mono", pct >= 80 ? 'text-red-400' : 'text-amber-500')}>
+                                                    {remaining > 0 ? `${remaining} / ${totalSlots} remaining` : '// SOLD OUT'}
+                                                </span>
+                                            </div>
+                                            {/* Progress bar track */}
+                                            <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                                                <div
+                                                    className={cn("h-full rounded-full transition-all duration-700", barColor)}
+                                                    style={{ width: `${pct}%` }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between text-[10px] font-mono text-slate-600">
+                                                <span>0</span>
+                                                <span className={pct >= 80 ? 'text-red-500 font-bold' : ''}>{pct}% filled</span>
+                                                <span>{totalSlots}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* DEADLINE COUNTDOWN */}
+                                        {cfg.booking_end_date && (
+                                            <div className={cn("space-y-3 pt-3 border-t border-white/5", isExpired && 'opacity-60')}>
+                                                <div className="flex items-center gap-2">
+                                                    <CalendarX2 className={cn("w-3.5 h-3.5", urgencyColor)} />
+                                                    <span className={cn("text-xs font-mono uppercase tracking-widest font-bold", urgencyColor)}>
+                                                        {isExpired ? 'Booking Closed'
+                                                         : isUrgent ? '⚡ Closing Soon'
+                                                         : isExtended ? 'Extended Deadline'
+                                                         : 'Booking Deadline'}
+                                                    </span>
+                                                    {isExtended && !isExpired && (
+                                                        <span className="ml-auto text-[9px] font-mono bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/30 tracking-widest">+2WK EXT</span>
+                                                    )}
+                                                </div>
+
+                                                {isExpired ? (
+                                                    <p className="text-red-400 font-mono text-sm font-bold uppercase tracking-wider">
+                                                        // Deposit window expired
+                                                    </p>
+                                                ) : cd ? (
+                                                    <div className="grid grid-cols-4 gap-2">
+                                                        {[
+                                                            { v: cd.days,    l: 'DAYS' },
+                                                            { v: cd.hours,   l: 'HRS'  },
+                                                            { v: cd.minutes, l: 'MIN'  },
+                                                            { v: cd.seconds, l: 'SEC'  },
+                                                        ].map(({ v, l }) => (
+                                                            <div key={l} className={cn(
+                                                                "flex flex-col items-center justify-center rounded-xl py-2 border",
+                                                                isUrgent
+                                                                    ? 'bg-red-500/10 border-red-500/30'
+                                                                    : 'bg-white/5 border-white/10'
+                                                            )}>
+                                                                <span className={cn(
+                                                                    "text-2xl font-black font-mono tabular-nums leading-none",
+                                                                    isUrgent ? 'text-red-400' : 'text-amber-400'
+                                                                )}>
+                                                                    {String(v).padStart(2, '0')}
+                                                                </span>
+                                                                <span className="text-[9px] font-mono text-slate-600 tracking-widest mt-1">{l}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : null}
+
+                                                <p className="text-[10px] font-mono text-slate-600 text-center">
+                                                    Closes: {new Date(cfg.booking_end_date).toLocaleDateString('vi-VN', {
+                                                        weekday: 'short', year: 'numeric', month: 'short',
+                                                        day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                    })}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+
                             <div className={cn(
                                 "space-y-8 backdrop-blur-2xl p-6 md:p-8 rounded-[2rem] transition-colors duration-500",
                                 isPreorder

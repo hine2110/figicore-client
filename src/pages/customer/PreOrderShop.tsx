@@ -410,10 +410,68 @@ export default function PreOrderShop() {
                                                 </div>
                                             </div>
 
-                                            {/* ETA */}
-                                            <div className="text-[9px] font-mono text-slate-600 text-center pt-2 uppercase">
-                                                ETA: {bestVariant?.product_preorder_configs?.release_date ? new Date(bestVariant.product_preorder_configs.release_date).toLocaleDateString() : 'TBA'}
-                                            </div>
+                                            {/* SLOT PROGRESS BAR */}
+                                            {(() => {
+                                                const cfg = bestVariant?.product_preorder_configs;
+                                                if (!cfg) return null;
+                                                const total = cfg.total_slots ?? 0;
+                                                const sold  = cfg.sold_slots  ?? 0;
+                                                const rem   = total - sold;
+                                                const pct   = total > 0 ? Math.min(100, Math.round((sold / total) * 100)) : 0;
+                                                const barC  = pct >= 80 ? 'bg-red-500' : pct >= 50 ? 'bg-orange-400' : 'bg-amber-500';
+
+                                                // booking deadline
+                                                const deadline = cfg.booking_end_date;
+                                                let deadlineLabel = '';
+                                                let isExpired = false;
+                                                if (deadline) {
+                                                    const diff = new Date(deadline).getTime() - Date.now();
+                                                    if (diff <= 0) {
+                                                        isExpired = true;
+                                                        deadlineLabel = 'CLOSED';
+                                                    } else {
+                                                        const d = Math.floor(diff / 86400000);
+                                                        const h = Math.floor((diff % 86400000) / 3600000);
+                                                        deadlineLabel = d > 0 ? `${d}d ${h}h left` : `${h}h left`;
+                                                    }
+                                                }
+
+                                                return (
+                                                    <div className="space-y-1.5 pt-2">
+                                                        {/* Progress row */}
+                                                        <div className="flex items-center justify-between text-[9px] font-mono">
+                                                            <span className="text-slate-600 uppercase tracking-wider">Slots</span>
+                                                            <span className={cn(
+                                                                "font-bold",
+                                                                rem <= 0 ? 'text-red-500' : pct >= 80 ? 'text-red-400' : 'text-amber-500'
+                                                            )}>
+                                                                {rem <= 0 ? 'SOLD OUT' : `${rem}/${total}`}
+                                                            </span>
+                                                        </div>
+                                                        <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
+                                                            <div
+                                                                className={cn("h-full rounded-full", barC, "transition-all duration-500")}
+                                                                style={{ width: `${pct}%` }}
+                                                            />
+                                                        </div>
+                                                        {/* Deadline */}
+                                                        {deadlineLabel && (
+                                                            <div className="flex items-center justify-end">
+                                                                <span className={cn(
+                                                                    "text-[8px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded border",
+                                                                    isExpired
+                                                                        ? 'text-red-500 border-red-500/30 bg-red-500/10'
+                                                                        : (new Date(deadline!).getTime() - Date.now()) < 2 * 86400000
+                                                                            ? 'text-red-400 border-red-400/20 bg-red-400/10 animate-pulse'
+                                                                            : 'text-slate-500 border-white/10'
+                                                                )}>
+                                                                    {deadlineLabel}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
 
 
@@ -421,6 +479,7 @@ export default function PreOrderShop() {
                                 )
                             })}
                         </div>
+
                     )}
 
                     {/* 4. PAGINATION (Industrial Style) */}
