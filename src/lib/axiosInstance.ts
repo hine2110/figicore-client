@@ -53,16 +53,21 @@ axiosInstance.interceptors.response.use(
         if (error.response?.status === 401 && !originalRequest._retry) {
 
             // 1. SAFETY CHECK: Không redirect nếu đang ở trang Login (để hiển thị lỗi sai pass)
-            if (!window.location.pathname.includes('/guest/home')) {
-                console.warn('Unauthorized (401) detected - Logging out...');
+            const currentPath = window.location.pathname;
+            if (!currentPath.includes('/guest/home') && !currentPath.includes('/guest/login')) {
+                // Added Logging to identify the culprit
+                console.warn(`[Auth] 401 Unauthorized detected at: ${originalRequest.url || 'unknown URL'}. Redirecting to login.`);
 
                 // 2. CLEANUP: Xóa mọi data xác thực
                 localStorage.removeItem('accessToken');
                 localStorage.removeItem('user');
                 localStorage.removeItem('auth-storage'); // Xóa cache của Zustand Persist
+                sessionStorage.removeItem('accessToken');
+                sessionStorage.removeItem('user');
 
                 // 3. FORCE REDIRECT: Đá về đúng trang Login của hệ thống
-                window.location.href = '/guest/home';
+                // Dùng replace để tránh quay lại trang lỗi khi bấm back
+                window.location.replace('/guest/home');
                 return Promise.reject(error); // Reject để không chạy logic tiếp theo
             }
 

@@ -58,7 +58,7 @@ const flashSaleSchema = z.object({
         }
         const breakEvenPrice = item.cost_price * (1 + opexRef.current);
         if (item.flash_sale_price < Math.ceil(breakEvenPrice)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Lỗ OPEX! Mức giá phải >= Break-even (${Math.ceil(breakEvenPrice).toLocaleString()})`, path: ['items', index, 'flash_sale_price'] });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: `OPEX Loss! Price must be >= Break-even (${Math.ceil(breakEvenPrice).toLocaleString()})`, path: ['items', index, 'flash_sale_price'] });
         }
     });
 });
@@ -479,7 +479,7 @@ export default function FlashSaleCreatePage() {
                                         <Input
                                             type="text"
                                             placeholder="Ex: 10"
-                                            value={batchQuota ? Number(batchQuota).toLocaleString('vi-VN') : ''}
+                                            value={batchQuota ? Number(batchQuota).toLocaleString('en-US') : ''}
                                             onChange={(e) => setBatchQuota(e.target.value.replace(/\D/g, ''))}
                                             className="bg-white border-orange-200 focus-visible:ring-orange-500"
                                         />
@@ -528,11 +528,11 @@ export default function FlashSaleCreatePage() {
                                                             <div className="text-xs text-slate-500 font-mono mt-1">{field.sku}</div>
                                                         </TableCell>
                                                         <TableCell className="text-center text-slate-500">
-                                                            {field.cost_price?.toLocaleString() || 0}đ
-                                                            <div className="text-[10px] text-slate-400 mt-1" title="Minimum price to avoid losing money based on OPEX setting">Break-even: {Math.ceil(field.cost_price * (1 + opexRef.current)).toLocaleString()}đ</div>
+                                                            {field.cost_price?.toLocaleString() || 0} VND
+                                                            <div className="text-[10px] text-slate-400 mt-1" title="Minimum price to avoid losing money based on OPEX setting">Break-even: {Math.ceil(field.cost_price * (1 + opexRef.current)).toLocaleString()} VND</div>
                                                         </TableCell>
                                                         <TableCell className="text-center font-medium text-slate-600">
-                                                            {field.original_price.toLocaleString()}đ
+                                                            {field.original_price.toLocaleString()} VND
                                                         </TableCell>
                                                         <TableCell className="text-center">
                                                             <span className="inline-flex px-2 py-1 rounded bg-green-100 text-green-800 font-bold text-sm">
@@ -546,7 +546,7 @@ export default function FlashSaleCreatePage() {
                                                                     <FormControl>
                                                                         <Input 
                                                                             type="text" 
-                                                                            value={f.value !== undefined && f.value !== null ? Number(f.value).toLocaleString('vi-VN') : ''}
+                                                                            value={f.value !== undefined && f.value !== null ? Number(f.value).toLocaleString('en-US') : ''}
                                                                             disabled
                                                                             className={`text-center bg-slate-50 font-semibold ${fieldState.error ? 'border-red-500 text-red-600' : 'border-orange-100 text-slate-500'}`} 
                                                                             title="Computed from Discount %"
@@ -591,7 +591,7 @@ export default function FlashSaleCreatePage() {
                                                                     <FormControl>
                                                                         <Input
                                                                             type="text"
-                                                                            value={f.value !== undefined && f.value !== null ? Number(f.value).toLocaleString('vi-VN') : ''}
+                                                                            value={f.value !== undefined && f.value !== null ? Number(f.value).toLocaleString('en-US') : ''}
                                                                             onChange={(e) => {
                                                                                 const rawValue = e.target.value.replace(/\D/g, '');
                                                                                 f.onChange(rawValue ? Number(rawValue) : 0);

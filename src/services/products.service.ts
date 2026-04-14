@@ -99,5 +99,12 @@ export const productsService = {
     visualSearch: async (image: string): Promise<any> => {
         const response = await axiosInstance.post('/products/visual-search', { image }, { timeout: 60000 });
         return response.data;
-    }
+    },
+
+    // Gia hạn thời gian đặt cọc pre-order (Warehouse Staff)
+    extendPreorderBooking: async (variantId: number): Promise<any> => {
+        const response = await axiosInstance.patch(`/products/preorder/${variantId}/extend-booking`);
+        return response.data;
+    },
 };
+

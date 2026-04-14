@@ -22,7 +22,7 @@ const formatNumberStr = (val: string | number | undefined) => {
     if (val === undefined || val === null || val === '') return '';
     const numericStr = String(val).replace(/\D/g, '');
     if (!numericStr) return '';
-    return new Intl.NumberFormat('vi-VN').format(Number(numericStr));
+    return new Intl.NumberFormat('en-US').format(Number(numericStr));
 };
 
 const VIETNAMESE_HOLIDAYS: Record<string, string> = {
@@ -360,42 +360,42 @@ export default function VoucherEditPage() {
                                             name="apply_rank_code"
                                             render={({ field }) => (
                                                 <FormItem className="col-span-full">
-                                                    <FormLabel className="text-base font-semibold">Đối tượng áp dụng</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value || "ALL"}>
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Chọn hạng khách hàng" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="ALL">
-                                                                <span className="flex items-center gap-2">👥 Tất cả khách hàng</span>
-                                                            </SelectItem>
-                                                            <SelectItem value="BRONZE">
-                                                                <span className="flex items-center gap-2">🥉 Hạng Đồng (Bronze)</span>
-                                                            </SelectItem>
-                                                            <SelectItem value="SILVER">
-                                                                <span className="flex items-center gap-2">🥈 Hạng Bạc (Silver)</span>
-                                                            </SelectItem>
-                                                            <SelectItem value="GOLD">
-                                                                <span className="flex items-center gap-2">🥇 Hạng Vàng (Gold)</span>
-                                                            </SelectItem>
-                                                            <SelectItem value="DIAMOND">
-                                                                <span className="flex items-center gap-2">💎 Hạng Kim Cương (Diamond)</span>
-                                                            </SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormDescription>
-                                                        Nếu chọn hạng cụ thể, hệ thống sẽ tự động gửi email thông báo có voucher đến các khách hàng thuộc hạng này.
-                                                    </FormDescription>
-                                                    {field.value && field.value !== 'ALL' && (
-                                                        <div className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-1">
-                                                            <span className="text-amber-600 mt-0.5">📧</span>
-                                                            <span className="text-amber-800">
-                                                                Email thông báo sẽ được gửi tự động đến tất cả khách hàng hạng <strong>{field.value}</strong> ngay khi voucher được tạo.
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                <FormLabel className="text-base font-semibold">Target Audience</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value || "ALL"}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select customer rank" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="ALL">
+                                                            <span className="flex items-center gap-2">👥 All customers</span>
+                                                        </SelectItem>
+                                                        <SelectItem value="BRONZE">
+                                                            <span className="flex items-center gap-2">🥉 Bronze Rank</span>
+                                                        </SelectItem>
+                                                        <SelectItem value="SILVER">
+                                                            <span className="flex items-center gap-2">🥈 Silver Rank</span>
+                                                        </SelectItem>
+                                                        <SelectItem value="GOLD">
+                                                            <span className="flex items-center gap-2">🥇 Gold Rank</span>
+                                                        </SelectItem>
+                                                        <SelectItem value="DIAMOND">
+                                                            <span className="flex items-center gap-2">💎 Diamond Rank</span>
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormDescription>
+                                                    If a specific rank is selected, the system will automatically send a notification email to those customers.
+                                                </FormDescription>
+                                                {field.value && field.value !== 'ALL' && (
+                                                    <div className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-1">
+                                                        <span className="text-amber-600 mt-0.5">📧</span>
+                                                        <span className="text-amber-800">
+                                                            Notification email will be sent automatically to all <strong>{field.value}</strong> rank customers upon update.
+                                                        </span>
+                                                    </div>
+                                                )}
                                                     <FormMessage />
                                                 </FormItem>
                                             )}

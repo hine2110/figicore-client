@@ -363,13 +363,14 @@ export default function Inventory() {
                                         </div>
                                         <div>
                                             <h2 className="text-xl font-bold text-neutral-900">Pre-order Items</h2>
-                                            <p className="text-sm text-neutral-500">Upcoming releases and advance bookings.</p>
+                                            <p className="text-sm text-neutral-500">Manage pre-order products mapping.</p>
                                         </div>
                                     </div>
                                     <Badge variant="secondary" className="bg-white border-neutral-200 text-neutral-600 px-3 py-1 rounded-full">
                                         {groupedProducts.PREORDER.length} Items
                                     </Badge>
                                 </div>
+
                                 <ProductList
                                     products={filters.type_code === 'PREORDER' ? displayedProducts : groupedProducts.PREORDER.slice(0, 10)}
                                     onEdit={handleEdit}
@@ -378,8 +379,8 @@ export default function Inventory() {
                                 />
                                 {groupedProducts.PREORDER.length > 10 && !filters.type_code && (
                                     <div className="flex justify-center pt-2">
-                                        <Button 
-                                            variant="ghost" 
+                                        <Button
+                                            variant="ghost"
                                             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full"
                                             onClick={() => setFilters(prev => ({ ...prev, type_code: 'PREORDER' }))}
                                         >
