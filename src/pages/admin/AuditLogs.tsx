@@ -1,147 +1,83 @@
-import { useState, useEffect } from 'react';
-import { Download, Search, Loader2, User, ShieldCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Loader2, ShieldCheck, Wifi } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { PaginationControls } from '@/components/ui/pagination-controls';
-import { adminService } from '@/services/admin.service';
-import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/services/api';
+
+const fetchOnlineUsers = async () => {
+    const res = await api.get('/dashboard/recent-activity');
+    return res.data;
+};
 
 export default function AuditLogs() {
-    const [logs, setLogs] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [page, setPage] = useState(1);
-    const [total, setTotal] = useState(0);
-    const limit = 10;
-
-    const fetchLogs = async () => {
-        setLoading(true);
-        try {
-            const response = await adminService.getAuditLogs({ page, limit });
-            if (response.success) {
-                setLogs(response.items);
-                setTotal(response.total);
-            }
-        } catch (error) {
-            console.error('Failed to fetch logs:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchLogs();
-    }, [page]);
-
-    const totalPages = Math.ceil(total / limit);
+    const { data: onlineUsers, isLoading: loadingOnline } = useQuery({
+        queryKey: ['online_users'],
+        queryFn: fetchOnlineUsers,
+        refetchInterval: 15000,
+    });
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">PII Access Audit Logs</h1>
-                    <p className="text-neutral-500">Track which staff members accessed sensitive customer data.</p>
-                </div>
-                <Button variant="outline">
-                    <Download className="w-4 h-4 mr-2" /> Export CSV
-                </Button>
-            </div>
-
-            <Card className="rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-neutral-100 flex gap-4 bg-neutral-50/50 backdrop-blur-sm">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                        <input type="text" placeholder="Search by name or email..." className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-white" />
+            {/* Active Sessions Banner */}
+            <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/60 to-slate-900/60 backdrop-blur-sm p-5">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_#4ade80]" />
+                        <h1 className="text-sm font-black uppercase tracking-widest text-indigo-300">Tài khoản đang Online</h1>
                     </div>
+                    <Badge variant="outline" className="border-green-500/30 text-green-400 text-[10px] font-mono">
+                        {loadingOnline ? '...' : onlineUsers?.length || 0} phiên
+                    </Badge>
                 </div>
-
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-neutral-50 text-neutral-500 font-medium border-b border-neutral-200">
-                            <tr>
-                                <th className="px-6 py-4">Timestamp</th>
-                                <th className="px-6 py-4">Accessor (Staff)</th>
-                                <th className="px-6 py-4">Target (Customer)</th>
-                                <th className="px-6 py-4">Fields Viewed</th>
-                                <th className="px-6 py-4">IP Address</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100 bg-white">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <Loader2 className="w-6 h-6 animate-spin text-red-500" />
-                                            <span>Loading audit logs...</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : logs.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">
-                                        No logs found.
-                                    </td>
-                                </tr>
-                            ) : (
-                                logs.map(log => (
-                                    <tr key={log.log_id} className="hover:bg-neutral-50/50 transition-colors">
-                                        <td className="px-6 py-4 text-neutral-500 font-mono text-xs">
-                                            {format(new Date(log.accessed_at), 'yyyy-MM-dd HH:mm:ss')}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-                                                    <ShieldCheck className="w-4 h-4" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-neutral-900">{log.accessor?.full_name || 'System'}</p>
-                                                    <p className="text-[10px] text-neutral-400 uppercase tracking-wider">{log.accessor?.role_code || 'N/A'}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                                                    <User className="w-4 h-4" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-neutral-900">{log.target?.full_name || 'Unknown'}</p>
-                                                    <p className="text-[10px] text-neutral-400 truncate max-w-[120px]">{log.target?.email || 'N/A'}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-wrap gap-1">
-                                                {log.fields_viewed.split(',').map((field: string) => (
-                                                    <Badge key={field} variant="outline" className="text-[10px] py-0 h-5 bg-neutral-50 text-neutral-600 border-neutral-200">
-                                                        {field.trim()}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <code className="text-[10px] px-1.5 py-0.5 bg-neutral-100 rounded text-neutral-600">
-                                                {log.ip_address || 'Unknown'}
-                                            </code>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {loadingOnline ? (
+                        <div className="flex items-center gap-2 text-indigo-400/60 col-span-full py-4">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-xs font-mono">Đang đồng bộ phiên mạng...</span>
+                        </div>
+                    ) : onlineUsers?.length === 0 ? (
+                        <span className="text-xs text-indigo-400/40 font-mono col-span-full py-4">Chưa có phiên nào đăng nhập</span>
+                    ) : onlineUsers?.map((u: any, i: number) => (
+                        <div
+                            key={i}
+                            className={`rounded-xl border p-3 space-y-2 transition-all hover:scale-[1.02] ${
+                                u.is_suspicious
+                                    ? 'bg-red-950/40 border-red-500/30'
+                                    : 'bg-white/5 border-indigo-500/20 hover:border-indigo-400/40'
+                            }`}
+                        >
+                            {/* Header row */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${
+                                        u.is_suspicious ? 'bg-red-400 animate-ping' : 'bg-green-400 shadow-[0_0_6px_#4ade80]'
+                                    }`} />
+                                    <span className="text-xs font-bold text-white truncate max-w-[120px]">{u.user}</span>
+                                </div>
+                                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                                    u.role === 'SUPER_ADMIN' ? 'bg-rose-500/20 text-rose-400' :
+                                    u.role === 'ADMIN' ? 'bg-amber-500/20 text-amber-400' :
+                                    u.role === 'STAFF' ? 'bg-blue-500/20 text-blue-400' :
+                                    'bg-indigo-500/20 text-indigo-400'
+                                }`}>{u.role}</span>
+                            </div>
+                            {/* Detail rows */}
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                    <Wifi className="w-3 h-3 text-indigo-400 shrink-0" />
+                                    <span className="text-[10px] font-mono text-neutral-400 truncate">{u.email}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <ShieldCheck className="w-3 h-3 text-neutral-500 shrink-0" />
+                                        <code className="text-[9px] font-mono text-neutral-500">{u.ip}</code>
+                                    </div>
+                                    <span className="text-[9px] font-mono text-neutral-600 shrink-0">{u.login_time}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-
-                {!loading && total > 0 && (
-                    <PaginationControls
-                        currentPage={page}
-                        totalPages={totalPages}
-                        totalItems={total}
-                        itemsPerPage={limit}
-                        onPageChange={setPage}
-                    />
-                )}
-            </Card>
+            </div>
         </div>
     );
 }
-
