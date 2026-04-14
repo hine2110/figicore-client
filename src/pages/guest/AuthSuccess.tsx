@@ -2,12 +2,14 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "@/store/useAuthStore";
 import { authService } from "@/services/auth.service";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function AuthSuccess() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const token = searchParams.get("token");
     const processingRef = useRef(false);
+    const { toast } = useToast();
 
     useEffect(() => {
         // Prevent double execution in StrictMode
@@ -32,13 +34,30 @@ export default function AuthSuccess() {
                     throw new Error("Invalid user data received");
                 }
 
-                // 3. Save User & Sync Store
+                // 3. Block staff from using Google OAuth
+                const STAFF_ROLES = ['STAFF_POS', 'STAFF_INVENTORY', 'MANAGER'];
+                if (STAFF_ROLES.includes(user.role_code)) {
+                    // Clear auth data immediately
+                    localStorage.removeItem("accessToken");
+                    localStorage.removeItem("user");
+
+                    toast({
+                        variant: "destructive",
+                        title: "Sign-in Unavailable",
+                        description: "This sign-in method is not available for your account. Please use your registered credentials.",
+                        duration: 5000,
+                    });
+
+                    navigate("/guest/home");
+                    return;
+                }
+
+                // 4. Save User & Sync Store
                 localStorage.setItem("user", JSON.stringify(user));
                 useAuthStore.getState().setUser(user);
 
-                // 4. Smart Redirect
+                // 5. Smart Redirect
                 const role = user.role_code;
-                const ADMIN_ROLES = ['SUPER_ADMIN', 'MANAGER', 'STAFF_POS', 'STAFF_INVENTORY'];
 
                 // Check for stored redirect (Local Storage based)
                 const storedRedirect = localStorage.getItem('auth_return_url');
@@ -48,7 +67,7 @@ export default function AuthSuccess() {
                     return;
                 }
 
-                if (ADMIN_ROLES.includes(role)) {
+                if (role === 'SUPER_ADMIN') {
                     navigate("/admin/dashboard");
                 } else {
                     navigate("/customer/home");
