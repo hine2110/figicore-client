@@ -88,25 +88,25 @@ export default function CollectVoucherBlock() {
                                             !v.can_collect ? 'text-slate-500' : (isFreeShip ? 'text-emerald-700' : 'text-slate-900')
                                         }`}>
                                             {isFreeShip 
-                                                ? 'Miễn phí vận chuyển'
+                                                ? 'Free Shipping'
                                                 : v.discount_type === 'PERCENTAGE' 
-                                                    ? `Giảm ${v.discount_value}%` 
-                                                    : `Giảm ${new Intl.NumberFormat('vi-VN').format(Number(v.discount_value))}đ`
+                                                    ? `Discount ${v.discount_value}%` 
+                                                    : `Discount ${new Intl.NumberFormat('vi-VN').format(Number(v.discount_value))}đ`
                                             }
                                         </h4>
                                         <div className="flex flex-col gap-0.5">
                                             {!v.can_collect && v.apply_rank_code && (
                                                 <p className="text-[10px] text-rose-500 font-bold uppercase tracking-tight">
-                                                    Yêu cầu hạng {v.apply_rank_code}
+                                                    Requires {v.apply_rank_code} Tier
                                                 </p>
                                             )}
                                             {!isFreeShip && Number(v.max_discount_amount || 0) > 0 && (
                                                 <p className="text-[11px] text-orange-600 font-medium">
-                                                    Tối đa {new Intl.NumberFormat('vi-VN').format(Number(v.max_discount_amount))}đ
+                                                    Max {new Intl.NumberFormat('vi-VN').format(Number(v.max_discount_amount))}đ
                                                 </p>
                                             )}
                                             <p className="text-[11px] text-slate-500">
-                                                Đơn tối thiểu {new Intl.NumberFormat('vi-VN').format(Number(v.min_order_value || 0))}đ
+                                                Min order {new Intl.NumberFormat('vi-VN').format(Number(v.min_order_value || 0))}đ
                                             </p>
                                         </div>
                                     </div>
@@ -126,9 +126,9 @@ export default function CollectVoucherBlock() {
                                         {collectMutation.isPending && collectMutation.variables === v.promotion_id ? (
                                             <Loader2 className="w-3 h-3 animate-spin" />
                                         ) : (
-                                            v.is_collected ? 'Đã Lưu' : 
-                                            !v.can_collect ? 'Khóa' :
-                                            v.is_out_of_stock ? 'Hết' : 'Lưu'
+                                            v.is_collected ? 'Saved' : 
+                                            !v.can_collect ? 'Locked' :
+                                            v.is_out_of_stock ? 'Out' : 'Save'
                                         )}
                                     </Button>
                                 </div>
@@ -139,7 +139,7 @@ export default function CollectVoucherBlock() {
                                     </span>
                                     {v.end_date && (
                                         <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                                            HSD: {new Date(v.end_date).toLocaleDateString('vi-VN')}
+                                            EXP: {new Date(v.end_date).toLocaleDateString('en-US')}
                                         </span>
                                     )}
                                 </div>
