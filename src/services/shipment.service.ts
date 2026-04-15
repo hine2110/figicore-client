@@ -7,6 +7,10 @@ export const shipmentService = {
         const response = await axiosInstance.get('/orders?status=PROCESSING');
         return response.data;
     },
+    getPackingHistory: async () => {
+        const response = await axiosInstance.get('/orders?status=PACKED');
+        return response.data;
+    },
 
     uploadVideo: async (file: File) => {
         const formData = new FormData();
