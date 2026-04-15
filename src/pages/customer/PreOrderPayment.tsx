@@ -22,6 +22,7 @@ export default function PreOrderPayment() {
     const [wallet, setWallet] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [alreadyPaid, setAlreadyPaid] = useState(false);
 
     // Form State
     const [selectedAddress, setSelectedAddress] = useState<any>(null);
@@ -88,11 +89,17 @@ export default function PreOrderPayment() {
                     walletService.getMyWallet()
                 ]);
                 setContract(contractRes);
-                setWallet(walletRes.data || walletRes); // Handle potential ApiResponse wrapper
+                setWallet(walletRes.data || walletRes);
+
+                // ✅ Guard: If contract already COMPLETED, show paid state
+                if (contractRes.status_code === 'COMPLETED') {
+                    setAlreadyPaid(true);
+                    setLoading(false);
+                    return;
+                }
 
                 // Pre-fill Address
                 if (contractRes.deposit_order?.addresses) {
-                    console.log("[PreOrderPayment] Auto-filling address from Deposit Order:", contractRes.deposit_order.addresses);
                     setSelectedAddress(contractRes.deposit_order.addresses);
                 }
             } catch (error) {
@@ -134,8 +141,8 @@ export default function PreOrderPayment() {
                 setPaymentRef(res.payment_ref_code);
                 setShowQRModal(true);
             } else {
-                toast({ title: "Success", description: "Payment confirmed! Order is now processing.", className: "bg-green-600 text-white" });
-                navigate('/customer/orders/all');
+                toast({ title: "Payment Successful! 🎉", description: "Your order is now being prepared for shipping.", className: "bg-green-600 text-white" });
+                navigate('/customer/order-success');
             }
         } catch (error: any) {
             console.error(error);
@@ -147,6 +154,43 @@ export default function PreOrderPayment() {
 
     if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-neutral-400" /></div>;
     if (!contract) return <div className="p-10 text-center">Contract not found</div>;
+
+    // ✅ Already paid state — shown when customer reopens the Pay Now link after completing payment
+    if (alreadyPaid) {
+        const variant = contract.product_variants;
+        const product = variant?.products;
+        return (
+            <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center px-4 font-sans">
+                <div className="max-w-md w-full bg-white rounded-[28px] shadow-[0_8px_40px_rgb(0,0,0,0.08)] p-10 text-center space-y-6">
+                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+                        <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Order Completed!</h2>
+                        <p className="text-slate-500 text-sm mt-2">You have already paid in full for this pre-order. Our warehouse team will ship it shortly.</p>
+                    </div>
+                    {product && (
+                        <div className="bg-slate-50 rounded-2xl p-4 text-left border border-slate-100">
+                            <p className="text-xs text-slate-400 uppercase tracking-wider font-bold mb-1">Item</p>
+                            <p className="font-bold text-slate-900">{product.name}</p>
+                            <p className="text-sm text-slate-500">{variant?.option_name} • Qty: {contract.quantity}</p>
+                        </div>
+                    )}
+                    <div className="flex flex-col gap-3">
+                        <Button
+                            className="w-full h-12 rounded-xl bg-slate-900 hover:bg-black text-white font-bold"
+                            onClick={() => navigate('/customer/profile')}
+                        >
+                            View My Orders
+                        </Button>
+                        <Button variant="ghost" className="text-slate-400 text-sm" onClick={() => navigate('/customer/home')}>
+                            Back to Home
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const variant = contract.product_variants;
     const product = variant?.products;

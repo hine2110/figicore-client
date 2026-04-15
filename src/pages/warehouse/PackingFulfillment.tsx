@@ -4,6 +4,9 @@ import { toast } from "@/components/ui/use-toast";
 import { PackingQueue } from "@/components/warehouse/packing/PackingQueue";
 import { PackingStation } from "@/components/warehouse/packing/PackingStation";
 import { PackingOrder } from "@/types/packing";
+import { PackingHistory } from "@/components/warehouse/packing/PackingHistory";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Package, History } from "lucide-react";
 
 export default function PackingFulfillment() {
     const [queue, setQueue] = useState<PackingOrder[]>([]);
@@ -12,6 +15,9 @@ export default function PackingFulfillment() {
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [isPacking, setIsPacking] = useState(false);
+    const [activeTab, setActiveTab] = useState("queue");
+    const [history, setHistory] = useState<any[]>([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
     // AUDIO REF for Notification
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -20,7 +26,6 @@ export default function PackingFulfillment() {
         setIsLoadingQueue(true);
         try {
             const data = await shipmentService.getProcessingOrders();
-            // --- REALTIME SOUND CHECK ---
             if (data.length > queue.length && queue.length > 0) {
                 playNotificationSound();
             }
@@ -29,6 +34,18 @@ export default function PackingFulfillment() {
             console.error("Fetch Queue Failed", error);
         } finally {
             setIsLoadingQueue(false);
+        }
+    };
+
+    const fetchHistory = async () => {
+        setIsLoadingHistory(true);
+        try {
+            const data = await shipmentService.getPackingHistory();
+            setHistory(data);
+        } catch (error) {
+            console.error("Fetch History Failed", error);
+        } finally {
+            setIsLoadingHistory(false);
         }
     };
 
@@ -92,6 +109,7 @@ export default function PackingFulfillment() {
 
             // Re-fetch to sync
             fetchQueue();
+            fetchHistory(); // Also sync history
         } catch (error: any) {
             toast({ variant: "destructive", title: "Packing Failed", description: error.message });
         } finally {
@@ -100,37 +118,74 @@ export default function PackingFulfillment() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-neutral-100 font-sans">
-            <PackingQueue
-                queue={queue}
-                selectedOrderId={selectedOrder?.order_id || null}
-                onSelectOrder={handleSelectOrder}
-                isLoading={isLoadingQueue}
-            />
+        <div className="flex bg-neutral-100 flex-col h-[calc(100vh-64px)] w-full overflow-hidden font-sans">
+            {/* Global Tab Switcher */}
+            <div className="bg-white border-b border-neutral-200 px-6 py-2 flex items-center justify-between shadow-sm z-20">
+                <Tabs value={activeTab} onValueChange={(v) => {
+                    setActiveTab(v);
+                    if (v === 'history') fetchHistory();
+                    if (v === 'queue') fetchQueue();
+                }} className="w-[400px]">
+                    <TabsList className="grid w-full grid-cols-2 bg-neutral-100/50 p-1 rounded-xl">
+                        <TabsTrigger value="queue" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2 font-bold">
+                            <Package className="w-4 h-4" />
+                            Live Queue
+                        </TabsTrigger>
+                        <TabsTrigger value="history" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2 font-bold">
+                            <History className="w-4 h-4" />
+                            Packing History
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
 
-            <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-                {selectedOrder ? (
-                    <PackingStation
-                        key={selectedOrder.order_id} // Force remount on order change
-                        order={selectedOrder}
-                        onConfirm={handleConfirmPacking}
-                        onUpload={handleUpload}
-                        isUploading={isUploading}
-                        isPacking={isPacking}
-                        videoUrl={videoUrl}
-                    />
-                ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-neutral-400 bg-neutral-50/50">
-                        <div className="text-center">
-                            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm mx-auto">
-                                <span className="text-4xl">📦</span>
-                            </div>
-                            <h3 className="text-xl font-medium text-slate-600">No Order Selected</h3>
-                            <p className="text-slate-400 mt-2">Select an order from the queue to start packing.</p>
-                        </div>
+                <div className="flex items-center gap-4">
+                    <div className="text-right">
+                        <p className="text-[10px] uppercase font-black text-neutral-400 tracking-widest">Warehouse Monitor</p>
+                        <p className="text-sm font-bold text-neutral-600">Active Session</p>
                     </div>
+                </div>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden">
+                {activeTab === "queue" ? (
+                    <>
+                        <PackingQueue
+                            queue={queue}
+                            selectedOrderId={selectedOrder?.order_id || null}
+                            onSelectOrder={handleSelectOrder}
+                            isLoading={isLoadingQueue}
+                        />
+
+                        <div className="flex-1 flex flex-col h-full overflow-hidden relative border-l border-neutral-200">
+                            {selectedOrder ? (
+                                <PackingStation
+                                    key={selectedOrder.order_id}
+                                    order={selectedOrder}
+                                    onConfirm={handleConfirmPacking}
+                                    onUpload={handleUpload}
+                                    isUploading={isUploading}
+                                    isPacking={isPacking}
+                                    videoUrl={videoUrl}
+                                />
+                            ) : (
+                                <div className="absolute inset-0 flex items-center justify-center text-neutral-400 bg-neutral-50/50">
+                                    <div className="text-center">
+                                        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm mx-auto">
+                                            <span className="text-4xl">📦</span>
+                                        </div>
+                                        <h3 className="text-xl font-medium text-slate-600">No Order Selected</h3>
+                                        <p className="text-slate-400 mt-2">Select an order from the queue to start packing.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                ) : (
+                    <PackingHistory history={history} isLoading={isLoadingHistory} />
                 )}
             </div>
+
+            <audio ref={audioRef} />
         </div>
     );
 }

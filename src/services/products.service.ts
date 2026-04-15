@@ -104,5 +104,12 @@ export const productsService = {
     getPublicBanners: async (): Promise<ApiResponse<any[]>> => {
         const response = await axiosInstance.get('/system/banners');
         return response.data;
-    }
+    },
+
+    // Gia hạn thời gian đặt cọc pre-order (Warehouse Staff)
+    extendPreorderBooking: async (variantId: number): Promise<any> => {
+        const response = await axiosInstance.patch(`/products/preorder/${variantId}/extend-booking`);
+        return response.data;
+    },
 };
+

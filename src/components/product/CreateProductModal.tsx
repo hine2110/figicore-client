@@ -603,7 +603,8 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                                                 <TableRow className="h-8 hover:bg-transparent">
                                                     <TableHead className="h-8 py-0 font-bold text-purple-900">Zone / Tier Name</TableHead>
                                                     <TableHead className="h-8 py-0 font-bold text-purple-900">Chance</TableHead>
-                                                    <TableHead className="h-8 py-0 font-bold text-purple-900 text-center">In Stock</TableHead>
+                                                    <TableHead className="h-8 py-0 font-bold text-purple-900 text-center">Good</TableHead>
+                                                    <TableHead className="h-8 py-0 font-bold text-purple-900 text-center">Defect</TableHead>
                                                     <TableHead className="h-8 py-0 font-bold text-purple-900">Value Range</TableHead>
                                                 </TableRow>
                                             </TableHeader>
@@ -616,7 +617,10 @@ function ProductDetailView({ product, onClose, onSuccess }: { product: any, onCl
                                                             <TableCell className="py-1 font-semibold">{tier.name || `Zone ${idx + 1}`}</TableCell>
                                                             <TableCell className="py-1 text-purple-700 font-bold whitespace-nowrap">{tier.probability}%</TableCell>
                                                             <TableCell className="py-1 text-center font-bold text-blue-600">
-                                                                {tier.stock_count ?? 0}
+                                                                {tier.stock_good ?? 0}
+                                                            </TableCell>
+                                                            <TableCell className="py-1 text-center font-bold text-orange-600">
+                                                                {tier.stock_defect ?? 0}
                                                             </TableCell>
                                                             <TableCell className="py-1">
                                                                 {formatPrice(tier.min || tier.value_min)} - {formatPrice(tier.max || tier.value_max)}
@@ -760,9 +764,22 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
             if (p.type_code === 'RETAIL' || p.type_code === 'AUCTION') {
                 formValues.variants = p.product_variants?.map((v: any) => ({
-                    option_name: v.option_name, price: Number(v.price), cost_price: Number(v.cost_price || 0), sku: v.sku, media_assets: v.media_assets || [], description: v.description || "",
-                    weight_g: v.weight_g || 200, length_cm: v.length_cm || 10, width_cm: v.width_cm || 10, height_cm: v.height_cm || 10
-                })) || [{ option_name: "Standard", price: 0, cost_price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }];
+                    option_name: v.option_name, 
+                    price: Number(v.price), 
+                    cost_price: Number(v.cost_price || 0), 
+                    sku: v.sku, 
+                    media_assets: v.media_assets || [], 
+                    description: v.description || "",
+                    weight_g: v.weight_g || 200, 
+                    length_cm: v.length_cm || 10, 
+                    width_cm: v.width_cm || 10, 
+                    height_cm: v.height_cm || 10,
+                    scale: v.scale || "",
+                    material: v.material || "",
+                    included_items: Array.isArray(v.included_items) ? v.included_items.join(', ') : (v.included_items || ""),
+                    stock_available: v.stock_available || 0,
+                    stock_defect: v.stock_defect || 0
+                })) || [{ option_name: "Standard", price: 0, cost_price: 0, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "", stock_available: 0, stock_defect: 0 }];
             } else if (p.type_code === 'BLINDBOX') {
                 const bb = p.product_blindboxes?.[0];
                 if (bb) {
@@ -782,14 +799,21 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                 formValues.variants = p.product_variants?.map((v: any) => ({
                     option_name: v.option_name,
                     price: Number(v.price), // Full Price
+                    cost_price: Number(v.cost_price || 0),
                     deposit_amount: Number(v.deposit_amount || 0),
                     slot_limit: v.preorder_slot_limit || 0,
                     max_qty_per_user: v.max_qty_per_user || 2,
                     sku: v.sku,
                     media_assets: v.media_assets || [],
                     description: v.description || "",
-                    weight_g: v.weight_g || 200, length_cm: v.length_cm || 10, width_cm: v.width_cm || 10, height_cm: v.height_cm || 10
-                })) || [{ option_name: "Standard", price: 0, deposit_amount: 0, slot_limit: 50, max_qty_per_user: 2, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10 }];
+                    weight_g: v.weight_g || 200, 
+                    length_cm: v.length_cm || 10, 
+                    width_cm: v.width_cm || 10, 
+                    height_cm: v.height_cm || 10,
+                    scale: v.scale || "",
+                    material: v.material || "",
+                    included_items: Array.isArray(v.included_items) ? v.included_items.join(', ') : (v.included_items || ""),
+                })) || [{ option_name: "Standard", price: 0, deposit_amount: 0, slot_limit: 50, max_qty_per_user: 2, sku: `SKU-${Date.now()}`, media_assets: [], description: "", weight_g: 200, length_cm: 10, width_cm: 10, height_cm: 10, scale: "", material: "", included_items: "" }];
             }
             form.reset(formValues);
         } else if (open && !productToEdit) {
@@ -1011,24 +1035,23 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
             if (data.type_code === "RETAIL" || data.type_code === "AUCTION") {
                 payload.variants = data.variants.map((v: any) => {
                     const variant: any = {
+                        variant_id: v.variant_id, // Important for backend updates
                         option_name: v.option_name,
                         price: v.price || 0,
                         sku: v.sku,
                         media_assets: v.media_assets,
                         description: v.description,
-                        stock_available: 0,
+                        stock_available: v.stock_available || 0, // DON'T FORCE 0
+                        stock_defect: v.stock_defect || 0,
+                        cost_price: v.cost_price || 0,
                         weight_g: v.weight_g,
                         length_cm: v.length_cm,
                         width_cm: v.width_cm,
                         height_cm: v.height_cm,
                         scale: v.scale,
                         material: v.material,
-                        included_items: v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : []
+                        included_items: Array.isArray(v.included_items) ? v.included_items : (v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : [])
                     };
-
-                    if (data.type_code === "RETAIL") {
-                        variant.cost_price = v.cost_price || 0;
-                    }
 
                     return variant;
                 });
@@ -1043,15 +1066,19 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                     // Clean up: Removed deposit & max_slots from here (Moved to Variants)
                 };
                 payload.variants = data.variants.map((v: any) => ({
+                    variant_id: v.variant_id, // Important for backend updates
                     option_name: v.option_name,
                     price: 0,                         // Retail Price is 0
-                    stock_available: 0,               // Physical Stock is 0 initially
+                    stock_available: v.stock_available || 0,
+                    cost_price: v.cost_price || 0,
                     sku: v.sku,
                     media_assets: v.media_assets,
                     description: v.description,
                     weight_g: v.weight_g,
                     length_cm: v.length_cm, width_cm: v.width_cm, height_cm: v.height_cm,
-                    scale: v.scale, material: v.material, included_items: v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : [],
+                    scale: v.scale, 
+                    material: v.material, 
+                    included_items: Array.isArray(v.included_items) ? v.included_items : (v.included_items ? v.included_items.split(',').map((s: string) => s.trim()) : []),
 
                     // NEW: Nested Pre-order Definition
                     preorder_config: {
@@ -1388,46 +1415,11 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
                                                                     </div>
                                                                     <h4 className="text-[10px] uppercase font-bold tracking-wider text-blue-900">Value Specs (Probabilities)</h4>
                                                                 </div>
-                                                                <Button 
-                                                                    type="button" 
-                                                                    onClick={handleSuggestBlindboxPrice}
-                                                                    disabled={isAnalyzingPrice}
-                                                                    className="h-8 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-md shadow-pink-500/20 gap-1 rounded-xl text-xs px-3"
-                                                                >
-                                                                    {isAnalyzingPrice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-yellow-300" />}
-                                                                    AI Analyze & Suggest Price
-                                                                </Button>
                                                             </div>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                 <FormField control={form.control} name="min_value_allow" render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold">Min Value (Common) <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
                                                                 <FormField control={form.control} name="max_value_allow" render={({ field }) => (<FormItem><FormLabel className="text-xs font-bold">Max Value (Secret) <span className="text-red-500">*</span></FormLabel><FormControl><FormattedNumberInput field={field} /></FormControl><FormMessage /></FormItem>)} />
                                                             </div>
-
-                                                            {/* AI Risk Output Box */}
-                                                            {pricingSuggestion && (
-                                                                <div className="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg p-4 animate-in fade-in slide-in-from-top-2">
-                                                                    <div className="flex justify-between items-start">
-                                                                        <div>
-                                                                            <h5 className="text-[11px] uppercase font-bold text-indigo-800 flex items-center gap-1"><Sparkles className="w-3 h-3"/> Chuyên gia Định giá (AI Actuary)</h5>
-                                                                            <p className="text-xs text-indigo-600 mt-1">{pricingSuggestion.explanation}</p>
-                                                                        </div>
-                                                                        <div className="text-right ml-4 shrink-0">
-                                                                            <p className="text-[10px] text-indigo-400">Kỳ Vọng Toán Học (EV)</p>
-                                                                            <p className="font-bold text-indigo-900">{formatPrice(pricingSuggestion.expectedValue)}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                                                                        <div className="bg-white p-2 rounded border border-indigo-50 flex items-center justify-between">
-                                                                            <span className="text-neutral-500">Break-even (Hòa Vốn):</span>
-                                                                            <span className="font-medium text-amber-600">{formatPrice(pricingSuggestion.breakEvenPoint)}</span>
-                                                                        </div>
-                                                                        <div className="bg-white p-2 rounded border border-indigo-50 flex items-center justify-between">
-                                                                            <span className="text-neutral-500">Khuyến nghị Giá vé:</span>
-                                                                            <span className="font-medium text-green-600">{formatPrice(pricingSuggestion.recommendedTicketPrice)}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     </div>
                                                     {/* Campaign Schedule */}

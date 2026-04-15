@@ -76,14 +76,14 @@ export default function PromotionListPage() {
                                     <TableCell>
                                         {promo.type_code === 'PERCENTAGE' 
                                             ? `${Number(promo.value)}%` 
-                                            : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(promo.value))}
+                                            : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(Number(promo.value))}
                                     </TableCell>
                                     <TableCell className="text-sm">
                                         <div className="font-medium text-slate-800">
                                             {promo.start_time} – {promo.end_time} {promo.is_recurring && <span className="text-orange-600 text-xs">(Daily)</span>}
                                         </div>
                                         <div className="text-xs text-slate-500 mt-0.5">
-                                            {promo.start_date ? new Date(promo.start_date).toLocaleDateString('vi-VN') : 'Any'} → {promo.end_date ? new Date(promo.end_date).toLocaleDateString('vi-VN') : 'Any'}
+                                            {promo.start_date ? new Date(promo.start_date).toLocaleDateString('en-US') : 'Any'} → {promo.end_date ? new Date(promo.end_date).toLocaleDateString('en-US') : 'Any'}
                                         </div>
                                     </TableCell>
                                     <TableCell>

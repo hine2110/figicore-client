@@ -67,7 +67,7 @@ export default function CorrectionApprovals() {
             const res = await axiosInstance.get('/timesheet-corrections', { params });
             setCorrections(res.data || []);
         } catch (error) {
-            toast({ title: "Lỗi", description: "Không thể tải danh sách khiếu nại", variant: "destructive" });
+            toast({ title: "Error", description: "Failed to load correction requests", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -97,7 +97,7 @@ export default function CorrectionApprovals() {
         if (!selectedItem) return;
 
         if (reviewAction === 'APPROVED' && (!adjustedHours || isNaN(Number(adjustedHours)))) {
-            toast({ title: "Lỗi", description: "Vui lòng nhập số giờ làm thực tế hợp lệ.", variant: "destructive" });
+            toast({ title: "Error", description: "Please enter a valid number of hours.", variant: "destructive" });
             return;
         }
 
@@ -115,7 +115,7 @@ export default function CorrectionApprovals() {
             }
 
             await axiosInstance.patch(`/timesheet-corrections/${selectedItem.correction_id}/review`, payload);
-            toast({ title: "Thành công", description: `Đã ${reviewAction === 'APPROVED' ? 'duyệt' : 'từ chối'} khiếu nại.` });
+            toast({ title: "Success", description: `Correction request has been ${reviewAction === 'APPROVED' ? 'approved' : 'rejected'}.` });
             setReviewModalOpen(false);
             fetchCorrections();
         } catch (error: any) {
@@ -132,9 +132,9 @@ export default function CorrectionApprovals() {
     // --- Helpers ---
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'APPROVED': return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Đã duyệt</Badge>;
-            case 'REJECTED': return <Badge variant="destructive" className="bg-red-100 text-red-700 hover:bg-red-100">Từ chối</Badge>;
-            default: return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Chờ duyệt</Badge>;
+            case 'APPROVED': return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Approved</Badge>;
+            case 'REJECTED': return <Badge variant="destructive" className="bg-red-100 text-red-700 hover:bg-red-100">Rejected</Badge>;
+            default: return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>;
         }
     };
 
@@ -142,8 +142,8 @@ export default function CorrectionApprovals() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Duyệt Sửa Giờ Công</h1>
-                    <p className="text-neutral-500 text-sm mt-0.5">Xử lý các khiếu nại về chấm công (Quên check-out, đi trễ, v.v...)</p>
+                    <h1 className="text-2xl font-bold text-neutral-900">Attendance Correction Approval</h1>
+                    <p className="text-neutral-500 text-sm mt-0.5">Handle attendance appeals (Forgotten check-out, lateness, etc.)</p>
                 </div>
             </div>
 
@@ -152,20 +152,20 @@ export default function CorrectionApprovals() {
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Filter className="w-4 h-4 text-neutral-500" />
-                        <span className="text-sm font-medium text-neutral-700">Trạng thái:</span>
+                        <span className="text-sm font-medium text-neutral-700">Status:</span>
                     </div>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                         <SelectTrigger className="w-[180px] bg-white">
                             <SelectValue placeholder="Lọc" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="PENDING">Chờ duyệt</SelectItem>
-                            <SelectItem value="APPROVED">Đã duyệt</SelectItem>
-                            <SelectItem value="REJECTED">Từ chối</SelectItem>
-                            <SelectItem value="ALL">Tất cả</SelectItem>
+                            <SelectItem value="PENDING">Pending</SelectItem>
+                            <SelectItem value="APPROVED">Approved</SelectItem>
+                            <SelectItem value="REJECTED">Rejected</SelectItem>
+                            <SelectItem value="ALL">All</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Button variant="outline" size="sm" onClick={fetchCorrections} className="ml-auto bg-white">Làm mới</Button>
+                    <Button variant="outline" size="sm" onClick={fetchCorrections} className="ml-auto bg-white">Refresh</Button>
                 </div>
             </Card>
 
@@ -175,17 +175,17 @@ export default function CorrectionApprovals() {
                     {loading ? (
                         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
                     ) : corrections.length === 0 ? (
-                        <div className="text-center py-12 text-neutral-400 text-sm">Không có khiếu nại nào.</div>
+                        <div className="text-center py-12 text-neutral-400 text-sm">No correction requests found.</div>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-neutral-50">
-                                    <TableHead>Nhân viên</TableHead>
-                                    <TableHead>Ca làm bị lỗi</TableHead>
-                                    <TableHead>Dữ liệu hệ thống</TableHead>
-                                    <TableHead className="w-[250px]">Lý do & Bằng chứng</TableHead>
-                                    <TableHead className="text-center">Trạng thái</TableHead>
-                                    <TableHead className="text-right">Hành động</TableHead>
+                                    <TableHead>Employee</TableHead>
+                                    <TableHead>Faulty Shift</TableHead>
+                                    <TableHead>System Data</TableHead>
+                                    <TableHead className="w-[250px]">Reason & Evidence</TableHead>
+                                    <TableHead className="text-center">Status</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -196,20 +196,20 @@ export default function CorrectionApprovals() {
                                             <div className="text-xs text-neutral-500">{item.employees?.users?.email}</div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="font-semibold text-sm">Ca {item.timesheets.work_schedules.shift_code}</div>
+                                            <div className="font-semibold text-sm">Shift {item.timesheets.work_schedules.shift_code}</div>
                                             <div className="text-xs text-neutral-500">
                                                 {format(new Date(item.timesheets.work_schedules.date), 'dd/MM/yyyy')}
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className="mb-1">{item.timesheets.status_code}</Badge>
-                                            <div className="text-xs text-neutral-600 mt-1">Giờ đã ghi nhận: {item.timesheets.real_work_hours}h</div>
+                                            <div className="text-xs text-neutral-600 mt-1">Recorded: {item.timesheets.real_work_hours}h</div>
                                         </TableCell>
                                         <TableCell>
                                             <p className="text-sm text-neutral-700 line-clamp-2">{item.reason}</p>
                                             {item.evidence_url && (
                                                 <Button variant="link" size="sm" className="h-auto p-0 mt-1 text-xs" onClick={() => openEvidence(item.evidence_url!)}>
-                                                    <ImageIcon className="w-3 h-3 mr-1" /> Xem ảnh
+                                                    <ImageIcon className="w-3 h-3 mr-1" /> View Image
                                                 </Button>
                                             )}
                                         </TableCell>
@@ -218,14 +218,14 @@ export default function CorrectionApprovals() {
                                             {item.status_code === 'PENDING' ? (
                                                 <div className="flex justify-end gap-2">
                                                     <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8" onClick={() => handleOpenReview(item, 'APPROVED')}>
-                                                        <CheckCircle2 className="w-4 h-4 mr-1" /> Duyệt
+                                                        <CheckCircle2 className="w-4 h-4 mr-1" /> Approve
                                                     </Button>
                                                     <Button size="sm" variant="destructive" className="h-8" onClick={() => handleOpenReview(item, 'REJECTED')}>
-                                                        <XCircle className="w-4 h-4 mr-1" /> Bỏ
+                                                        <XCircle className="w-4 h-4 mr-1" /> Reject
                                                     </Button>
                                                 </div>
                                             ) : (
-                                                <span className="text-xs text-neutral-400 italic">Đã xử lý</span>
+                                                <span className="text-xs text-neutral-400 italic">Processed</span>
                                             )}
                                         </TableCell>
                                     </TableRow>
@@ -240,11 +240,11 @@ export default function CorrectionApprovals() {
             <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{reviewAction === 'APPROVED' ? 'Duyệt & Chỉnh Sửa Giờ' : 'Từ chối khiếu nại'}</DialogTitle>
+                        <DialogTitle>{reviewAction === 'APPROVED' ? 'Approve & Adjust Hours' : 'Reject Request'}</DialogTitle>
                         <DialogDescription>
                             {reviewAction === 'APPROVED'
-                                ? 'Hệ thống sẽ cập nhật lại số giờ làm và trạng thái cho ca này dựa trên thông số bạn nhập.'
-                                : 'Vui lòng nhập lý do từ chối để nhân viên biết.'}
+                                ? 'The system will update the work hours and status for this shift based on your input.'
+                                : 'Please provide a reason for the rejection so the employee is informed.'}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -253,41 +253,41 @@ export default function CorrectionApprovals() {
                             <>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Giờ làm thực tế mới (h) <span className="text-red-500">*</span></Label>
+                                        <Label>New Actual Work Hours (h) <span className="text-red-500">*</span></Label>
                                         <Input
                                             type="number"
                                             step="0.5"
-                                            placeholder="Vd: 4"
+                                            placeholder="Ex: 4"
                                             value={adjustedHours}
                                             onChange={(e) => setAdjustedHours(e.target.value)}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Trạng thái mới <span className="text-red-500">*</span></Label>
+                                        <Label>New Status <span className="text-red-500">*</span></Label>
                                         <Select value={adjustedStatus} onValueChange={setAdjustedStatus}>
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="COMPLETED">Hoàn thành (COMPLETED)</SelectItem>
-                                                <SelectItem value="LATE">Đi trễ (LATE)</SelectItem>
-                                                <SelectItem value="EARLY_LEAVE">Về sớm (EARLY_LEAVE)</SelectItem>
-                                                <SelectItem value="MISSING">Quên Check-out (MISSING)</SelectItem>
+                                                <SelectItem value="COMPLETED">Completed (COMPLETED)</SelectItem>
+                                                <SelectItem value="LATE">Late (LATE)</SelectItem>
+                                                <SelectItem value="EARLY_LEAVE">Early Leave (EARLY_LEAVE)</SelectItem>
+                                                <SelectItem value="MISSING">Missing Check-out (MISSING)</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                 </div>
                                 <div className="bg-blue-50 text-blue-800 text-xs p-3 rounded-md border border-blue-100 flex items-start gap-2">
                                     <AlertTriangle className="w-4 h-4 shrink-0" />
-                                    <span>Bạn đang chỉnh sửa từ <b>{selectedItem?.timesheets.real_work_hours}h</b> ({selectedItem?.timesheets.status_code}) thành <b>{adjustedHours || '?'}h</b> ({adjustedStatus}).</span>
+                                    <span>You are adjusting from <b>{selectedItem?.timesheets.real_work_hours}h</b> ({selectedItem?.timesheets.status_code}) to <b>{adjustedHours || '?'}h</b> ({adjustedStatus}).</span>
                                 </div>
                             </>
                         )}
 
                         <div className="space-y-2">
-                            <Label>Ghi chú của quản lý {reviewAction === 'REJECTED' && <span className="text-red-500">*</span>}</Label>
+                            <Label>Manager Note {reviewAction === 'REJECTED' && <span className="text-red-500">*</span>}</Label>
                             <Textarea
-                                placeholder="Nhập phản hồi cho nhân viên..."
+                                placeholder="Enter feedback for employee..."
                                 value={managerNote}
                                 onChange={(e) => setManagerNote(e.target.value)}
                             />
@@ -295,13 +295,13 @@ export default function CorrectionApprovals() {
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setReviewModalOpen(false)}>Hủy</Button>
+                        <Button variant="outline" onClick={() => setReviewModalOpen(false)}>Cancel</Button>
                         <Button
                             variant={reviewAction === 'APPROVED' ? 'default' : 'destructive'}
                             onClick={submitReview}
                             disabled={submitLoading}
                         >
-                            {submitLoading ? "Đang xử lý..." : "Xác nhận lưu"}
+                            {submitLoading ? "Processing..." : "Confirm Save"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -310,9 +310,9 @@ export default function CorrectionApprovals() {
             {/* Modal Xem Ảnh */}
             <Dialog open={evidenceModalOpen} onOpenChange={setEvidenceModalOpen}>
                 <DialogContent className="sm:max-w-[600px]">
-                    <DialogHeader><DialogTitle>Bằng chứng khiếu nại</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>Correction Evidence</DialogTitle></DialogHeader>
                     <div className="flex justify-center p-2 bg-neutral-100 rounded-md border">
-                        {selectedEvidenceUrl && <img src={selectedEvidenceUrl} alt="Evident" className="max-w-full max-h-[60vh] object-contain rounded" />}
+                        {selectedEvidenceUrl && <img src={selectedEvidenceUrl || undefined} alt="Evident" className="max-w-full max-h-[60vh] object-contain rounded" />}
                     </div>
                 </DialogContent>
             </Dialog>

@@ -64,9 +64,12 @@ export default function CollectVoucherBlock() {
                     const isFreeShip = v.discount_type === 'FREE_SHIP';
                     
                     return (
-                        <div key={v.promotion_id} className="ticket-container group hover:shadow-lg transition-all duration-300">
+                        <div 
+                            key={v.promotion_id} 
+                            className={`ticket-container group hover:shadow-lg transition-all duration-300 ${!v.can_collect ? 'opacity-75 grayscale-[0.5]' : ''}`}
+                        >
                             {/* Left Section (Brand/Icon) */}
-                            <div className={`ticket-left ${isFreeShip ? 'ticket-left-freeship' : 'ticket-left-discount'}`}>
+                            <div className={`ticket-left ${isFreeShip ? 'ticket-left-freeship' : 'ticket-left-discount'} ${!v.can_collect ? 'bg-slate-400 grayscale' : ''}`}>
                                 {isFreeShip ? (
                                     <Truck className="w-8 h-8 mb-1" />
                                 ) : (
@@ -81,22 +84,29 @@ export default function CollectVoucherBlock() {
                             <div className="ticket-right">
                                 <div className="flex justify-between items-start mb-1">
                                     <div className="space-y-0.5">
-                                        <h4 className={`font-bold text-sm md:text-base leading-tight ${isFreeShip ? 'text-emerald-700' : 'text-slate-900'}`}>
+                                        <h4 className={`font-bold text-sm md:text-base leading-tight ${
+                                            !v.can_collect ? 'text-slate-500' : (isFreeShip ? 'text-emerald-700' : 'text-slate-900')
+                                        }`}>
                                             {isFreeShip 
-                                                ? 'Miễn phí vận chuyển'
+                                                ? 'Free Shipping'
                                                 : v.discount_type === 'PERCENTAGE' 
-                                                    ? `Giảm ${v.discount_value}%` 
-                                                    : `Giảm ${new Intl.NumberFormat('vi-VN').format(Number(v.discount_value))}đ`
+                                                    ? `Discount ${v.discount_value}%` 
+                                                    : `Discount ${new Intl.NumberFormat('vi-VN').format(Number(v.discount_value))}đ`
                                             }
                                         </h4>
                                         <div className="flex flex-col gap-0.5">
+                                            {!v.can_collect && v.apply_rank_code && (
+                                                <p className="text-[10px] text-rose-500 font-bold uppercase tracking-tight">
+                                                    Requires {v.apply_rank_code} Tier
+                                                </p>
+                                            )}
                                             {!isFreeShip && Number(v.max_discount_amount || 0) > 0 && (
                                                 <p className="text-[11px] text-orange-600 font-medium">
-                                                    Tối đa {new Intl.NumberFormat('vi-VN').format(Number(v.max_discount_amount))}đ
+                                                    Max {new Intl.NumberFormat('vi-VN').format(Number(v.max_discount_amount))}đ
                                                 </p>
                                             )}
                                             <p className="text-[11px] text-slate-500">
-                                                Đơn tối thiểu {new Intl.NumberFormat('vi-VN').format(Number(v.min_order_value || 0))}đ
+                                                Min order {new Intl.NumberFormat('vi-VN').format(Number(v.min_order_value || 0))}đ
                                             </p>
                                         </div>
                                     </div>
@@ -104,7 +114,7 @@ export default function CollectVoucherBlock() {
                                         size="sm" 
                                         variant={v.is_collected ? "outline" : "default"}
                                         className={`h-7 px-3 text-[10px] uppercase font-bold tracking-wider rounded-md ${
-                                            v.is_collected 
+                                            v.is_collected || !v.can_collect
                                                 ? "bg-slate-100 text-slate-400 border-none" 
                                                 : isFreeShip
                                                     ? "bg-[#10b981] hover:bg-[#059669] text-white"
@@ -115,7 +125,11 @@ export default function CollectVoucherBlock() {
                                     >
                                         {collectMutation.isPending && collectMutation.variables === v.promotion_id ? (
                                             <Loader2 className="w-3 h-3 animate-spin" />
-                                        ) : (v.is_collected ? 'Đã Lưu' : (v.is_out_of_stock ? 'Hết' : 'Lưu'))}
+                                        ) : (
+                                            v.is_collected ? 'Saved' : 
+                                            !v.can_collect ? 'Locked' :
+                                            v.is_out_of_stock ? 'Out' : 'Save'
+                                        )}
                                     </Button>
                                 </div>
                                 
@@ -125,7 +139,7 @@ export default function CollectVoucherBlock() {
                                     </span>
                                     {v.end_date && (
                                         <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                                            HSD: {new Date(v.end_date).toLocaleDateString('vi-VN')}
+                                            EXP: {new Date(v.end_date).toLocaleDateString('en-US')}
                                         </span>
                                     )}
                                 </div>

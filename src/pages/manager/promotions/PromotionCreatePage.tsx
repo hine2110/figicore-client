@@ -28,7 +28,7 @@ const formatNum = (val: string | number | undefined) => {
     if (val === undefined || val === null || val === '') return '';
     const s = String(val).replace(/\D/g, '');
     if (!s) return '';
-    return new Intl.NumberFormat('vi-VN').format(Number(s));
+    return new Intl.NumberFormat('en-US').format(Number(s));
 };
 const parseNum = (val: string) => {
     const s = val.replace(/\D/g, '');

@@ -37,7 +37,7 @@ const playNotificationSound = (orderCode: string) => {
         // 2. Voice Notification
         setTimeout(() => {
             if ('speechSynthesis' in window) {
-                const text = `Bạn có đơn hàng mới. Mã đơn: ${orderCode.split('-')[1] || 'mới'}`; // Read partial code
+                const text = `Bạn có đơn hàng mới`;
                 const utterance = new SpeechSynthesisUtterance(text);
 
                 // --- VOICE SELECTION LOGIC ---
@@ -114,7 +114,6 @@ export default function WarehouseLayout() {
         { name: 'Packing', path: '/warehouse/packing', icon: PackageCheck },
         { name: 'Returns', path: '/warehouse/returns', icon: RotateCcw },
         { name: 'My Payroll', path: '/warehouse/my-payroll', icon: ReceiptText, description: 'Salary & Payslips' },
-        // { name: 'Schedule', path: '/warehouse/schedule', icon: CalendarDays },
     ];
 
     const [isScheduleOpen, setIsScheduleOpen] = useState(true);
