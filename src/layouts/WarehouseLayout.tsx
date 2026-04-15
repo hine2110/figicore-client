@@ -37,7 +37,7 @@ const playNotificationSound = (orderCode: string) => {
         // 2. Voice Notification
         setTimeout(() => {
             if ('speechSynthesis' in window) {
-                const text = `Bạn có đơn hàng mới. Mã đơn: ${orderCode.split('-')[1] || 'mới'}`; // Read partial code
+                const text = `Bạn có đơn hàng mới`;
                 const utterance = new SpeechSynthesisUtterance(text);
 
                 // --- VOICE SELECTION LOGIC ---

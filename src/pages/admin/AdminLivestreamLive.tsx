@@ -51,6 +51,7 @@ import {
     Sparkles,
     AlertTriangle,
     Gift,
+    Clock,
     Play,
     RotateCw,
     Trophy,
@@ -978,7 +979,14 @@ export default function AdminLivestreamLive() {
                 socket.on('chat_history', (history: any[]) => setChatMessages(history));
                 socket.on('chat_message', (msg: any) => setChatMessages(prev => [...prev, msg]));
                 socket.on('new_order', (data: any) => {
-                    setOrders(prev => [data, ...prev]);
+                    setOrders(prev => {
+                        // If order_id exists, update it to reflect status change (e.g. Pending -> Processing)
+                        const exists = prev.find(o => o.order_id === data.order_id);
+                        if (exists) {
+                            return prev.map(o => o.order_id === data.order_id ? data : o);
+                        }
+                        return [data, ...prev];
+                    });
                     setLatestOrder(data);
                     setTimeout(() => setLatestOrder(null), 5000);
                 });
@@ -1596,8 +1604,10 @@ function AdminStudioContent(props: any) {
                                     <motion.div 
                                         initial={{ opacity: 0, x: 10 }} 
                                         animate={{ opacity: 1, x: 0 }} 
-                                        key={ix} 
-                                        className={`p-3 rounded-2xl bg-white/5 border group transition-all ${isGiveaway ? 'border-amber-500/20 hover:border-amber-500/50' : 'border-white/5 hover:border-emerald-500/30'}`}
+                                        key={`${order.order_id}-${ix}`} 
+                                        className={`p-3 rounded-2xl bg-white/5 border group transition-all ${
+                                            isGiveaway ? 'border-amber-500/20 hover:border-amber-500/50' : 
+                                            'border-white/5 hover:border-emerald-500/30'}`}
                                     >
                                         <div className="flex items-center justify-between mb-1">
                                             <div className="flex items-center gap-1.5 min-w-0">
@@ -1921,7 +1931,7 @@ function FlashSaleTrigger({ variant, onTrigger }: { variant: any, onTrigger: (pr
                             <Sparkles className="w-3 h-3 text-rose-500" />
                             <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Flash Sale Module</h4>
                         </div>
-                        <p className="text-[8px] text-neutral-500 leading-tight">AI-assisted pricing for immediate broadcast surge.</p>
+                        <p className="text-[8px] text-neutral-500 leading-tight">Professional pricing module for immediate broadcast surge.</p>
                     </div>
 
                     <div className="space-y-3">
@@ -1940,14 +1950,6 @@ function FlashSaleTrigger({ variant, onTrigger }: { variant: any, onTrigger: (pr
                                     onChange={e => setPrice(Number(e.target.value))}
                                     className={`w-full bg-black/40 border rounded-xl px-3 py-3 text-xs text-white outline-none transition-all font-mono font-black ${isBelowCost ? 'border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.1)]' : 'border-white/10 focus:border-rose-500'}`}
                                 />
-                                <Button
-                                    size="sm"
-                                    onClick={handleAISuggest}
-                                    disabled={isSuggesting}
-                                    className="absolute right-1 top-1 bottom-1 bg-white/5 hover:bg-white/10 text-[8px] font-black uppercase tracking-widest text-emerald-500 h-auto px-2 rounded-lg border border-white/5"
-                                >
-                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : "✨ AI Suggest"}
-                                </Button>
                             </div>
 
                             {aiInfo && (
