@@ -9,28 +9,29 @@ import { Package, Star } from 'lucide-react';
 import FlashSaleSection from '@/components/flash-sale/FlashSaleSection';
 import { PromotionsService } from '@/services/promotions.service';
 
-// --- MOCK BANNERS (Refined Copy) ---
-const BANNERS = [
+// --- FALLBACK BANNERS ---
+const DEFAULT_BANNERS = [
     {
-        id: 1,
-        image: "https://imagine-public.x.ai/imagine-public/images/8a52762b-52a2-4a09-8926-0e1d791c1aac.jpg?cache=1&dl=1",
+        banner_id: 'default-1',
+        image_url: "https://imagine-public.x.ai/imagine-public/images/8a52762b-52a2-4a09-8926-0e1d791c1aac.jpg?cache=1&dl=1",
         title: "Empire of Models",
         subtitle: "The ultimate destination for authentic collectible figures.",
         action: "Explore Gallery",
-        link: "/guest/browse"
+        target_url: "/guest/browse"
     },
     {
-        id: 2,
-        image: "https://imagine-public.x.ai/imagine-public/images/9f3734a8-1652-48fe-8769-3d67607ee911.jpg?cache=1&dl=1",
+        banner_id: 'default-2',
+        image_url: "https://imagine-public.x.ai/imagine-public/images/9f3734a8-1652-48fe-8769-3d67607ee911.jpg?cache=1&dl=1",
         title: "Next Gen Mecha",
         subtitle: "Precision engineering meets artistic vision.",
         action: "View New Arrivals",
-        link: "/guest/browse?category=RETAIL"
+        target_url: "/guest/browse?category=RETAIL"
     }
 ];
 
 export function GuestHome() {
     const navigate = useNavigate();
+    const [banners, setBanners] = useState<any[]>(DEFAULT_BANNERS);
     const [latestProducts, setLatestProducts] = useState<any[]>([]);
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
     const [flashSaleItems, setFlashSaleItems] = useState<any[]>([]);
@@ -39,24 +40,31 @@ export function GuestHome() {
 
     // Carousel Timer
     useEffect(() => {
-        const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % BANNERS.length), 6000);
+        if (banners.length === 0) return;
+        const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % banners.length), 6000);
         return () => clearInterval(timer);
-    }, []);
+    }, [banners.length]);
 
     // Data Fetching
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [retail, preorder, flashData] = await Promise.all([
+                const [retail, preorder, flashData, bannerRes] = await Promise.all([
                     productsService.getProducts({ limit: 8, type_code: 'RETAIL' }),
                     productsService.getProducts({ limit: 4, type_code: 'PREORDER' }),
-                    PromotionsService.getActiveFlashSales().catch(() => [])
+                    PromotionsService.getActiveFlashSales().catch(() => []),
+                    productsService.getPublicBanners().catch(() => ({ data: [] }))
                 ]);
 
                 const getList = (res: any) => Array.isArray(res) ? res : (res as any)?.data || [];
                 setLatestProducts(getList(retail).slice(0, 8));
                 setPreorderProducts(getList(preorder).slice(0, 4));
                 if (Array.isArray(flashData)) setFlashSaleItems(flashData);
+                
+                const fetchedBanners = getList(bannerRes);
+                if (fetchedBanners.length > 0) {
+                    setBanners(fetchedBanners);
+                }
             } catch (error) {
                 console.error("Failed to load home data", error);
             } finally {
@@ -103,7 +111,7 @@ export function GuestHome() {
                     transition={{ duration: 1.5, ease: "easeOut" }}
                     className="absolute inset-0"
                 >
-                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${BANNERS[currentSlide].image}')` }} />
+                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${banners[currentSlide]?.image_url}')` }} />
                     <div className="absolute inset-0 bg-black/40" /> {/* Subtle overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-transparent to-transparent opacity-90" />
                 </motion.div>
@@ -121,24 +129,24 @@ export function GuestHome() {
                         <span className="text-sm font-medium tracking-[0.2em] uppercase text-white/90">FigiCore Premium Experience</span>
                     </div>
                     <h1 className="text-5xl md:text-8xl font-serif font-medium mb-8 leading-[1.1] text-white drop-shadow-md">
-                        {BANNERS[currentSlide].title}
+                        {banners[currentSlide]?.title}
                     </h1>
                     <p className="text-lg md:text-2xl text-white/80 mb-12 font-light leading-relaxed max-w-xl">
-                        {BANNERS[currentSlide].subtitle}
+                        {banners[currentSlide]?.subtitle || banners[currentSlide]?.description || "Curated masterpieces for your collection."}
                     </p>
                     <Button
                         size="lg"
                         className="bg-white text-black hover:bg-neutral-200 rounded-none h-16 px-10 text-lg tracking-wide font-medium transition-all"
-                        onClick={() => navigate(BANNERS[currentSlide].link)}
+                        onClick={() => banners[currentSlide]?.target_url && navigate(banners[currentSlide].target_url)}
                     >
-                        {BANNERS[currentSlide].action}
+                        {banners[currentSlide]?.action || "Explore Now"}
                     </Button>
                 </motion.div>
             </div>
 
             {/* Slide Indicators */}
             <div className="absolute bottom-12 right-12 flex gap-3 z-20">
-                {BANNERS.map((_, idx) => (
+                {banners.map((_, idx) => (
                     <button
                         key={idx}
                         onClick={() => setCurrentSlide(idx)}

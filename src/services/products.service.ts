@@ -99,5 +99,10 @@ export const productsService = {
     visualSearch: async (image: string): Promise<any> => {
         const response = await axiosInstance.post('/products/visual-search', { image }, { timeout: 60000 });
         return response.data;
+    },
+
+    getPublicBanners: async (): Promise<ApiResponse<any[]>> => {
+        const response = await axiosInstance.get('/system/banners');
+        return response.data;
     }
 };
