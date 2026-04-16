@@ -61,7 +61,7 @@ export default function Cart() {
         let bestFreeShipVoucher = null;
         let maxDiscountAmount = 0;
         let maxFreeShipAmount = 0;
-        const DEFAULT_SHIPPING_FEE = 30000;
+        const DEFAULT_SHIPPING_FEE = 30000; // Used only for Free Ship Voucher pre-selection threshold
 
         for (const uv of myVouchers) {
             const promo = uv.promotions;
@@ -224,7 +224,6 @@ export default function Cart() {
             const payload = {
                 shipping_address_id: Number(defaultAddr.address_id),
                 payment_method_code: 'QR_BANK', // Default
-                shipping_fee: 30000,
                 discountVoucherCode: selectedDiscountCode || undefined, // Send selected discount voucher
                 freeShipVoucherCode: selectedFreeShipCode || undefined, // Send selected free ship voucher
                 // original_shipping_fee removed, calculated in backend
@@ -277,9 +276,12 @@ export default function Cart() {
         } catch (error: any) {
             console.error("Proceed Error:", error);
 
-            const errorMsg = error.response?.data?.message || error.message || "Failed to initiate order.";
-            const isLimitError = errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('max_qty');
-            const isPriceChanged = errorMsg.toLowerCase().includes('price') && errorMsg.toLowerCase().includes('changed');
+            const rawError = error.response?.data?.message || error.message || "Failed to initiate order.";
+            const errorMsg = Array.isArray(rawError) ? rawError.join(", ") : String(rawError);
+            
+            const lowerMsg = errorMsg.toLowerCase();
+            const isLimitError = lowerMsg.includes('limit') || lowerMsg.includes('max_qty');
+            const isPriceChanged = lowerMsg.includes('price') && lowerMsg.includes('changed');
 
             if (isPriceChanged) {
                 // Auto refresh cart to get the new prices
@@ -347,7 +349,7 @@ export default function Cart() {
         }
 
         if (selectedFreeShipCode) {
-            freeship = 30000; // Static freeship assumption for UI
+            freeship = 0; // We cannot calculate free ship amount until GHN API answers at checkout
         }
 
         return { discount, freeship };
@@ -600,11 +602,7 @@ export default function Cart() {
                                     </div>
                                     <div className="flex justify-between text-slate-600">
                                         <span>Shipping</span>
-                                        {selectedFreeShipCode ? (
-                                            <span className="font-medium text-slate-900">{formatPrice(30000)}</span>
-                                        ) : (
-                                            <span className="text-sm italic text-slate-400">Calculated at Payment</span>
-                                        )}
+                                        <span className="text-sm italic text-slate-400 font-medium">Calculated at Payment</span>
                                     </div>
 
                                     {/* Voucher System */}
@@ -765,7 +763,7 @@ export default function Cart() {
                                         <span className="text-lg font-bold text-slate-900">Total</span>
                                         <span className="text-3xl font-serif font-bold text-slate-900">
                                             {formatPrice(Math.max(0,
-                                                totalAmount + (selectedFreeShipCode ? 30000 : 0) - voucherDiscountAmount.discount - voucherDiscountAmount.freeship
+                                                totalAmount - voucherDiscountAmount.discount - voucherDiscountAmount.freeship
                                             ))}
                                         </span>
                                     </div>
