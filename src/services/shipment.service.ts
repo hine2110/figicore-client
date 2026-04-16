@@ -7,8 +7,15 @@ export const shipmentService = {
         const response = await axiosInstance.get('/orders?status=PROCESSING');
         return response.data;
     },
-    getPackingHistory: async () => {
-        const response = await axiosInstance.get('/orders?status=PACKED');
+    getPackingHistory: async (startDate?: string, endDate?: string) => {
+        let url = '/orders?status=PACKED';
+        if (startDate) url += `&startDate=${startDate}`;
+        if (endDate) url += `&endDate=${endDate}`;
+        const response = await axiosInstance.get(url);
+        return response.data;
+    },
+    getWarehouseStats: async (startDate: string, endDate: string) => {
+        const response = await axiosInstance.get(`/orders/warehouse-stats?startDate=${startDate}&endDate=${endDate}`);
         return response.data;
     },
 

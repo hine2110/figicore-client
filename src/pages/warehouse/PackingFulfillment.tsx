@@ -6,9 +6,11 @@ import { PackingStation } from "@/components/warehouse/packing/PackingStation";
 import { PackingOrder } from "@/types/packing";
 import { PackingHistory } from "@/components/warehouse/packing/PackingHistory";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Package, History } from "lucide-react";
+import { Package, History, Calendar } from "lucide-react";
+import { format } from "date-fns";
 
 export default function PackingFulfillment() {
+    const todayStr = format(new Date(), "yyyy-MM-dd");
     const [queue, setQueue] = useState<PackingOrder[]>([]);
     const [isLoadingQueue, setIsLoadingQueue] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<PackingOrder | null>(null);
@@ -18,6 +20,11 @@ export default function PackingFulfillment() {
     const [activeTab, setActiveTab] = useState("queue");
     const [history, setHistory] = useState<any[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+    // NEW: Date Range & Stats
+    const [startDate, setStartDate] = useState(todayStr);
+    const [endDate, setEndDate] = useState(todayStr);
+    const [stats, setStats] = useState({ pending: 0, packed: 0, delivered: 0, returned: 0 });
 
     // AUDIO REF for Notification
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -40,12 +47,21 @@ export default function PackingFulfillment() {
     const fetchHistory = async () => {
         setIsLoadingHistory(true);
         try {
-            const data = await shipmentService.getPackingHistory();
+            const data = await shipmentService.getPackingHistory(startDate, endDate);
             setHistory(data);
         } catch (error) {
             console.error("Fetch History Failed", error);
         } finally {
             setIsLoadingHistory(false);
+        }
+    };
+
+    const fetchStats = async () => {
+        try {
+            const data = await shipmentService.getWarehouseStats(startDate, endDate);
+            setStats(data);
+        } catch (error) {
+            console.error("Fetch Stats Failed", error);
         }
     };
 
@@ -61,6 +77,14 @@ export default function PackingFulfillment() {
         audioRef.current = new Audio("/sounds/new-order.mp3");
         return () => clearInterval(interval);
     }, []);
+
+    // Sync History & Stats when dates or tab changes
+    useEffect(() => {
+        if (activeTab === 'history') {
+            fetchHistory();
+            fetchStats();
+        }
+    }, [startDate, endDate, activeTab]);
 
     const handleSelectOrder = (order: PackingOrder) => {
         if (selectedOrder?.order_id === order.order_id) return;
@@ -121,11 +145,7 @@ export default function PackingFulfillment() {
         <div className="flex bg-neutral-100 flex-col h-[calc(100vh-64px)] w-full overflow-hidden font-sans">
             {/* Global Tab Switcher */}
             <div className="bg-white border-b border-neutral-200 px-6 py-2 flex items-center justify-between shadow-sm z-20">
-                <Tabs value={activeTab} onValueChange={(v) => {
-                    setActiveTab(v);
-                    if (v === 'history') fetchHistory();
-                    if (v === 'queue') fetchQueue();
-                }} className="w-[400px]">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[400px]">
                     <TabsList className="grid w-full grid-cols-2 bg-neutral-100/50 p-1 rounded-xl">
                         <TabsTrigger value="queue" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2 font-bold">
                             <Package className="w-4 h-4" />
@@ -138,10 +158,34 @@ export default function PackingFulfillment() {
                     </TabsList>
                 </Tabs>
 
-                <div className="flex items-center gap-4">
-                    <div className="text-right">
-                        <p className="text-[10px] uppercase font-black text-neutral-400 tracking-widest">Warehouse Monitor</p>
-                        <p className="text-sm font-bold text-neutral-600">Active Session</p>
+                <div className="flex items-center gap-6">
+                    {/* Date Selector UI - Only show in history tab if preferred, but global is fine too */}
+                    {activeTab === 'history' && (
+                        <div className="flex items-center gap-3 bg-neutral-50 px-3 py-1.5 rounded-xl border border-neutral-200 animate-in fade-in slide-in-from-right-4">
+                            <Calendar className="w-4 h-4 text-neutral-400" />
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="date" 
+                                    value={startDate} 
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="bg-transparent border-none text-xs font-bold text-neutral-600 focus:outline-none cursor-pointer"
+                                />
+                                <span className="text-neutral-300 font-bold">→</span>
+                                <input 
+                                    type="date" 
+                                    value={endDate} 
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="bg-transparent border-none text-xs font-bold text-neutral-600 focus:outline-none cursor-pointer"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+                            <p className="text-[10px] uppercase font-black text-neutral-400 tracking-widest">Warehouse Monitor</p>
+                            <p className="text-sm font-bold text-neutral-600">Active Session</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -181,7 +225,11 @@ export default function PackingFulfillment() {
                         </div>
                     </>
                 ) : (
-                    <PackingHistory history={history} isLoading={isLoadingHistory} />
+                    <PackingHistory 
+                        history={history} 
+                        isLoading={isLoadingHistory} 
+                        stats={stats}
+                    />
                 )}
             </div>
 

@@ -363,7 +363,7 @@ export default function Checkout() {
         }
     }
 
-    const totalOriginalShipping = orders.reduce((sum, o) => sum + Number(o.original_shipping_fee || 30000), 0);
+    const totalOriginalShipping = orders.reduce((sum, o) => sum + Number(o.original_shipping_fee || 0), 0);
     let calculatedFreeShip = 0;
     if (appliedShippingPromo && appliedShippingPromo.discount_type === 'FREE_SHIP') {
         calculatedFreeShip = totalOriginalShipping - totalShipping;
