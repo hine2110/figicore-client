@@ -19,10 +19,6 @@ FROM nginx:alpine
 # Copy the built assets from the builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy entrypoint to generate config.js from env at container start
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-
 # Copy a custom Nginx configuration (optional, but recommended for production)
 # If you have a custom nginx.conf, uncomment the line below and place it in your project root.
 # COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -30,6 +26,4 @@ RUN chmod +x /docker-entrypoint.sh
 # Expose port 80 for Nginx
 EXPOSE 80
 
-# Generate config.js from env vars, then start Nginx
-ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
