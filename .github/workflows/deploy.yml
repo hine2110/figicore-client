@@ -24,19 +24,19 @@ jobs:
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_PASSWORD }}
       
-      # - name: Set up environment variables
-      #   run: |
-      #     echo "NODE_ENV=${{ vars.NODE_ENV }}" >> .env
+      - name: Set up environment variables
+        run: |
+          cat <<EOF > .env
+          VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
+          VITE_SEPAY_BANK_NAME=${{ vars.VITE_SEPAY_BANK_NAME }}
+          VITE_SEPAY_ACCOUNT_NUMBER=${{ vars.VITE_SEPAY_ACCOUNT_NUMBER }}
+          VITE_LIVEKIT_WS_URL=${{ vars.VITE_LIVEKIT_WS_URL }}
+          EOF
 
       - name: Run build.sh
         run: |
           chmod +x build.sh
           sh ./build.sh
-        env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
-          VITE_SEPAY_BANK_NAME: ${{ vars.VITE_SEPAY_BANK_NAME }}
-          VITE_SEPAY_ACCOUNT_NUMBER: ${{ vars.VITE_SEPAY_ACCOUNT_NUMBER }}
-          VITE_LIVEKIT_WS_URL: ${{ vars.VITE_LIVEKIT_WS_URL }}
 
       - name: SSH Deploy to Server
         uses: appleboy/ssh-action@v1.0.3
