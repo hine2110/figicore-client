@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    image: ghcr.io/nguyenchiemdu/figicore-client:latest
+    container_name: figicore-client
+    env_file:
+      - .env
+    ports:
+      - "3901:80"
+    restart: unless-stopped
