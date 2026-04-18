@@ -447,28 +447,29 @@ export default function VoucherEditPage() {
                                             </FormItem>
                                         )}
                                     />
-                                    {/* MAX DISCOUNT CAP — Only visible for Percentage */}
-                                    {watchType !== 'FREE_SHIP' && (
-                                        <FormField
-                                            control={form.control}
-                                            name="max_discount_amount"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Maximum Discount Cap (VND)</FormLabel>
-                                                    <FormControl>
-                                                        <Input 
-                                                            type="text" 
-                                                            placeholder="Leave blank for no limit" 
-                                                            value={formatNumberStr(field.value)}
-                                                            onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
-                                                        />
-                                                    </FormControl>
-                                                    <FormDescription>Limits the discount for high-value orders (e.g., 10% up to 100k)</FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    )}
+                                    <FormField
+                                        control={form.control}
+                                        name="max_discount_amount"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Maximum Discount Cap (VND)</FormLabel>
+                                                <FormControl>
+                                                    <Input 
+                                                        type="text" 
+                                                        placeholder={watchType === 'FREE_SHIP' ? "e.g. 30,000 (standard cap)" : "Leave blank for no limit"} 
+                                                        value={formatNumberStr(field.value)}
+                                                        onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {watchType === 'FREE_SHIP' 
+                                                        ? "Limits the shipping discount amount (e.g. Free ship up to 30k)" 
+                                                        : "Limits the discount for high-value orders (e.g. 10% up to 100k)"}
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
 
                             <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 font-semibold h-12" disabled={form.formState.isSubmitting}>
