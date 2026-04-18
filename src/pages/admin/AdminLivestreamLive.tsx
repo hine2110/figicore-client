@@ -965,7 +965,7 @@ export default function AdminLivestreamLive() {
 
                 if (!isMounted) return;
 
-                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3000'}/livestream-live`, {
+                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://api.figicore.com'}/livestream-live`, {
                     auth: {
                         token: localStorage.getItem('accessToken')
                     }

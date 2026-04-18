@@ -133,7 +133,7 @@ export const AIChatBox: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
         const socket = io(`${baseUrl.replace('/api', '')}/chat`);
         socketRef.current = socket;
 

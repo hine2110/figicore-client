@@ -78,7 +78,7 @@ export default function WarehouseLayout() {
 
     useEffect(() => {
         // Connect to WebSocket Namespace
-        const socket = io('http://localhost:3000/events');
+        const socket = io(import.meta.env.VITE_API_BASE_URL ? `${import.meta.env.VITE_API_BASE_URL}/events` : 'https://api.figicore.com/events');
 
         socket.on('connect', () => {
             console.log('✅ Connected to Warehouse Events');

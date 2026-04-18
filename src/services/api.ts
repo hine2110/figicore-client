@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 // Create Axios instance with base configuration
 // Create Axios instance with base configuration
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://figicore.com',
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com',
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',

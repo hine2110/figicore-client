@@ -21,7 +21,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // API Base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.figicore.com';
 
 export default function OrderOversight() {
     const [orders, setOrders] = useState<any[]>([]);
