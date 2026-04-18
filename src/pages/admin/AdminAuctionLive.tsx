@@ -338,7 +338,7 @@ export default function AdminAuctionLive() {
                 });
                 setToken(tokenRes.data.token);
 
-                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3000'}/auction-live`);
+                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://api.figicore.com'}/livestream-live`);
                 socketRef.current = socket;
 
                 socket.on('connect', () => {

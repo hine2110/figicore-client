@@ -32,7 +32,7 @@ export function NotificationBell() {
 
         fetchNotifications();
 
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
         const socket = io(`${baseUrl}/events`);
 
         socket.on(`user:${user.user_id}:new_notification`, (newNotif: any) => {

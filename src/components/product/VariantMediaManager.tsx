@@ -30,7 +30,7 @@ export function VariantMediaManager({ value, onChange }: VariantMediaManagerProp
             const uploadPromises = files.map(file => {
                 const formData = new FormData();
                 formData.append("file", file);
-                return axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/upload`, formData);
+                return axios.post(`${import.meta.env.VITE_API_URL || 'https://api.figicore.com'}/upload`, formData);
             });
 
             const results = await Promise.all(uploadPromises);
