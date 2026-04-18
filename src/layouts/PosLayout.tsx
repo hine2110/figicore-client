@@ -181,31 +181,44 @@ export default function PosLayout() {
                             </div>
                             {isScheduleOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                         </CollapsibleTrigger>
-                        <CollapsibleContent className="space-y-1 pl-4 pr-2">
-                            <Link
-                                to="/pos/schedule"
-                                onClick={() => setIsMobileOpen(false)}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ml-6 border-l-2 ${isActive('/pos/schedule')
-                                    ? 'border-blue-500 text-white bg-white/5'
-                                    : 'border-neutral-700 text-neutral-400 hover:text-white hover:bg-neutral-800'
+
+                    <CollapsibleContent className="space-y-1 pl-4 pr-2">
+                        {/* Sub-item: Register Shifts */}
+                        <Link
+                            to="/pos/shift-registration"
+                            onClick={() => setIsMobileOpen(false)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ml-6 border-l-2 ${isActive('/pos/shift-registration')
+                                ? 'border-blue-500 text-white bg-white/5'
+                                : 'border-neutral-700 text-neutral-400 hover:text-white hover:bg-neutral-800'
                                 }`}
-                            >
-                                My Schedule
-                            </Link>
-                            <Link
-                                to="/pos/timesheets"
-                                onClick={() => setIsMobileOpen(false)}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ml-6 border-l-2 ${isActive('/pos/timesheets')
-                                    ? 'border-blue-500 text-white bg-white/5'
-                                    : 'border-neutral-700 text-neutral-400 hover:text-white hover:bg-neutral-800'
-                                }`}
-                            >
-                                My Timesheets
-                            </Link>
-                        </CollapsibleContent>
-                    </Collapsible>
-                ) : (
-                    <div className="pt-2 border-t border-neutral-800 mt-2 space-y-1">
+                        >
+                            Register Shifts
+                        </Link>
+
+                        <Link
+                            to="/pos/schedule"
+                            onClick={() => setIsMobileOpen(false)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ml-6 border-l-2 ${isActive('/pos/schedule')
+                                ? 'border-blue-500 text-white bg-white/5'
+                                : 'border-neutral-700 text-neutral-400 hover:text-white hover:bg-neutral-800'
+                            }`}
+                        >
+                            My Schedule
+                        </Link>
+                        <Link
+                            to="/pos/timesheets"
+                            onClick={() => setIsMobileOpen(false)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ml-6 border-l-2 ${isActive('/pos/timesheets')
+                                ? 'border-blue-500 text-white bg-white/5'
+                                : 'border-neutral-700 text-neutral-400 hover:text-white hover:bg-neutral-800'
+                            }`}
+                        >
+                            My Timesheets
+                        </Link>
+                    </CollapsibleContent>
+                </Collapsible>
+            ) : (
+                <div className="pt-2 border-t border-neutral-800 mt-2 space-y-1">
                         <Link
                             to="/pos/schedule"
                             title="My Schedule"
