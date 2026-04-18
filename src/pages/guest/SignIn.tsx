@@ -106,9 +106,7 @@ export default function SignIn() {
     if (redirectUrl && redirectUrl !== "/") {
       localStorage.setItem("auth_return_url", redirectUrl);
     }
-    window.location.href = `${
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
-    }/auth/google`;
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL || "https://api.figicore.com"}/auth/google`;
   };
 
   // ─── Register state ────────────────────────────────
