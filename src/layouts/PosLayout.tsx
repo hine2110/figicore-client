@@ -146,6 +146,18 @@ export default function PosLayout() {
                     </CollapsibleTrigger>
 
                     <CollapsibleContent className="space-y-1 pl-4 pr-2">
+                        {/* Sub-item: Register Shifts */}
+                        <Link
+                            to="/pos/shift-registration"
+                            onClick={() => setIsMobileOpen(false)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ml-6 border-l-2 ${isActive('/pos/shift-registration')
+                                ? 'border-blue-500 text-white bg-white/5'
+                                : 'border-neutral-700 text-neutral-400 hover:text-white hover:bg-neutral-800'
+                                }`}
+                        >
+                            Register Shifts
+                        </Link>
+                        
                         {/* Sub-item: My Schedule */}
                         <Link
                             to="/pos/schedule"

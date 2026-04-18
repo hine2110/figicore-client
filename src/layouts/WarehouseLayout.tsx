@@ -190,6 +190,16 @@ export default function WarehouseLayout() {
                             </CollapsibleTrigger>
                             <CollapsibleContent className="space-y-1 pl-10 pr-2">
                                 <Link
+                                    to="/warehouse/shift-registration"
+                                    onClick={() => setIsSidebarOpen(false)}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/warehouse/shift-registration')
+                                        ? 'bg-orange-600 text-white'
+                                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                                        }`}
+                                >
+                                    Register Shifts
+                                </Link>
+                                <Link
                                     to="/warehouse/schedule"
                                     onClick={() => setIsSidebarOpen(false)}
                                     className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/warehouse/schedule')

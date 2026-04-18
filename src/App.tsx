@@ -21,6 +21,7 @@ import ProductManagement from "@/pages/admin/ProductManagement";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
 import OrderOversight from "@/pages/admin/OrderOversight";
 import ProfilePage from "@/pages/common/ProfilePage";
+import ShiftRegistration from "@/pages/common/ShiftRegistration";
 import AuctionManagement from "@/pages/admin/AuctionManagement";
 import AdminAuctionDetail from "@/pages/admin/AdminAuctionDetail";
 import AdminAuctionLive from "@/pages/admin/AdminAuctionLive";
@@ -198,6 +199,7 @@ export default function App() {
                             <Route path="imports" element={<GoodsReceipt />} />
                             <Route path="returns" element={<ReturnInspection />} />
                             <Route path="profile" element={<ProfilePage />} />
+                            <Route path="shift-registration" element={<ShiftRegistration />} />
                             <Route path="schedule" element={<WarehouseSchedule />} />
                             <Route path="timesheets" element={<WarehouseTimesheets />} />
                             <Route path="my-payroll" element={<MyPayrollWarehouse />} />
@@ -211,6 +213,7 @@ export default function App() {
                             <Route path="dashboard" element={<PosDashboard />} />
                             <Route path="counter" element={<PosSystem />} />
                             <Route path="orders" element={<OrderProcessing />} />
+                            <Route path="shift-registration" element={<ShiftRegistration />} />
                             <Route path="schedule" element={<PosSchedule />} />
                             <Route path="timesheets" element={<PosTimesheets />} />
                             <Route path="sessions" element={<SessionManager />} />
