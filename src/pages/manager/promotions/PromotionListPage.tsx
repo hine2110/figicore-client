@@ -18,10 +18,12 @@ export default function PromotionListPage() {
 
 
 
-    const { data: promotions } = useQuery({
+    const { data: response } = useQuery({
         queryKey: ['promotions'],
-        queryFn: PromotionsService.getAll
+        queryFn: () => PromotionsService.getAll()
     });
+
+    const promotions = response?.data || [];
 
     return (
         <div className="space-y-6">
@@ -62,7 +64,7 @@ export default function PromotionListPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {promotions?.map((promo) => (
+                            {promotions.map((promo: any) => (
                                 <TableRow key={promo.promotion_id}>
                                     <TableCell className="font-medium">{promo.name}</TableCell>
                                     <TableCell>
