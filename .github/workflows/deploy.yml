@@ -2,13 +2,13 @@ name: Deployment
 
 on:
   push:
-    branches: [devops]
+    branches: [devops, main]
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: rice-warehouse-admin-env
+    environment: figicore-client-env
 
     steps:
       - name: Checkout code
