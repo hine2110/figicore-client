@@ -751,12 +751,18 @@ export default function Cart() {
                                             <span>-{formatPrice(voucherDiscountAmount.discount)}</span>
                                         </div>
                                     )}
-                                    {selectedFreeShipCode && (
-                                        <div className="flex justify-between text-emerald-600 font-medium">
-                                            <span>Free Shipping</span>
-                                            <span>-{formatPrice(voucherDiscountAmount.freeship)}</span>
-                                        </div>
-                                    )}
+                                    {selectedFreeShipCode && (() => {
+                                        const v = myVouchers?.find(mv => mv.promotions.code === selectedFreeShipCode)?.promotions;
+                                        const cap = v && Number(v.max_discount_amount) > 0 ? formatPrice(Number(v.max_discount_amount)) : '';
+                                        return (
+                                            <div className="flex justify-between text-emerald-600 font-medium items-center">
+                                                <span>Free Shipping</span>
+                                                <span className="text-xs bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">
+                                                    {cap ? `Up to ${cap} off at Checkout` : 'Applied at Checkout'}
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
 
                                     <div className="w-full h-px bg-slate-200/50 my-2" />
                                     <div className="flex justify-between items-baseline">
