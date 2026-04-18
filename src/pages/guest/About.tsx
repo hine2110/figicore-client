@@ -19,29 +19,29 @@ export function About() {
     const features = [
         {
             icon: Shield,
-            title: 'Authenticity Guaranteed',
-            description: 'Every item is verified genuine from official distributors.',
+            title: 'Algorithmic Transparency',
+            description: 'Public, verifiable drop rates for all Blind Box series, ensuring fair distribution for every collector.',
             color: 'text-blue-600',
             bgColor: 'bg-blue-50',
         },
         {
             icon: Truck,
-            title: 'Global Shipping',
-            description: 'Secure, tracked delivery to collectors worldwide.',
+            title: 'Evidence-Based Fulfillment',
+            description: 'A robust workflow requiring mandatory packing and unboxing video proofs at every stage of shipment.',
             color: 'text-amber-600',
             bgColor: 'bg-amber-50',
         },
         {
             icon: Heart,
-            title: 'For Collectors',
-            description: 'Built by enthusiasts, for the enthusiast community.',
+            title: 'Unified Ecosystem',
+            description: 'Seamlessly connecting auctions, retail, and blind boxes into a single, high-performance platform.',
             color: 'text-rose-600',
             bgColor: 'bg-rose-50',
         },
         {
             icon: Star,
-            title: 'Premium Service',
-            description: 'Dedicated support to ensure your satisfaction.',
+            title: 'Secure Digital Escrow',
+            description: 'Advanced closed-loop wallet system providing secure financial management and instantaneous transactions.',
             color: 'text-emerald-600',
             bgColor: 'bg-emerald-50',
         },
@@ -74,7 +74,7 @@ export function About() {
                     >
                         <div className="max-w-3xl mx-auto space-y-8">
                             <Badge variant="outline" className="bg-white/50 backdrop-blur-sm border-slate-200 text-slate-600 px-4 py-1.5 text-xs tracking-[0.2em] uppercase font-bold shadow-sm">
-                                Est. 2024
+                                FIGI SHOP
                             </Badge>
 
                             <h1 className="text-5xl md:text-7xl font-bold text-slate-900 tracking-tight leading-tight">
@@ -82,7 +82,7 @@ export function About() {
                             </h1>
 
                             <p className="text-xl text-slate-500 font-light leading-relaxed">
-                                FigiCore is your premier destination for curated art toys, blind boxes, and limited edition figures. We bridge the gap between art and play.
+                                FigiCore is a specialized ecosystem designed for the modern collector. We bridge the gap between high-end digital commerce and the tangible joy of unboxing authentic masterpieces.
                             </p>
 
                             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
@@ -131,7 +131,7 @@ export function About() {
                             className="relative aspect-square lg:aspect-[4/5] rounded-[3rem] overflow-hidden shadow-2xl"
                         >
                             <img
-                                src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=800&q=80"
+                                src="https://res.cloudinary.com/dy7w4q9n9/image/upload/v1776364071/figicore_products/ybqn2qxohqlbav1hewwf.webp"
                                 alt="Collector"
                                 className="w-full h-full object-cover"
                             />
@@ -151,16 +151,19 @@ export function About() {
                                 <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mb-8">
                                     <Sparkles className="w-8 h-8 text-amber-600" />
                                 </div>
-                                <h2 className="text-4xl font-bold text-slate-900 mb-6 tracking-tight">Built on Passion & Integrity</h2>
-                                <p className="text-xl text-slate-600 leading-relaxed font-light mb-8">
-                                    "To create a trusted sanctuary where collectors can discover authentic masterpieces, connecting with the stories and artists behind every figure."
+                                <h2 className="text-4xl font-bold text-slate-900 mb-6 tracking-tight">The Passion Behind the Tech</h2>
+                                <p className="text-xl text-slate-600 leading-relaxed font-light mb-6">
+                                    FigiCore was born from a simple collective frustration: the lack of transparency and security in the high-end figure market. What started as a passion project for Gundam and Art Toy enthusiasts has evolved into a robust technical ecosystem.
+                                </p>
+                                <p className="text-lg text-slate-500 leading-relaxed font-light mb-8">
+                                    Our vision is to build a unified sanctuary where technology serves integrity—where every auction is fair, every blind box is transparent, and every collector can verify the authenticity of their treasures with absolute certainty.
                                 </p>
 
                                 <div className="space-y-6">
                                     {[
-                                        { title: 'Quality First', desc: 'Rigorous inspection of every item.' },
-                                        { title: 'Community Driven', desc: 'Supporting artists and collectors alike.' },
-                                        { title: 'Transparent Pricing', desc: 'Fair market value, no hidden fees.' }
+                                        { title: 'Verified Authenticity', desc: 'Direct sourcing from official global distributors.' },
+                                        { title: 'Technical Integrity', desc: 'Secure real-time auction engine and closed-loop encryption.' },
+                                        { title: 'Collector-First UX', desc: 'Transparent drop rates and mandatory video evidence.' }
                                     ].map((item, i) => (
                                         <div key={i} className="flex gap-5 items-start">
                                             <div className="mt-1 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
@@ -233,7 +236,7 @@ export function About() {
                                 <Button
                                     size="lg"
                                     variant="outline"
-                                    className="h-14 px-10 rounded-full border-slate-700 text-white hover:bg-white/10 text-lg font-bold"
+                                    className="h-14 px-10 rounded-full border-white text-white hover:bg-white/10 hover:text-white text-lg font-bold bg-transparent"
                                     onClick={() => navigate('/guest/browse')}
                                 >
                                     Browse Shop

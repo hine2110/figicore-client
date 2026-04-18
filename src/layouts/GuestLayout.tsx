@@ -203,8 +203,8 @@ export function GuestLayout({ children, activePage = 'home' }: GuestLayoutProps)
                             <ul className="space-y-3 text-sm text-gray-500">
                                 <li onClick={() => navigate('/guest/about')} className="hover:text-gray-900 cursor-pointer transition-colors">About Us</li>
                                 <li className="hover:text-gray-900 cursor-pointer transition-colors">Careers</li>
-                                <li className="hover:text-gray-900 cursor-pointer transition-colors">Privacy Policy</li>
-                                <li className="hover:text-gray-900 cursor-pointer transition-colors">Terms of Service</li>
+                                <li onClick={() => navigate('/guest/privacy')} className="hover:text-gray-900 cursor-pointer transition-colors">Privacy Policy</li>
+                                <li onClick={() => navigate('/guest/terms')} className="hover:text-gray-900 cursor-pointer transition-colors">Terms of Service</li>
                             </ul>
                         </div>
                     </div>

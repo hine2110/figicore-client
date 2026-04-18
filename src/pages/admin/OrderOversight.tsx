@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import { Download, Filter, Search, Eye, Edit2, Archive, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,17 +20,52 @@ import {
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Mock Data
-const ORDERS = [
-    { id: "ORD-2024-001", customer: "Alice Freeman", items: 4, total: 320.50, status: "Processing", date: "2024-01-20" },
-    { id: "ORD-2024-002", customer: "Bob Smith", items: 1, total: 45.00, status: "Delivered", date: "2024-01-19" },
-    { id: "ORD-2024-003", customer: "Charlie Davis", items: 12, total: 1250.00, status: "Pending", date: "2024-01-19" },
-    { id: "ORD-2024-004", customer: "Diana Prince", items: 2, total: 89.99, status: "Cancelled", date: "2024-01-18" },
-    { id: "ORD-2024-005", customer: "Evan Wright", items: 3, total: 210.00, status: "Processing", date: "2024-01-18" },
-];
+// API Base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function OrderOversight() {
+    const [orders, setOrders] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState("all");
+
+    const fetchOrders = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE_URL}/orders`, {
+                params: statusFilter !== 'all' ? { status: statusFilter.toUpperCase() } : {},
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setOrders(response.data);
+        } catch (error) {
+            console.error("Failed to fetch orders:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchOrders();
+    }, [statusFilter]);
+
+    const getStatusBadge = (status: string) => {
+        const s = status?.toUpperCase();
+        switch (s) {
+            case 'DELIVERED':
+                return { label: 'Delivered', variant: 'default', color: 'bg-green-100 text-green-700 border-green-200' };
+            case 'PROCESSING':
+            case 'PACKED':
+            case 'SHIPPED':
+                return { label: status, variant: 'secondary', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+            case 'PENDING_PAYMENT':
+            case 'WAITING_DEPOSIT':
+                return { label: 'Pending', variant: 'outline', color: 'bg-amber-100 text-amber-700 border-amber-200' };
+            case 'CANCELLED':
+                return { label: 'Cancelled', variant: 'destructive', color: 'bg-red-100 text-red-700 border-red-200' };
+            default:
+                return { label: status, variant: 'outline', color: '' };
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -83,49 +119,59 @@ export default function OrderOversight() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {ORDERS.map((order) => (
-                            <TableRow key={order.id}>
-                                <TableCell className="font-mono font-medium">{order.id}</TableCell>
-                                <TableCell>{order.customer}</TableCell>
-                                <TableCell className="text-neutral-500">{order.date}</TableCell>
-                                <TableCell>{order.items}</TableCell>
-                                <TableCell className="font-bold">${order.total.toFixed(2)}</TableCell>
-                                <TableCell>
-                                    <Badge variant={
-                                        order.status === 'Delivered' ? 'default' : // Greenish usually default or custom
-                                            order.status === 'Processing' ? 'secondary' :
-                                                order.status === 'Cancelled' ? 'destructive' : 'outline'
-                                    } className={
-                                        order.status === 'Delivered' ? 'bg-green-100 text-green-700 hover:bg-green-100 border-green-200' :
-                                            order.status === 'Processing' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200' :
-                                                order.status === 'Pending' ? 'bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200' :
-                                                    order.status === 'Cancelled' ? 'bg-red-100 text-red-700 hover:bg-red-100 border-red-200' : ''
-                                    }>
-                                        {order.status}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem>
-                                                <Eye className="mr-2 h-4 w-4" /> View Details
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem>
-                                                <Edit2 className="mr-2 h-4 w-4" /> Update Status
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="text-red-600">
-                                                <Archive className="mr-2 h-4 w-4" /> Cancel Order
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                        {loading ? (
+                            <TableRow>
+                                <TableCell colSpan={7} className="text-center py-10 text-neutral-400">
+                                    Loading orders...
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        ) : orders.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={7} className="text-center py-10 text-neutral-400">
+                                    No orders found.
+                                </TableCell>
+                            </TableRow>
+                        ) : orders.map((order) => {
+                            const badge = getStatusBadge(order.status_code);
+                            return (
+                                <TableRow key={order.order_id}>
+                                    <TableCell className="font-mono font-medium">{order.order_code}</TableCell>
+                                    <TableCell>{order.users?.full_name || 'Guest'}</TableCell>
+                                    <TableCell className="text-neutral-500">
+                                        {new Date(order.created_at).toLocaleDateString()}
+                                    </TableCell>
+                                    <TableCell>{order.order_items?.length || 0}</TableCell>
+                                    <TableCell className="font-bold">
+                                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.total_amount)}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={badge.variant as any} className={badge.color}>
+                                            {badge.label}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => window.location.href = `/admin/orders/${order.order_id}`}>
+                                                    <Eye className="mr-2 h-4 w-4" /> View Details
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>
+                                                    <Edit2 className="mr-2 h-4 w-4" /> Update Status
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem className="text-red-600">
+                                                    <Archive className="mr-2 h-4 w-4" /> Cancel Order
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
                     </TableBody>
                 </Table>
             </div>
