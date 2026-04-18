@@ -98,6 +98,8 @@ import { Browse } from "@/pages/guest/Browse";
 import ProductDetail from "@/pages/guest/ProductDetail";
 import { About } from "@/pages/guest/About";
 import SignIn from "@/pages/guest/SignIn";
+import Terms from "@/pages/guest/Terms";
+import Privacy from "@/pages/guest/Privacy";
 import { SignUp } from "@/pages/guest/SignUp";
 import ForgotPassword from "@/pages/guest/ForgotPassword";
 import ResetPassword from "@/pages/guest/ResetPassword";
@@ -124,6 +126,8 @@ export default function App() {
                     <Route path="browse" element={<Browse />} />
                     <Route path="product/:id" element={<ProductDetail />} />
                     <Route path="about" element={<About />} />
+                    <Route path="terms" element={<Terms />} />
+                    <Route path="privacy" element={<Privacy />} />
                     <Route path="login" element={<SignIn />} />
                     <Route path="register" element={<SignUp />} />
                     <Route path="forgot-password" element={<ForgotPassword />} />

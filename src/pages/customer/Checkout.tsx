@@ -364,9 +364,21 @@ export default function Checkout() {
     }
 
     const totalOriginalShipping = orders.reduce((sum, o) => sum + Number(o.original_shipping_fee || 0), 0);
+
+    // GOLDEN RULE: Shipping discount display must be based on the ROUNDED fee,
+    // not the raw GHN fee (original_shipping_fee), to avoid fractional amounts
+    // (e.g. raw 68.2k → rounded 69k; discount shown = 69k, not 68.2k).
+    // Mirror the backend formula: ceil(max(30k, rawFee) / 1k) * 1k
+    const totalRoundedShipping = orders.reduce((sum, o) => {
+        const rawFee = Number(o.original_shipping_fee || 0);
+        if (rawFee === 0) return sum;
+        return sum + Math.ceil(Math.max(30000, rawFee) / 1000) * 1000;
+    }, 0);
+
     let calculatedFreeShip = 0;
     if (appliedShippingPromo && appliedShippingPromo.discount_type === 'FREE_SHIP') {
-        calculatedFreeShip = totalOriginalShipping - totalShipping;
+        // Use rounded fee as baseline so the discount amount is always a whole number
+        calculatedFreeShip = totalRoundedShipping - totalShipping;
     }
 
     // ── Voucher discount calculation (local preview only) ──
@@ -578,7 +590,9 @@ export default function Checkout() {
                                             <div className="flex justify-between text-slate-600 font-medium">
                                                 <span>Total Shipping</span>
                                                 <span className="font-bold text-slate-900">
-                                                    {formatPrice(appliedShippingPromo ? totalOriginalShipping : totalShipping)}
+                                                    {/* Show rounded fee (not raw GHN fee) when a shipping promo is applied
+                                                         so the "before discount" amount is always a whole number */}
+                                                    {formatPrice(appliedShippingPromo ? totalRoundedShipping : totalShipping)}
                                                 </span>
                                             </div>
 
@@ -628,7 +642,7 @@ export default function Checkout() {
                                                         </div>
                                                     )}
 
-                                                    {appliedShippingPromo && (
+                                                    {appliedShippingPromo && calculatedFreeShip > 0 && (
                                                         <div className="flex items-start justify-between">
                                                             <div className="flex flex-col">
                                                                 <span className="text-emerald-600 font-medium flex items-center gap-1.5">
@@ -638,8 +652,9 @@ export default function Checkout() {
                                                                     Code: {appliedShippingPromo.code}
                                                                 </span>
                                                             </div>
+                                                            {/* calculatedFreeShip = roundedFee - shipping_fee (always whole number) */}
                                                             <span className="font-bold text-emerald-600">
-                                                                -{formatPrice(calculatedFreeShip > 0 ? calculatedFreeShip : 30000)}
+                                                                -{formatPrice(calculatedFreeShip)}
                                                             </span>
                                                         </div>
                                                     )}
