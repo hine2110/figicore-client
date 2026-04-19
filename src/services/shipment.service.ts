@@ -20,13 +20,32 @@ export const shipmentService = {
     },
 
     uploadVideo: async (file: File) => {
+        // 1. Get Signature from Backend
+        const { data: signData } = await axiosInstance.get('/upload/signature?folder=figicore_shipments');
+        const { signature, timestamp, cloudName, apiKey, folder } = signData;
+
+        // 2. Upload directly to Cloudinary
         const formData = new FormData();
         formData.append('file', file);
-        const response = await axiosInstance.post('/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-            timeout: 300000 // 5 minutes for large video uploads
-        });
-        return response.data; // { url, type, public_id }
+        formData.append('api_key', apiKey);
+        formData.append('timestamp', timestamp);
+        formData.append('signature', signature);
+        formData.append('folder', folder);
+
+        const response = await axios.post(
+            `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+            formData,
+            {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 600000 // 10 minutes for direct video upload
+            }
+        );
+
+        return {
+            url: response.data.secure_url,
+            type: response.data.resource_type.toUpperCase(),
+            public_id: response.data.public_id
+        };
     },
 
     createShipment: async (orderId: number, videoUrl?: string) => {

@@ -182,7 +182,7 @@ export default function Checkout() {
 
         // Use VITE_API_BASE_URL (e.g. http://localhost:3000) and append /events namespace
         const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
-        const socketUrl = `${baseUrl}/events`;
+        const socketUrl = baseUrl.includes('localhost') ? `${baseUrl}/events` : 'https://api.figicore.com/events';
         const socket = io(socketUrl);
 
         socket.on('connect', () => {
