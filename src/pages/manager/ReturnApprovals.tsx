@@ -26,7 +26,7 @@ export default function ReturnApprovals() {
         fetchRequests();
 
         // Real-time listener to refresh list automatically
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
         const socket = io(`${baseUrl}/events`);
 
         socket.on('manager:new_return_request', () => {

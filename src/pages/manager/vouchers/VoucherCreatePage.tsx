@@ -369,28 +369,45 @@ export default function VoucherCreatePage() {
                                             </FormItem>
                                         )}
                                     />
-                                    {/* MAX DISCOUNT AMOUNT — Only visible for Percentage */}
-                                    {!isFreeShip && (
-                                        <FormField
-                                            control={form.control}
-                                            name="max_discount_amount"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Maximum Discount Cap (VND)</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="text"
-                                                            placeholder="Leave blank for no limit"
-                                                            value={formatNumberStr(field.value)}
-                                                            onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
-                                                        />
-                                                    </FormControl>
-                                                    <FormDescription>Limits the discount for high-value orders (e.g., 10% up to 100k)</FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    )}
+                                    <FormField
+                                        control={form.control}
+                                        name="max_discount_amount"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Maximum Discount Cap (VND)</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="text"
+                                                        placeholder={isFreeShip ? "e.g. 30,000 (standard cap)" : "Leave blank for no limit"}
+                                                        value={formatNumberStr(field.value)}
+                                                        onChange={(e) => field.onChange(parseNumberStr(e.target.value))}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {isFreeShip 
+                                                        ? "Limits the shipping discount amount (e.g. Free ship up to 30k)" 
+                                                        : "Limits the discount for high-value orders (e.g. 10% up to 100k)"}
+                                                </FormDescription>
+                                                {/* TECHNICAL NOTE: For FREE_SHIP vouchers, the cap must be a round
+                                                    thousand (e.g. 30,000 / 50,000) to stay in sync with the GHN fee
+                                                    rounding logic on the backend (ceil to nearest 1,000đ).
+                                                    A non-round cap (e.g. 30,200) can still produce fractional
+                                                    amounts on the Checkout summary. */}
+                                                {isFreeShip && (
+                                                    <div className="flex items-start gap-2 text-xs bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-1">
+                                                        <span className="text-amber-500 mt-0.5 shrink-0">⚠️</span>
+                                                        <span className="text-amber-800">
+                                                            <strong>Lưu ý kỹ thuật:</strong> Mức giảm tối đa nên là{' '}
+                                                            <strong>số tròn hàng nghìn</strong> (30,000 · 50,000 · 70,000…).
+                                                            Phí ship GHN được làm tròn lên hàng nghìn trên backend; nếu cap lẻ
+                                                            sẽ khiến số tiền giảm hiển thị bị lẻ trên trang Checkout.
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                             </div>
 
                             <Button

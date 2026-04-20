@@ -24,7 +24,7 @@ export default function ReturnInspection() {
     useEffect(() => {
         fetchRequests();
 
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
         const socket = io(`${baseUrl}/events`);
 
         // Usually manager events for now, but good to add generic refresh

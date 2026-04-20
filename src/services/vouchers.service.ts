@@ -51,8 +51,8 @@ export interface CreateVoucherDto {
 
 export const VouchersService = {
     // Admin APIs
-    getAll: async () => {
-        const response = await api.get<Voucher[]>('/promotions');
+    getAll: async (params?: { page?: number; limit?: number; search?: string; type?: string; status?: string; rank?: string }) => {
+        const response = await api.get<{ data: Voucher[]; total: number }>('/promotions', { params });
         return response.data;
     },
 
@@ -78,6 +78,11 @@ export const VouchersService = {
 
     resume: async (id: number) => {
         const response = await api.patch(`/promotions/${id}/resume`);
+        return response.data;
+    },
+
+    sendApologyVoucher: async (email: string) => {
+        const response = await api.post('/promotions/apology', { email });
         return response.data;
     },
 

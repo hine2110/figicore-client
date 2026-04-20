@@ -67,8 +67,8 @@ export interface CreatePromotionDto {
 }
 
 export const PromotionsService = {
-    getAll: async () => {
-        const response = await api.get<Promotion[]>('/product-promotions');
+    getAll: async (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
+        const response = await api.get<{ data: Promotion[]; total: number }>('/product-promotions', { params });
         return response.data;
     },
 

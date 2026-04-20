@@ -21,6 +21,7 @@ import ProductManagement from "@/pages/admin/ProductManagement";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
 import OrderOversight from "@/pages/admin/OrderOversight";
 import ProfilePage from "@/pages/common/ProfilePage";
+import ShiftRegistration from "@/pages/common/ShiftRegistration";
 import AuctionManagement from "@/pages/admin/AuctionManagement";
 import AdminAuctionDetail from "@/pages/admin/AdminAuctionDetail";
 import AdminAuctionLive from "@/pages/admin/AdminAuctionLive";
@@ -100,6 +101,8 @@ import { Browse } from "@/pages/guest/Browse";
 import ProductDetail from "@/pages/guest/ProductDetail";
 import { About } from "@/pages/guest/About";
 import SignIn from "@/pages/guest/SignIn";
+import Terms from "@/pages/guest/Terms";
+import Privacy from "@/pages/guest/Privacy";
 import { SignUp } from "@/pages/guest/SignUp";
 import ForgotPassword from "@/pages/guest/ForgotPassword";
 import ResetPassword from "@/pages/guest/ResetPassword";
@@ -126,6 +129,8 @@ export default function App() {
                     <Route path="browse" element={<Browse />} />
                     <Route path="product/:id" element={<ProductDetail />} />
                     <Route path="about" element={<About />} />
+                    <Route path="terms" element={<Terms />} />
+                    <Route path="privacy" element={<Privacy />} />
                     <Route path="login" element={<SignIn />} />
                     <Route path="register" element={<SignUp />} />
                     <Route path="forgot-password" element={<ForgotPassword />} />
@@ -202,6 +207,7 @@ export default function App() {
                             <Route path="imports" element={<GoodsReceipt />} />
                             <Route path="returns" element={<ReturnInspection />} />
                             <Route path="profile" element={<ProfilePage />} />
+                            <Route path="shift-registration" element={<ShiftRegistration />} />
                             <Route path="schedule" element={<WarehouseSchedule />} />
                             <Route path="timesheets" element={<WarehouseTimesheets />} />
                             <Route path="my-payroll" element={<MyPayrollWarehouse />} />
@@ -215,6 +221,7 @@ export default function App() {
                             <Route path="dashboard" element={<PosDashboard />} />
                             <Route path="counter" element={<PosSystem />} />
                             <Route path="orders" element={<OrderProcessing />} />
+                            <Route path="shift-registration" element={<ShiftRegistration />} />
                             <Route path="schedule" element={<PosSchedule />} />
                             <Route path="timesheets" element={<PosTimesheets />} />
                             <Route path="sessions" element={<SessionManager />} />

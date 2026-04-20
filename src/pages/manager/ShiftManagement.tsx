@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Edit2, Trash2, Copy, ChevronLeft, ChevronRight, User as UserIcon, Calendar as CalendarIcon, CopyPlus, ShieldAlert, ShieldCheck, MonitorX, MonitorSmartphone, Power } from 'lucide-react';
+import { Plus, Edit2, Trash2, Copy, ChevronLeft, ChevronRight, User as UserIcon, Calendar as CalendarIcon, CopyPlus, ShieldAlert, ShieldCheck, MonitorX, MonitorSmartphone, Power, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -29,6 +29,7 @@ export interface WorkSchedule {
     shift_code: string;
     expected_start: string | null;
     expected_end: string | null;
+    status_code?: string;
     // Relation from backend (if included)
     employees?: {
         full_name: string;
@@ -102,6 +103,21 @@ export default function ShiftManagement() {
         const start = currentWeekStart;
         const end = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
         return `Week of ${format(start, 'MMM dd')} - ${format(end, 'MMM dd, yyyy')}`;
+    }, [currentWeekStart]);
+
+    const isLocked = useMemo(() => {
+        const today = new Date();
+        const currentMonday = startOfWeek(today, { weekStartsOn: 1 });
+        const currentVnDay = today.getDay(); // 0-Sun, 1-Mon, ... 5-Fri, 6-Sat
+        
+        // If the week we are viewing is mathematically strictly strictly after this week's start
+        if (currentWeekStart.getTime() > currentMonday.getTime()) {
+            // Manager cannot edit it unless today is Sat(6) or Sun(0)
+            if (currentVnDay >= 1 && currentVnDay <= 5) {
+                return true;
+            }
+        }
+        return false;
     }, [currentWeekStart]);
 
     // FILTER: Only show supported roles in dropdown
@@ -218,6 +234,16 @@ export default function ShiftManagement() {
             await axiosInstance.patch(`/schedules/${currentId}`, payload);
             toast({ title: "Success", description: "Schedule updated successfully" });
             setIsDialogOpen(false);
+            fetchSchedules();
+        } catch (error: any) {
+            handleApiError(error);
+        }
+    };
+
+    const handleUpdateStatus = async (id: number, status: string) => {
+        try {
+            await axiosInstance.patch(`/schedules/${id}/status`, { status_code: status });
+            toast({ title: "Success", description: status === 'PUBLISHED' ? "Schedule Approved" : "Registration Rejected" });
             fetchSchedules();
         } catch (error: any) {
             handleApiError(error);
@@ -360,73 +386,107 @@ export default function ShiftManagement() {
         return (
             <div className="flex flex-col gap-2 min-h-[100px]">
                 {daySchedules.map(schedule => (
-                    <div key={schedule.schedule_id} className="relative group bg-white border border-neutral-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-all">
+                    <div key={schedule.schedule_id} className={`relative group border rounded-lg p-3 shadow-sm hover:shadow-md transition-all ${schedule.status_code === 'PENDING' ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-neutral-200'}`}>
                         <div className="flex items-center gap-2 mb-2">
-                            <div className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center text-xs font-bold text-neutral-600">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${schedule.status_code === 'PENDING' ? 'bg-yellow-200 text-yellow-800' : 'bg-neutral-100 text-neutral-600'}`}>
                                 <UserIcon className="w-3 h-3" />
                             </div>
                             <span className="text-sm font-medium truncate max-w-[120px]" title={getUserName(schedule)}>
                                 {getUserName(schedule)}
                             </span>
+                            {schedule.status_code === 'PENDING' && (
+                                <span className="ml-auto text-[10px] font-bold text-yellow-600 uppercase tracking-wider bg-yellow-200/50 px-1.5 py-0.5 rounded">Pending</span>
+                            )}
                         </div>
-                        <div className="text-xs text-neutral-400 mb-1">
+                        <div className={`text-xs mb-1 ${schedule.status_code === 'PENDING' ? 'text-yellow-600/80' : 'text-neutral-400'}`}>
                             {getTimeFromIso(schedule.expected_start)} - {getTimeFromIso(schedule.expected_end)}
                         </div>
 
                         {/* Action Buttons Overlay */}
-                        <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 absolute top-1 right-1 p-1 rounded border shadow-sm">
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 hover:bg-neutral-50"
-                                onClick={() => openEditModal(schedule)}
-                                title="Edit"
-                            >
-                                <Edit2 className="w-3 h-3 text-blue-600" />
-                            </Button>
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 hover:bg-neutral-50"
-                                onClick={() => openCloneModal(schedule)}
-                                title="Clone"
-                            >
-                                <Copy className="w-3 h-3 text-green-600" />
-                            </Button>
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 hover:bg-neutral-50"
-                                onClick={() => handleDelete(schedule.schedule_id)}
-                                title="Delete"
-                            >
-                                <Trash2 className="w-3 h-3 text-red-600" />
-                            </Button>
-                        </div>
+                        {!isLocked && (
+                            <div className={`flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity absolute top-1 right-1 p-1 rounded border shadow-sm ${schedule.status_code === 'PENDING' ? 'bg-yellow-50 border-yellow-200' : 'bg-white/90 border-neutral-200'}`}>
+                                {schedule.status_code === 'PENDING' ? (
+                                    <>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-6 w-6 hover:bg-green-100"
+                                            onClick={() => handleUpdateStatus(schedule.schedule_id, 'PUBLISHED')}
+                                            title="Accept"
+                                        >
+                                            <CheckCircle className="w-4 h-4 text-green-600" />
+                                        </Button>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-6 w-6 hover:bg-red-100"
+                                            onClick={() => handleUpdateStatus(schedule.schedule_id, 'REJECTED')}
+                                            title="Reject"
+                                        >
+                                            <XCircle className="w-4 h-4 text-red-600" />
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-6 w-6 hover:bg-neutral-50"
+                                            onClick={() => openEditModal(schedule)}
+                                            title="Edit"
+                                        >
+                                            <Edit2 className="w-3 h-3 text-blue-600" />
+                                        </Button>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-6 w-6 hover:bg-neutral-50"
+                                            onClick={() => openCloneModal(schedule)}
+                                            title="Clone"
+                                        >
+                                            <Copy className="w-3 h-3 text-green-600" />
+                                        </Button>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-6 w-6 hover:bg-neutral-50"
+                                            onClick={() => handleDelete(schedule.schedule_id)}
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="w-3 h-3 text-red-600" />
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                 ))}
 
                 <div className="mt-auto flex flex-col gap-1">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full text-xs text-neutral-500 hover:text-neutral-900 border border-dashed border-neutral-300 hover:bg-white bg-transparent h-7"
-                        onClick={() => openCreateModal({
-                            date: format(dayDate, 'yyyy-MM-dd'),
-                            shift_code: shiftCode
-                        })}
-                    >
-                        <Plus className="w-3 h-3 mr-1" /> Add
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full text-[10px] text-neutral-400 hover:text-neutral-700 h-6"
-                        onClick={() => handleCloneAll(dayDate, shiftCode)}
-                        title="Copy shifts from yesterday"
-                    >
-                        <CopyPlus className="w-3 h-3 mr-1" /> Clone Prev Day
-                    </Button>
+                    {!isLocked && (
+                        <>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full text-xs text-neutral-500 hover:text-neutral-900 border border-dashed border-neutral-300 hover:bg-white bg-transparent h-7"
+                                onClick={() => openCreateModal({
+                                    date: format(dayDate, 'yyyy-MM-dd'),
+                                    shift_code: shiftCode
+                                })}
+                            >
+                                <Plus className="w-3 h-3 mr-1" /> Add
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full text-[10px] text-neutral-400 hover:text-neutral-700 h-6"
+                                onClick={() => handleCloneAll(dayDate, shiftCode)}
+                                title="Copy shifts from yesterday"
+                            >
+                                <CopyPlus className="w-3 h-3 mr-1" /> Clone Prev Day
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
         );
@@ -449,12 +509,22 @@ export default function ShiftManagement() {
                             Finalize Setup
                         </Button>
                     )}
-                    <Button onClick={() => openCreateModal()}>
+                    <Button onClick={() => openCreateModal()} disabled={isLocked}>
                         <Plus className="w-4 h-4 mr-2" />
                         New Assignment
                     </Button>
                 </div>
             </div>
+
+            {isLocked && (
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg flex items-center gap-3">
+                    <ShieldAlert className="w-5 h-5 text-yellow-600 shrink-0" />
+                    <p className="text-sm">
+                        Thời gian đăng ký lịch của Staff đang mở. Bạn chỉ có thể xếp lịch cho tuần kế tiếp bắt đầu từ <strong className="font-semibold">00:00 Thứ 7</strong>.
+                    </p>
+                </div>
+            )}
+
             {/* Navigation Bar */}
             <Card className="p-4 border-neutral-200 bg-neutral-50 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <Button variant="outline" size="sm" onClick={prevWeek}>

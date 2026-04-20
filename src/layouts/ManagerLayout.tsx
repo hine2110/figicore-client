@@ -44,7 +44,7 @@ export default function ManagerLayout() {
     useEffect(() => {
         if (user?.role_code !== 'MANAGER') return; // Only connect for managers if needed
 
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
         const socketUrl = `${baseUrl}/events`;
         const socket = io(socketUrl);
 
@@ -68,7 +68,6 @@ export default function ManagerLayout() {
         { name: 'Team Management', path: '/manager/team', icon: Users },
         { name: 'Sales & Reports', path: '/manager/reports', icon: BarChart3 },
         { name: 'Inventory Overview', path: '/manager/inventory', icon: PackageSearch },
-        { name: 'Campaigns', path: '/manager/campaigns', icon: Megaphone },
         { name: 'Promotions & Vouchers', path: '/manager/vouchers', icon: TicketPercent },
         { name: 'Return Approvals', path: '/manager/returns', icon: RotateCcw },
         {

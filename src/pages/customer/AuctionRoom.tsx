@@ -224,7 +224,7 @@ export default function CustomerAuctionRoom() {
                 }
 
                 // Initialize Socket - always connect to receive room_closed
-                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3000'}/auction-live`);
+                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://api.figicore.com'}/auction-live`);
                 socketRef.current = socket;
 
                 // [Gap 11] Initialize countdown from auction times

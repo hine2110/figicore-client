@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { io } from 'socket.io-client';
+import api from "@/services/api";
 
 export default function PreOrderPayment() {
     const { id } = useParams();
@@ -33,6 +34,8 @@ export default function PreOrderPayment() {
     const [showQRModal, setShowQRModal] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
     const [paymentRef, setPaymentRef] = useState<string | null>(null);
+    const [shippingFee, setShippingFee] = useState(30000);
+    const [calculatingFee, setCalculatingFee] = useState(false);
 
     // Generate VietQR URL dynamically
     const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
@@ -41,16 +44,16 @@ export default function PreOrderPayment() {
         if (!paymentRef || !contract) return '';
         const bankName = import.meta.env.VITE_SEPAY_BANK_NAME || 'MB';
         const accountNo = import.meta.env.VITE_SEPAY_ACCOUNT_NUMBER || '0935655266';
-        const amount = Number(contract.remaining_amount) + 30000; // Total
+        const amount = Number(contract.remaining_amount) + shippingFee; // Total with dynamic fee
         const content = `FIGI ${paymentRef}`;
         return `https://img.vietqr.io/image/${bankName}-${accountNo}-compact2.jpg?amount=${amount}&addInfo=${encodeURIComponent(content)}&accountName=FIGICORE`;
-    }, [paymentRef, contract]);
+    }, [paymentRef, contract, shippingFee]);
 
     // Socket Listener for Payment Update
     useEffect(() => {
         if (!showQRModal || !paymentRef) return;
 
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
         const socketUrl = `${baseUrl}/events`;
         const socket = io(socketUrl);
 
@@ -112,6 +115,32 @@ export default function PreOrderPayment() {
         };
         init();
     }, [id]);
+ 
+    // Fetch Dynamic Shipping Fee when address changes
+    useEffect(() => {
+      if (!selectedAddress || !contract) return;
+      
+      const fetchFee = async () => {
+        setCalculatingFee(true);
+        try {
+          // Pre-order items are usually 1 unique variant
+          const totalAmount = Number(contract.remaining_amount);
+          const res = await api.post('/address/calculate-fee', { 
+            address_id: selectedAddress.address_id,
+            total_amount: totalAmount
+          });
+          setShippingFee(res.data.fee);
+        } catch (error) {
+          console.error("Failed to calculate shipping fee:", error);
+          // Fallback to 30k floor if API fails
+          setShippingFee(30000);
+        } finally {
+          setCalculatingFee(false);
+        }
+      };
+      
+      fetchFee();
+    }, [selectedAddress, contract]);
 
     const handleSubmit = async () => {
         if (!selectedAddress) {
@@ -120,7 +149,6 @@ export default function PreOrderPayment() {
         }
 
         const remainingAmount = Number(contract.remaining_amount);
-        const shippingFee = 30000;
         const totalAmount = remainingAmount + shippingFee;
 
         if (paymentMethod === 'WALLET') {
@@ -195,7 +223,6 @@ export default function PreOrderPayment() {
     const variant = contract.product_variants;
     const product = variant?.products;
     const remainingAmount = Number(contract.remaining_amount);
-    const shippingFee = 30000; // Fixed fee for now as per backend logic
     const totalAmount = remainingAmount + shippingFee;
     const canPayViaWallet = Number(wallet?.balance_available || 0) >= totalAmount;
 
@@ -329,7 +356,13 @@ export default function PreOrderPayment() {
                                 </div>
                                 <div className="flex justify-between text-slate-500">
                                     <span>Shipping Fee</span>
-                                    <span className="text-slate-900">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(shippingFee)}</span>
+                                    <span className="text-slate-900">
+                                      {calculatingFee ? (
+                                        <Loader2 className="w-4 h-4 animate-spin inline mr-1" />
+                                      ) : (
+                                        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(shippingFee)
+                                      )}
+                                    </span>
                                 </div>
                                 <Separator className="bg-slate-100 my-4" />
                                 <div className="flex justify-between items-end">
