@@ -34,7 +34,9 @@ export function NotificationBell() {
 
         const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
         const socketUrl = baseUrl.includes('localhost') ? baseUrl : 'https://api.figicore.com';
-        const socket = io(`${socketUrl}/events`);
+        const socket = io(`${socketUrl}/events`, {
+            transports: ['websocket', 'polling']
+        });
 
         socket.on(`user:${user.user_id}:new_notification`, (newNotif: any) => {
             setNotifications(prev => [newNotif, ...prev]);
