@@ -79,6 +79,7 @@ export default function ManagerLayout() {
                 { name: 'Timesheets', path: '/manager/timesheets' },
                 { name: 'Leave Request', path: '/manager/leave-approvals' },
                 { name: 'Correction Approvals', path: '/manager/correction-approvals' }
+                
             ],
         },
         {
@@ -87,6 +88,7 @@ export default function ManagerLayout() {
             children: [
                 { name: 'Salary Configuration', path: '/manager/payroll' },
                 { name: 'Payroll Management', path: '/manager/payroll-management' },
+                { name: 'My Payroll', path: '/manager/my-payroll' },
 
             ],
         },

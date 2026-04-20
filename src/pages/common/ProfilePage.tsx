@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Loader2, Camera, Wallet, QrCode, Upload } from "lucide-react";
+import { Loader2, Camera, Wallet, QrCode, Upload, History } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,6 +25,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Shield } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+
 
 // Schema for Personal Information
 const personalSchema = z.object({
@@ -66,6 +68,29 @@ export default function ProfilePage() {
     const [qrUploading, setQrUploading] = useState(false);
 
     const [error, setError] = useState<string | null>(null);
+
+    // State cho Lịch sử lương
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [salaryHistory, setSalaryHistory] = useState<any[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+
+    const fetchSalaryHistory = async () => {
+        setIsHistoryModalOpen(true);
+        setHistoryLoading(true);
+        try {
+            // ProfilePage đang dùng đối tượng `api` được import sẵn
+            const res = await api.get('/payroll/my-history');
+            setSalaryHistory(res.data || []);
+        } catch (error) {
+            toast({ title: "Lỗi", description: "Error to load", variant: "destructive" });
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    };
 
     const form = useForm<z.infer<typeof personalSchema>>({
         resolver: zodResolver(personalSchema),
@@ -494,8 +519,24 @@ export default function ProfilePage() {
                                                 <Button type="submit" disabled={bankForm.formState.isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                                                     {bankForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Bank Details
                                                 </Button>
+                                                
                                             </form>
+                                            
                                         </Form>
+
+                                        {/* THÊM MỚI TẠI ĐÂY: Khu vực nút mở lịch sử lương */}
+                                        <div className="mt-8 pt-6 border-t border-slate-100">
+                                            <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                <div>
+                                                    <h4 className="font-semibold text-slate-800">History update salary</h4>
+                                                    <p className="text-sm text-slate-500">Xem lộ trình thăng tiến và thay đổi mức lương cơ bản của bạn.</p>
+                                                </div>
+                                                <Button type="button" variant="outline" className="mt-3 sm:mt-0 bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={fetchSalaryHistory}>
+                                                    <History className="w-4 h-4 mr-2" /> View
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        
                                     </CardContent>
                                 </Card>
                             </TabsContent>
@@ -562,6 +603,71 @@ export default function ProfilePage() {
                     </Tabs>
                 </div>
             </div>
+
+            {/* Modal Lịch sử thay đổi lương tái sử dụng từ Manager */}
+            <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}>
+                <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Salary Change History</DialogTitle>
+                        
+                    </DialogHeader>
+
+                    <div className="py-2">
+                        {historyLoading ? (
+                            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-neutral-400" /></div>
+                        ) : salaryHistory.length === 0 ? (
+                            <div className="text-center py-8 text-neutral-500 bg-neutral-50 rounded-lg border border-dashed">
+                                Bạn chưa có bản ghi thay đổi lương nào.
+                            </div>
+                        ) : (
+                            <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+                                {salaryHistory.map((item, index) => {
+                                    // Xác định đơn vị lương dựa vào role_code
+                                    const isFixedSalary = ['MANAGER', 'SUPER_ADMIN'].includes(profile?.role_code);
+                                    
+                                    return (
+                                        <div key={item.history_id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-200 text-slate-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                                                <History className="w-4 h-4" />
+                                            </div>
+                                            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded-lg border shadow-sm">
+                                                <div className="flex items-center justify-between space-x-2 mb-1">
+                                                    <div className="font-bold text-slate-900 text-sm">
+                                                        {formatCurrency(item.new_salary)}
+                                                        <span className="text-xs font-normal text-slate-500 ml-1">
+                                                            {isFixedSalary ? '/tháng' : '/h'}
+                                                        </span>
+                                                    </div>
+                                                    <time className="text-xs font-medium text-amber-600">
+                                                        {new Date(item.effective_date).toLocaleDateString('vi-VN')}
+                                                    </time>
+                                                </div>
+                                                <div className="text-xs text-slate-500 mb-2">
+                                                    Old salary: {formatCurrency(item.old_salary)}
+                                                    <span className="ml-1">
+                                                        {isFixedSalary ? '/tháng' : '/h'}
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm text-slate-700 mb-2">
+                                                    <Badge variant="secondary" className="font-normal text-[10px] bg-slate-100">{item.reason}</Badge>
+                                                </div>
+                                                {item.note && (
+                                                    <div className="text-xs text-slate-500 italic bg-slate-50 p-2 rounded border border-dashed">
+                                                        "{item.note}"
+                                                    </div>
+                                                )}
+                                                <div className="text-[10px] text-slate-400 mt-2 text-right">
+                                                    By: {item.users?.full_name || 'System'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

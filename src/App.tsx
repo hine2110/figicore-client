@@ -27,6 +27,8 @@ import AdminAuctionLive from "@/pages/admin/AdminAuctionLive";
 import ManualRefund from "@/pages/admin/ManualRefund";
 import SystemSettings from "@/pages/admin/SystemSettings";
 import AuditLogs from "@/pages/admin/AuditLogs";
+
+//manager
 import ManagerDashboard from "@/pages/manager/ManagerDashboard";
 import TeamManagement from "@/pages/manager/TeamManagement";
 import SalesReports from "@/pages/manager/SalesReports";
@@ -45,6 +47,7 @@ import FlashSaleEditPage from "@/pages/manager/promotions/FlashSaleEditPage";
 import VoucherListPage from "@/pages/manager/vouchers/VoucherListPage";
 import VoucherCreatePage from "@/pages/manager/vouchers/VoucherCreatePage";
 import VoucherEditPage from "@/pages/manager/vouchers/VoucherEditPage";
+import ManagerMyPayroll from "./pages/manager/MyPayroll";
 // import StaffDashboard from "@/pages/staff/StaffDashboard"; // Deprecated
 import Payroll from "@/pages/manager/SalaryConfiguration";
 
@@ -185,6 +188,7 @@ export default function App() {
                             <Route path="payroll" element={<Payroll />} />
                             <Route path="payroll-management" element={<PayrollManagement />} />
                             <Route path="vouchers/:id/edit" element={<VoucherEditPage />} />
+                            <Route path="my-payroll" element={<ManagerMyPayroll />} />
                         </Route>
                     </Route>
 
