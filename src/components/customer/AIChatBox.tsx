@@ -135,7 +135,9 @@ export const AIChatBox: React.FC = () => {
     useEffect(() => {
         const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
         const socketUrl = baseUrl.includes('localhost') ? baseUrl.replace('/api', '') : 'https://api.figicore.com';
-        const socket = io(`${socketUrl}/chat`);
+        const socket = io(`${socketUrl}/chat`, {
+            transports: ['websocket', 'polling']
+        });
         socketRef.current = socket;
 
         socket.on('receive_message', (msg: { text: string; role: 'model'; timestamp: string }) => {
