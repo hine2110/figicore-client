@@ -338,7 +338,7 @@ export default function AdminAuctionLive() {
                 });
                 setToken(tokenRes.data.token);
 
-                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://api.figicore.com'}/livestream-live`);
+                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://api.figicore.com'}/auction-live`);
                 socketRef.current = socket;
 
                 socket.on('connect', () => {
@@ -775,7 +775,7 @@ function AdminStreamPreview() {
         </div>
     );
 
-    return <VideoTrack trackRef={activeTrack as TrackReference} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
+    return <VideoTrack trackRef={activeTrack as TrackReference} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />;
 }
 
 function StudioTrackToggle() {
