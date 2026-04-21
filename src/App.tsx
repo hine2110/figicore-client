@@ -32,7 +32,6 @@ import AuditLogs from "@/pages/admin/AuditLogs";
 //manager
 import ManagerDashboard from "@/pages/manager/ManagerDashboard";
 import TeamManagement from "@/pages/manager/TeamManagement";
-import SalesReports from "@/pages/manager/SalesReports";
 import GlobalInventory from "@/pages/manager/GlobalInventory";
 import MarketingCampaigns from "@/pages/manager/MarketingCampaigns";
 import ReturnApprovals from "@/pages/manager/ReturnApprovals";
@@ -173,7 +172,6 @@ export default function App() {
                             <Route index element={<Navigate to="/manager/dashboard" replace />} />
                             <Route path="dashboard" element={<ManagerDashboard />} />
                             <Route path="team" element={<TeamManagement />} />
-                            <Route path="reports" element={<SalesReports />} />
                             <Route path="inventory" element={<GlobalInventory />} />
                             <Route path="campaigns" element={<MarketingCampaigns />} />
                             <Route path="returns" element={<ReturnApprovals />} />

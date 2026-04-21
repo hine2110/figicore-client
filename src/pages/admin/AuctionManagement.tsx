@@ -174,38 +174,75 @@ export default function AuctionManagement() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-                                                onClick={() => navigate(`/admin/auctions/${auction.auction_id}/live`)}
-                                                title="View Details"
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-slate-600 hover:text-slate-700 hover:bg-slate-50 border-slate-200"
-                                                onClick={() => {
-                                                    setEditingAuctionId(auction.auction_id);
-                                                    setIsEditModalOpen(true);
-                                                }}
-                                                disabled={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING'}
-                                                title={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING' ? "Cannot edit an active or completed auction" : "Edit Auction"}
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                                                onClick={() => handleDelete(auction.auction_id)}
-                                                disabled={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING'}
-                                                title={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING' ? "Cannot delete an active or completed auction" : "Delete Auction"}
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            {/* ── COMPLETED / AWAITING_PAYMENT: View Result Only ── */}
+                                            {['COMPLETED', 'AWAITING_PAYMENT', 'FAILED_NO_BUYER', 'CANCELLED'].includes(auction.status_code) ? (
+                                                <div className="flex items-center gap-2">
+                                                    {/* Winner badge */}
+                                                    {auction.users && (
+                                                        <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold px-2 py-1 rounded-lg">
+                                                            <span>🏆</span>
+                                                            <span className="max-w-[100px] truncate">{auction.users.full_name || 'Winner'}</span>
+                                                        </div>
+                                                    )}
+                                                    {/* Payment status chip */}
+                                                    {auction.status_code === 'AWAITING_PAYMENT' && (
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-600 border border-orange-200 px-2 py-0.5 rounded-full">
+                                                            Pending Payment
+                                                        </span>
+                                                    )}
+                                                    {auction.status_code === 'COMPLETED' && (
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">
+                                                            ✓ Paid
+                                                        </span>
+                                                    )}
+                                                    {/* View Detail button — goes to detail, NOT live room */}
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                                        onClick={() => navigate(`/admin/auctions/${auction.auction_id}`)}
+                                                        title="View Auction Result"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                /* ── ACTIVE / UPCOMING / DRAFT: Full action set ── */
+                                                <>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                                        onClick={() => navigate(`/admin/auctions/${auction.auction_id}/live`)}
+                                                        title="Enter Live Room"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-slate-600 hover:text-slate-700 hover:bg-slate-50 border-slate-200"
+                                                        onClick={() => {
+                                                            setEditingAuctionId(auction.auction_id);
+                                                            setIsEditModalOpen(true);
+                                                        }}
+                                                        disabled={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING'}
+                                                        title={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING' ? "Cannot edit an active or completed auction" : "Edit Auction"}
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                                        onClick={() => handleDelete(auction.auction_id)}
+                                                        disabled={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING'}
+                                                        title={auction.status_code !== 'DRAFT' && auction.status_code !== 'UPCOMING' ? "Cannot delete an active or completed auction" : "Delete Auction"}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>
