@@ -72,6 +72,7 @@ const AdminVideoStream = memo(() => {
             <VideoTrack
                 trackRef={adminVideoTrack as TrackReference}
                 className="w-full h-full object-cover"
+                style={{ transform: 'scaleX(-1)' }}
             />
             {/* Render all audio tracks so customer can hear the broadcaster */}
             {adminAudioTracks.map(audioTrack => (
@@ -193,6 +194,20 @@ export default function CustomerAuctionRoom() {
                     console.error("Failed to fetch initial status/wallet:", err);
                 }
 
+                // [Guard] After time is up, ONLY the winner can enter (to pay). Others are blocked.
+                const isTimeUp = ['AWAITING_PAYMENT', 'COMPLETED', 'FAILED_NO_BUYER', 'CANCELLED'].includes(data.status_code);
+                const isCurrentUserWinner = data.winner_id != null && user?.user_id === data.winner_id;
+
+                if (isTimeUp && !isCurrentUserWinner) {
+                    toast({
+                        title: '🔒 Room Archived',
+                        description: 'The live session has concluded. You can find the results in the Vault Archives.',
+                        variant: 'destructive'
+                    });
+                    navigate('/customer/auctions');
+                    return;
+                }
+
                 // Treat COMPLETED with winner as AWAITING_PAYMENT for UI purposes
                 setAuctionState({
                     currentPrice: data.auction_bids?.[0] ? Number(data.auction_bids[0].bid_amount) : Number(data.start_price),
@@ -272,11 +287,12 @@ export default function CustomerAuctionRoom() {
                 });
 
                 socket.on('auction_ended', (data: { auctionId: number, winnerId: number | null }) => {
+                    const userIsWinner = user != null && data.winnerId === user.user_id;
                     setAuctionState((prev: any) => ({ ...prev, status: 'AWAITING_PAYMENT' }));
-                    setIsWinner(user != null && data.winnerId === user.user_id);
-                    // [UX Update] Don't show modal immediately to allow staying in room
-                    // setShowEndModal(true); 
-                    toast({ title: 'Auction Ended', description: 'Bidding is now closed.', className: 'bg-rose-600 text-white border-none' });
+                    setIsWinner(userIsWinner);
+                    // Auto-show result modal for all participants
+                    setTimeout(() => setShowEndModal(true), 1200);
+                    toast({ title: userIsWinner ? '🏆 You Won!' : 'Auction Ended', description: userIsWinner ? 'Proceed to checkout to claim your prize!' : 'Bidding is now closed.', className: userIsWinner ? 'bg-amber-600 text-white border-none' : 'bg-rose-600 text-white border-none' });
                 });
 
                 // [Gap 11] Anti-snipe: server extends end_time -> update countdown
@@ -510,6 +526,22 @@ export default function CustomerAuctionRoom() {
 
     // Navigate to standard Checkout using order's paymentRef — resolves auction order by prefix
     const handleClaimCheckout = async () => {
+        // [Guard] Check address before proceeding to checkout
+        try {
+            const addrRes = await api.get('/address');
+            if (!addrRes.data || addrRes.data.length === 0) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Shipping Address Required',
+                    description: 'Please add a shipping address in your profile to complete checkout.'
+                });
+                navigate('/customer/profile');
+                return;
+            }
+        } catch {
+            // Silent fail — allow through if API unreachable
+        }
+
         try {
             const res = await api.get(`/orders/by-code/AUC-${id}`);
             const orders: any[] = Array.isArray(res.data) ? res.data : [res.data];
@@ -684,6 +716,30 @@ export default function CustomerAuctionRoom() {
 
                     {/* Incoming bid glow */}
                     {incomingBid && <div className="absolute inset-0 border-2 border-red-500/60 pointer-events-none z-10 animate-out fade-out zoom-out duration-700"></div>}
+
+                    {/* Winner celebration overlay on video */}
+                    <AnimatePresence>
+                        {isWinner && auctionState.status === 'AWAITING_PAYMENT' && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 pointer-events-none z-20"
+                            >
+                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(251,191,36,0.18)_0%,transparent_70%)] animate-pulse" />
+                                <div className="absolute inset-0 border-2 border-amber-400/40 rounded-none" />
+                                <motion.div
+                                    initial={{ y: -30, opacity: 0, scale: 0.8 }}
+                                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+                                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
+                                >
+                                    <div className="text-6xl mb-3 drop-shadow-2xl">🏆</div>
+                                    <p className="text-2xl font-black text-amber-300 drop-shadow-[0_0_30px_rgba(251,191,36,0.8)] uppercase tracking-widest">YOU WON!</p>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Flying Reactions Layer */}
                     <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">

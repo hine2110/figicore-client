@@ -618,7 +618,7 @@ export default function CustomerAuctions() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 opacity-70 hover:opacity-100 transition-opacity duration-500">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {archiveAuctions.map((room) => {
                                 const p = room.product_variants;
                                 const prod = p?.products;
@@ -630,14 +630,21 @@ export default function CustomerAuctions() {
                                 return (
                                     <div
                                         key={room.auction_id}
-                                        onClick={() => navigate(`/customer/auctions/${room.auction_id}`)}
-                                        className="group cursor-pointer rounded-2xl overflow-hidden relative flex flex-col aspect-square bg-neutral-950 border border-white/5 hover:border-white/15 transition-all duration-300 hover:-translate-y-1 grayscale hover:grayscale-0"
+                                        className="group rounded-2xl overflow-hidden relative flex flex-col aspect-square bg-neutral-950 border border-white/5 grayscale opacity-60 cursor-not-allowed select-none"
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-transparent z-10 bottom-0 top-[40%]"></div>
 
+                                        {/* Ended lock overlay */}
+                                        <div className="absolute inset-0 z-30 flex items-center justify-center">
+                                            <div className="bg-black/60 backdrop-blur-sm border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2">
+                                                <Archive className="w-4 h-4 text-neutral-400" />
+                                                <span className="text-xs font-black uppercase tracking-[0.2em] text-neutral-300">Session Closed</span>
+                                            </div>
+                                        </div>
+
                                         <div className="absolute inset-0 w-full h-full flex items-center justify-center p-8 z-0">
                                             {img ? (
-                                                <img src={img} alt={prod?.name} className="w-full h-full object-contain filter drop-shadow-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+                                                <img src={img} alt={prod?.name} className="w-full h-full object-contain filter drop-shadow-xl opacity-30" />
                                             ) : (
                                                 <Gavel className="w-12 h-12 text-white/5" />
                                             )}
@@ -645,17 +652,24 @@ export default function CustomerAuctions() {
 
                                         <div className="relative z-20 mt-auto p-5 flex flex-col justify-end">
                                             <div className="flex items-center gap-2 mb-2">
-                                                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest border border-neutral-700 px-2 py-0.5 rounded-sm">Ended</span>
+                                                <span className="text-[10px] font-black text-red-400/80 uppercase tracking-widest bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded flex items-center gap-1">
+                                                    <span className="w-1 h-1 rounded-full bg-red-500 inline-block"></span> ENDED
+                                                </span>
+                                                {room.status_code === 'AWAITING_PAYMENT' && (
+                                                    <span className="text-[10px] font-black text-amber-400/80 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                                                        Pending Pay
+                                                    </span>
+                                                )}
                                             </div>
 
-                                            <h4 className="text-base font-bold text-neutral-300 leading-tight mb-2 line-clamp-2 group-hover:text-white transition-colors">{prod?.name}</h4>
+                                            <h4 className="text-base font-bold text-neutral-400 leading-tight mb-2 line-clamp-2">{prod?.name}</h4>
 
                                             <div className="flex items-center justify-between mt-2 pt-3 border-t border-white/10">
-                                                <p className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
+                                                <p className="text-[10px] text-neutral-600 font-mono uppercase tracking-wider">
                                                     {new Date(room.end_time).toLocaleDateString('vi-VN')}
                                                 </p>
-                                                <p className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider flex items-center gap-1">
-                                                    View Details <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                                                <p className="text-[10px] text-neutral-600 font-mono uppercase tracking-wider flex items-center gap-1">
+                                                    <Archive className="w-3 h-3" /> Archived
                                                 </p>
                                             </div>
                                         </div>

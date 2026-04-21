@@ -66,7 +66,6 @@ export default function ManagerLayout() {
     const navItems: NavItem[] = [
         { name: 'Dashboard', path: '/manager/dashboard', icon: LayoutDashboard },
         { name: 'Team Management', path: '/manager/team', icon: Users },
-        { name: 'Sales & Reports', path: '/manager/reports', icon: BarChart3 },
         { name: 'Inventory Overview', path: '/manager/inventory', icon: PackageSearch },
         { name: 'Promotions & Vouchers', path: '/manager/vouchers', icon: TicketPercent },
         { name: 'Return Approvals', path: '/manager/returns', icon: RotateCcw },
