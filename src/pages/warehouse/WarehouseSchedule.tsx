@@ -125,10 +125,10 @@ export default function WarehouseSchedule() {
         const now = currentTime;
 
         // Giới hạn mở: Trước giờ bắt đầu ca 15 phút
-        const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
+        const windowStart = new Date(start.getTime() - 60 * 60 * 1000);
 
         // Giới hạn đóng: Sau giờ kết thúc ca 15 phút
-        const windowEnd = new Date(end.getTime() + 15 * 60 * 1000);
+        const windowEnd = new Date(end.getTime() + 60 * 60 * 1000);
 
         // Nút bấm chỉ được kích hoạt (true) khi thời gian hiện tại nằm giữa 2 mốc này
         return now >= windowStart && now <= windowEnd;

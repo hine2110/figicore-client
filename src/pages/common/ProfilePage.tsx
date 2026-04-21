@@ -529,7 +529,7 @@ export default function ProfilePage() {
                                             <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
                                                 <div>
                                                     <h4 className="font-semibold text-slate-800">History update salary</h4>
-                                                    <p className="text-sm text-slate-500">Xem lộ trình thăng tiến và thay đổi mức lương cơ bản của bạn.</p>
+                                                    
                                                 </div>
                                                 <Button type="button" variant="outline" className="mt-3 sm:mt-0 bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={fetchSalaryHistory}>
                                                     <History className="w-4 h-4 mr-2" /> View
