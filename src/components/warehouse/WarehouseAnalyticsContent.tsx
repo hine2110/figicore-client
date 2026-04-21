@@ -1,6 +1,7 @@
 import { 
     BarChart3, ShoppingBag, ShoppingCart, Zap, PackageCheck, 
-    DollarSign, Activity, Archive, Users, Truck, ArrowUpRight, ArrowDownRight 
+    DollarSign, Activity, Archive, Users, Truck, ArrowUpRight, ArrowDownRight,
+    Gavel, Gift, Layout, ShoppingBasket
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -12,10 +13,7 @@ import { cn } from "@/lib/utils";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function formatVND(value: number): string {
-    if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B₫`;
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M₫`;
-    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K₫`;
-    return `${value.toLocaleString()}₫`;
+    return `${value.toLocaleString('vi-VN')}₫`;
 }
 
 interface GrowthBadgeProps { value: number; suffix?: string; }
@@ -36,7 +34,7 @@ interface KpiCardProps {
     title: string;
     value: string | number;
     subValue?: string;
-    growth: number;
+    growth?: number;
     icon: React.ElementType;
     color: string;
     bgColor: string;
@@ -57,8 +55,8 @@ function KpiCard({ title, value, subValue, growth, icon: Icon, color, bgColor, p
                 {subValue && <div className="text-sm text-neutral-500 mb-2">{subValue}</div>}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                        <GrowthBadge value={growth} />
-                        <span className="text-xs text-neutral-400">vs last month</span>
+                        {growth !== undefined && <GrowthBadge value={growth} />}
+                        <span className="text-xs text-neutral-400">online stats</span>
                     </div>
                     {previousValue && (
                         <span className="text-xs text-neutral-400 font-mono">
@@ -71,8 +69,6 @@ function KpiCard({ title, value, subValue, growth, icon: Icon, color, bgColor, p
     );
 }
 
-const PIE_COLORS = ["#10b981", "#8b5cf6", "#94a3b8"];
-
 export interface WarehouseAnalyticsContentProps {
     kpi: any;
     currentMonthLabel: string;
@@ -82,50 +78,48 @@ export interface WarehouseAnalyticsContentProps {
 export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMonthLabel }: WarehouseAnalyticsContentProps) {
     if (!kpi) return null;
 
-    const { currentMonth: curr, previousMonth: prev, growth, activePreorderContracts } = kpi;
+    const { current: curr, previous: prev, growth, activePreorderContracts } = kpi;
 
-    // Chart data — Revenue comparison
+    // Chart data — Revenue comparison (All 6 types)
     const revenueComparisonData = [
         { name: "Retail", current: curr.onlineRevenue, previous: prev?.onlineRevenue ?? 0 },
-        { name: "Livestream", current: curr.livestreamRevenue, previous: prev?.livestreamRevenue ?? 0 },
+        { name: "Live", current: curr.livestreamRevenue, previous: prev?.livestreamRevenue ?? 0 },
         { name: "Pre-order", current: curr.preorderRevenue, previous: prev?.preorderRevenue ?? 0 },
+        { name: "Blindbox", current: curr.blindboxRevenue, previous: prev?.blindboxRevenue ?? 0 },
+        { name: "Auction", current: curr.auctionRevenue, previous: prev?.auctionRevenue ?? 0 },
+        { name: "Giveaway", current: curr.giveawayRevenue, previous: prev?.giveawayRevenue ?? 0 },
     ];
 
-    // Shipping breakdown pie
-    const transportMargin = curr.shippingCollected - curr.shippingPaid;
+    // Orders breakdown chart (All 6 types)
+    const ordersComparisonData = [
+        { name: "Retail", current: curr.totalOnlineOrders, previous: prev?.totalOnlineOrders ?? 0 },
+        { name: "Live", current: curr.totalLivestreamOrders, previous: prev?.totalLivestreamOrders ?? 0 },
+        { name: "Pre-order", current: curr.preorderCount, previous: prev?.preorderCount ?? 0 },
+        { name: "Blindbox", current: curr.blindboxCount, previous: prev?.blindboxCount ?? 0 },
+        { name: "Auction", current: curr.auctionCount, previous: prev?.auctionCount ?? 0 },
+        { name: "Giveaway", current: curr.giveawayCount, previous: prev?.giveawayCount ?? 0 },
+    ];
+
+    // Shipping breakdown
     const shippingPieData = [
         { name: "Collected (Customer)", value: curr.shippingCollected },
         { name: "Paid (GHN)", value: curr.shippingPaid },
     ];
 
-    // Orders breakdown chart
-    const ordersComparisonData = [
-        { name: "Retail Orders", current: curr.totalOnlineOrders, previous: prev?.totalOnlineOrders ?? 0 },
-        { name: "Live Orders", current: curr.totalLivestreamOrders, previous: prev?.totalLivestreamOrders ?? 0 },
-        { name: "Preorder Contracts", current: curr.preorderCount, previous: prev?.preorderCount ?? 0 },
-        { name: "Packed", current: curr.packedOrders, previous: prev?.packedOrders ?? 0 },
-    ];
-
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            {/* ── SECTION 1: Orders Summary ── */}
+            {/* ── SECTION 1: Online Orders Summary ── */}
             <section>
-                <h2 className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-4 flex items-center gap-2">
-                    <ShoppingBag className="w-3.5 h-3.5" /> Order Volume
-                </h2>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <KpiCard
-                        title="Total Orders"
-                        value={curr.totalOrders.toLocaleString()}
-                        growth={growth.totalOrders}
-                        icon={ShoppingBag}
-                        color="text-blue-600" bgColor="bg-blue-50"
-                        previousValue={prev?.totalOrders.toLocaleString()}
-                    />
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-2">
+                        <ShoppingBag className="w-3.5 h-3.5" /> Online Order Volume (Delivered)
+                    </h2>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">Total: {curr.totalOrders}</Badge>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     <KpiCard
                         title="Retail Orders"
                         value={curr.totalOnlineOrders.toLocaleString()}
-                        growth={growth.onlineRevenue}
                         icon={ShoppingCart}
                         color="text-emerald-600" bgColor="bg-emerald-50"
                         previousValue={prev?.totalOnlineOrders.toLocaleString()}
@@ -133,18 +127,39 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
                     <KpiCard
                         title="Livestream Orders"
                         value={curr.totalLivestreamOrders.toLocaleString()}
-                        growth={growth.livestreamRevenue}
                         icon={Zap}
                         color="text-purple-600" bgColor="bg-purple-50"
                         previousValue={prev?.totalLivestreamOrders.toLocaleString()}
                     />
                     <KpiCard
-                        title="Orders Packed"
-                        value={curr.packedOrders.toLocaleString()}
-                        growth={growth.packedOrders}
-                        icon={PackageCheck}
-                        color="text-orange-600" bgColor="bg-orange-50"
-                        previousValue={prev?.packedOrders.toLocaleString()}
+                        title="Pre-order Contracts"
+                        value={curr.preorderCount.toLocaleString()}
+                        icon={Archive}
+                        color="text-amber-600" bgColor="bg-amber-50"
+                        previousValue={prev?.preorderCount.toLocaleString()}
+                    />
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    <KpiCard
+                        title="Blindbox Orders"
+                        value={curr.blindboxCount.toLocaleString()}
+                        icon={Layout}
+                        color="text-blue-600" bgColor="bg-blue-50"
+                        previousValue={prev?.blindboxCount.toLocaleString()}
+                    />
+                    <KpiCard
+                        title="Auction Wins"
+                        value={curr.auctionCount.toLocaleString()}
+                        icon={Gavel}
+                        color="text-pink-600" bgColor="bg-pink-50"
+                        previousValue={prev?.auctionCount.toLocaleString()}
+                    />
+                    <KpiCard
+                        title="Giveaway Claims"
+                        value={curr.giveawayCount.toLocaleString()}
+                        icon={Gift}
+                        color="text-indigo-600" bgColor="bg-indigo-50"
+                        previousValue={prev?.giveawayCount.toLocaleString()}
                     />
                 </div>
             </section>
@@ -152,14 +167,13 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
             {/* ── SECTION 2: Revenue ── */}
             <section>
                 <h2 className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-4 flex items-center gap-2">
-                    <DollarSign className="w-3.5 h-3.5" /> Revenue Breakdown
+                    <DollarSign className="w-3.5 h-3.5" /> Online Revenue Breakdown
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                     <KpiCard
-                        title="Retail Revenue (Online)"
+                        title="Retail Revenue"
                         value={formatVND(curr.onlineRevenue)}
-                        subValue={`${curr.totalOnlineOrders} orders`}
-                        growth={growth.onlineRevenue}
+                        subValue={`${curr.totalOnlineOrders} items`}
                         icon={DollarSign}
                         color="text-emerald-600" bgColor="bg-emerald-50"
                         previousValue={formatVND(prev?.onlineRevenue ?? 0)}
@@ -167,20 +181,42 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
                     <KpiCard
                         title="Livestream Revenue"
                         value={formatVND(curr.livestreamRevenue)}
-                        subValue={`${curr.totalLivestreamOrders} orders`}
-                        growth={growth.livestreamRevenue}
+                        subValue={`${curr.totalLivestreamOrders} items`}
                         icon={Activity}
                         color="text-purple-600" bgColor="bg-purple-50"
                         previousValue={formatVND(prev?.livestreamRevenue ?? 0)}
                     />
                     <KpiCard
-                        title="Pre-order Deposits"
+                        title="Pre-order Revenue"
                         value={formatVND(curr.preorderRevenue)}
-                        subValue={`${curr.preorderCount} contracts this month`}
-                        growth={growth.preorderRevenue}
+                        subValue={`${curr.preorderCount} contracts`}
                         icon={Archive}
                         color="text-amber-600" bgColor="bg-amber-50"
                         previousValue={formatVND(prev?.preorderRevenue ?? 0)}
+                    />
+                    <KpiCard
+                        title="Blindbox Revenue"
+                        value={formatVND(curr.blindboxRevenue)}
+                        subValue={`${curr.blindboxCount} units`}
+                        icon={Layout}
+                        color="text-blue-600" bgColor="bg-blue-50"
+                        previousValue={formatVND(prev?.blindboxRevenue ?? 0)}
+                    />
+                    <KpiCard
+                        title="Auction Revenue"
+                        value={formatVND(curr.auctionRevenue)}
+                        subValue={`${curr.auctionCount} items`}
+                        icon={Gavel}
+                        color="text-pink-600" bgColor="bg-pink-50"
+                        previousValue={formatVND(prev?.auctionRevenue ?? 0)}
+                    />
+                    <KpiCard
+                        title="Giveaway (Cost/Tax)"
+                        value={formatVND(curr.giveawayRevenue)}
+                        subValue={`${curr.giveawayCount} gifts`}
+                        icon={Gift}
+                        color="text-indigo-600" bgColor="bg-indigo-50"
+                        previousValue={formatVND(prev?.giveawayRevenue ?? 0)}
                     />
                 </div>
 
@@ -189,15 +225,15 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
                     <CardHeader>
                         <CardTitle className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                             <BarChart3 className="w-4 h-4 text-neutral-400" />
-                            Revenue: {currentMonthLabel} vs {previousMonthLabel}
+                            Revenue by Product Category — {currentMonthLabel} vs {previousMonthLabel}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ResponsiveContainer width="100%" height={260}>
-                            <BarChart data={revenueComparisonData} barCategoryGap="30%" barGap={4}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                                <YAxis tickFormatter={(v) => formatVND(v)} tick={{ fontSize: 11 }} width={70} />
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={revenueComparisonData} barCategoryGap="20%" barGap={4}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                                <YAxis tickFormatter={(v) => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v} tick={{ fontSize: 10 }} width={60} />
                                 <Tooltip
                                     formatter={(val: number | undefined) => val != null ? formatVND(val) : '0₫'}
                                     contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }}
@@ -211,69 +247,34 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
                 </Card>
             </section>
 
-            {/* ── SECTION 3: Pre-order & Shipping ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Pre-order Status */}
-                <Card className="border-0 shadow-sm bg-gradient-to-br from-amber-50 to-orange-50">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-1">Active Contracts (All-time)</p>
-                                <div className="text-4xl font-bold text-neutral-900">{activePreorderContracts}</div>
-                                <p className="text-sm text-neutral-500 mt-1">customers currently pre-ordering</p>
-                            </div>
-                            <div className="p-4 bg-amber-100 rounded-2xl">
-                                <Users className="w-8 h-8 text-amber-600" />
-                            </div>
-                        </div>
-                        <div className="h-1.5 w-full rounded-full bg-amber-100 overflow-hidden">
-                            <div
-                                className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-1000"
-                                style={{ width: `${Math.min(100, (activePreorderContracts / 50) * 100)}%` }}
-                            />
-                        </div>
-                        <p className="text-[10px] text-amber-600 mt-1 font-mono">{activePreorderContracts} / 50 max slots (aggregate)</p>
-                    </CardContent>
-                </Card>
-
-                {/* Shipping summary */}
-                <Card className={cn(
-                    "border-0 shadow-sm",
-                    transportMargin >= 0 ? "bg-emerald-50/50" : "bg-red-50/50"
-                )}>
-                    <CardContent className="pt-6 flex flex-col sm:flex-row items-center gap-6">
+            {/* ── SECTION 3: Shipping Audit ── */}
+            <div className="grid grid-cols-1 gap-6">
+                <Card className="border-0 shadow-sm bg-emerald-50/50">
+                    <CardContent className="pt-6 flex flex-col md:flex-row items-center gap-6">
                          <div className="flex-1 space-y-4">
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1">Net Shipping Margin</p>
-                                <div className={cn("text-3xl font-bold", transportMargin >= 0 ? "text-emerald-600" : "text-red-500")}>
-                                    {transportMargin >= 0 ? "+" : ""}{formatVND(transportMargin)}
-                                </div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1">Shipping Audit (Online)</p>
+                                <div className="text-2xl font-bold text-neutral-900">{formatVND(curr.shippingCollected)}</div>
                             </div>
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-neutral-500">Collected</span>
-                                    <span className="font-bold text-neutral-700">{formatVND(curr.shippingCollected)}</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="space-y-1">
+                                    <span className="text-[10px] text-neutral-500 uppercase font-bold">Collected from Customer</span>
+                                    <div className="font-bold text-neutral-700 text-sm">{formatVND(curr.shippingCollected)}</div>
                                 </div>
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-neutral-500">Paid to GHN</span>
-                                    <span className="font-bold text-red-500">- {formatVND(curr.shippingPaid)}</span>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] text-neutral-500 uppercase font-bold">Paid to Courier</span>
+                                    <div className="font-bold text-rose-600 text-sm">- {formatVND(curr.shippingPaid)}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] text-orange-600 uppercase font-bold">Shipping Discounts</span>
+                                    <div className="font-bold text-orange-600 text-sm">{formatVND(curr.shippingDiscount)}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] text-neutral-400 uppercase font-bold">Coverage</span>
+                                    <div className="text-[10px] text-neutral-400 italic">Applied to {curr.freeshipOrders} orders</div>
                                 </div>
                             </div>
                          </div>
-                         <ResponsiveContainer width={120} height={120}>
-                            <PieChart>
-                                <Pie
-                                    data={shippingPieData}
-                                    cx="50%" cy="50%"
-                                    innerRadius={30} outerRadius={45}
-                                    paddingAngle={3}
-                                    dataKey="value"
-                                >
-                                    <Cell fill="#3b82f6" />
-                                    <Cell fill="#fca5a5" />
-                                </Pie>
-                            </PieChart>
-                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
             </div>
@@ -282,13 +283,13 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
             <Card className="border-0 shadow-sm">
                 <CardHeader>
                     <CardTitle className="text-sm font-semibold text-neutral-700">
-                        Orders by Channel — {currentMonthLabel} vs {previousMonthLabel}
+                        Orders by Category — {currentMonthLabel} vs {previousMonthLabel}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ResponsiveContainer width="100%" height={240}>
-                        <BarChart data={ordersComparisonData} barCategoryGap="35%" barGap={4}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <BarChart data={ordersComparisonData} barCategoryGap="30%" barGap={4}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                             <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                             <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                             <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }} />
@@ -299,11 +300,18 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
-
-            <p className="text-[10px] text-neutral-400 text-center">
-                Data is month-to-date for <span className="font-semibold">{currentMonthLabel}</span>.
-                Figures refresh on page load.
-            </p>
         </div>
+    );
+}
+
+function Badge({ children, variant, className }: any) {
+    return (
+        <span className={cn(
+            "px-2 py-0.5 rounded-full text-[10px] font-bold border",
+            variant === 'outline' ? "border-neutral-200" : "bg-neutral-100",
+            className
+        )}>
+            {children}
+        </span>
     );
 }

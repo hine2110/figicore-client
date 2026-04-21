@@ -70,7 +70,7 @@ const RANK_CONFIG: Record<string, { label: string; className: string }> = {
 export default function CustomerProfile() {
     const { toast } = useToast();
     const { user, setUser } = useAuthStore();
-    const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'membership' | 'security' | 'notifications' | 'vouchers'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'membership' | 'vouchers'>('profile');
 
     // Add Query Param Support
     const location = useLocation();
@@ -79,7 +79,7 @@ export default function CustomerProfile() {
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const tab = params.get('tab');
-        if (tab && ['profile', 'orders', 'membership', 'security', 'notifications', 'vouchers'].includes(tab)) {
+        if (tab && ['profile', 'orders', 'membership', 'vouchers'].includes(tab)) {
             setActiveTab(tab as any);
         }
     }, [location.search]);
@@ -435,26 +435,6 @@ export default function CustomerProfile() {
                                     >
                                         <TicketPercent className="w-4 h-4" />
                                         My Vouchers
-                                    </button>
-                                    <button
-                                        onClick={() => handleTabChange('security')}
-                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'security'
-                                            ? 'bg-neutral-100 text-neutral-900'
-                                            : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
-                                            }`}
-                                    >
-                                        <Shield className="w-4 h-4" />
-                                        Login & Security
-                                    </button>
-                                    <button
-                                        onClick={() => handleTabChange('notifications')}
-                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'notifications'
-                                            ? 'bg-neutral-100 text-neutral-900'
-                                            : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
-                                            }`}
-                                    >
-                                        <Bell className="w-4 h-4" />
-                                        Notifications
                                     </button>
                                 </div>
                             </Card>
@@ -826,45 +806,6 @@ export default function CustomerProfile() {
 
                                 {activeTab === 'vouchers' && <MyVouchersTab />}
 
-                                {activeTab === 'security' && (
-                                    <div className="space-y-6 animate-in fade-in duration-300">
-                                        <h3 className="text-lg font-medium text-neutral-900">Password</h3>
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-neutral-700">Current Password</label>
-                                                <Input type="password" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-neutral-700">New Password</label>
-                                                <Input type="password" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-neutral-700">Confirm New Password</label>
-                                                <Input type="password" />
-                                            </div>
-                                            <Button className="bg-neutral-900 text-white hover:bg-neutral-800">Update Password</Button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'notifications' && (
-                                    <div className="space-y-6 animate-in fade-in duration-300">
-                                        <h3 className="text-lg font-medium text-neutral-900">Notification Preferences</h3>
-                                        <div className="space-y-4">
-                                            {['Order Updates', 'New Arrivals', 'Promotions & Discounts', 'Account Security'].map((item) => (
-                                                <div key={item} className="flex items-center justify-between p-4 border border-neutral-100 rounded-lg">
-                                                    <div>
-                                                        <p className="font-medium text-neutral-900">{item}</p>
-                                                        <p className="text-sm text-neutral-500">Receive notifications via email</p>
-                                                    </div>
-                                                    <div className="w-10 h-6 bg-blue-600 rounded-full relative cursor-pointer opacity-50">
-                                                        <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </Card>
                         </div>
                     </div>
