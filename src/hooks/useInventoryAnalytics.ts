@@ -17,7 +17,9 @@ export const useGetRecommendations = (params?: RecommendationQueryParams) => {
       if (!response.success) {
         throw new Error(response.message || 'Lỗi khi lấy dữ liệu đề xuất');
       }
-      return response.data;
+      // API trả về { success, data: { data: [...], meta } }
+      // Chúng ta trả về mảng data bên trong để các component dễ xử lý
+      return response.data.data;
     },
     // Giữ dữ liệu cũ trong lúc fetch dữ liệu mới để UI không bị giật
     placeholderData: (previousData) => previousData,
@@ -45,6 +47,7 @@ export const useTriggerAI = () => {
       if (!response.success) {
         throw new Error(response.message || 'AI Analysis failed');
       }
+      // AI trả về trực tiếp kết quả phân tích trong data
       return response.data;
     },
     onSuccess: () => {
