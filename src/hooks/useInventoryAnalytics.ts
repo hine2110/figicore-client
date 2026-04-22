@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  inventoryAnalyticsService, 
-  RecommendationQueryParams 
+import {
+  inventoryAnalyticsService,
+  RecommendationQueryParams
 } from '@/services/inventory-analytics.service';
 import { toast } from 'sonner';
 
@@ -34,7 +34,7 @@ export const useTriggerAI = () => {
     mutationFn: async () => {
       // Hiển thị thông báo đang xử lý vì AI có thể mất vài giây
       const promise = inventoryAnalyticsService.triggerAIAnalysis();
-      
+
       toast.promise(promise, {
         loading: 'AI đang phân tích kho hàng...',
         success: 'Phân tích hoàn tất!',
