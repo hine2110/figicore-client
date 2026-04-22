@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Upload, Video, Image as ImageIcon, Loader2 } from "lucide-react";
-import axios from "axios";
+import { axiosInstance } from "@/lib/axiosInstance";
 
 export type MediaItem = {
     type: 'IMAGE' | 'VIDEO';
@@ -26,11 +26,16 @@ export function VariantMediaManager({ value, onChange }: VariantMediaManagerProp
 
         setUploading(true);
         try {
-            // Upload all files concurrently
+            // Upload all files concurrently using axiosInstance (which has the correct Base URL)
             const uploadPromises = files.map(file => {
                 const formData = new FormData();
                 formData.append("file", file);
-                return axios.post(`${import.meta.env.VITE_API_URL || 'https://api.figicore.com'}/upload`, formData);
+                // Gửi qua endpoint /upload của backend local
+                return axiosInstance.post(`/upload`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
             });
 
             const results = await Promise.all(uploadPromises);
@@ -48,7 +53,7 @@ export function VariantMediaManager({ value, onChange }: VariantMediaManagerProp
             onChange([...safeValue, ...newMedia]);
         } catch (error) {
             console.error("Upload failed", error);
-            alert("Upload failed. Check console.");
+            alert("Upload failed. Make sure the backend is running and CORS is configured.");
         } finally {
             setUploading(false);
         }

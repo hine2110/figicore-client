@@ -44,7 +44,7 @@ export default function GlobalInventory() {
     const clearanceList = (Array.isArray(recommendations) ? recommendations : []).filter(r => r.type === 'CLEARANCE');
 
     // Lọc, Tìm kiếm và phân trang cho Total Stock Distribution
-    const filteredInventory = globalInventory?.filter(item => {
+    const filteredInventory = (Array.isArray(globalInventory) ? globalInventory : []).filter(item => {
         let statusMatch = true;
         if (statusFilter === 'CRITICAL') statusMatch = item.stock <= 10;
         else if (statusFilter === 'LOW_STOCK') statusMatch = item.stock > 10 && item.stock < 50;
@@ -59,7 +59,7 @@ export default function GlobalInventory() {
         }
 
         return statusMatch && searchMatch;
-    }) || [];
+    });
 
     const totalPages = Math.ceil(filteredInventory.length / ITEMS_PER_PAGE) || 1;
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;

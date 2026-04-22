@@ -51,7 +51,7 @@ export const inventoryAnalyticsService = {
   /**
    * Lấy danh sách các đề xuất nhập/xả hàng từ Database
    */
-  getRecommendations: async (params?: RecommendationQueryParams): Promise<ApiResponse<InventoryRecommendation[]>> => {
+  getRecommendations: async (params?: RecommendationQueryParams): Promise<ApiResponse<{ data: InventoryRecommendation[], meta: any }>> => {
     const response = await axiosInstance.get('/analytics/recommendations', { params });
     return response.data;
   },
