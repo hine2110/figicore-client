@@ -12,8 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function formatVND(value: number): string {
-    return `${value.toLocaleString('vi-VN')}₫`;
+function formatVND(value: number | undefined | null): string {
+    const safeValue = value ?? 0;
+    return `${safeValue.toLocaleString('vi-VN')}₫`;
 }
 
 interface GrowthBadgeProps { value: number; suffix?: string; }
@@ -78,32 +79,26 @@ export interface WarehouseAnalyticsContentProps {
 export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMonthLabel }: WarehouseAnalyticsContentProps) {
     if (!kpi) return null;
 
-    const { current: curr, previous: prev, growth, activePreorderContracts } = kpi;
+    const { current: curr = {}, previous: prev = {}, growth = {}, activePreorderContracts = [] } = kpi;
 
     // Chart data — Revenue comparison (All 6 types)
     const revenueComparisonData = [
-        { name: "Retail", current: curr.onlineRevenue, previous: prev?.onlineRevenue ?? 0 },
-        { name: "Live", current: curr.livestreamRevenue, previous: prev?.livestreamRevenue ?? 0 },
-        { name: "Pre-order", current: curr.preorderRevenue, previous: prev?.preorderRevenue ?? 0 },
-        { name: "Blindbox", current: curr.blindboxRevenue, previous: prev?.blindboxRevenue ?? 0 },
-        { name: "Auction", current: curr.auctionRevenue, previous: prev?.auctionRevenue ?? 0 },
-        { name: "Giveaway", current: curr.giveawayRevenue, previous: prev?.giveawayRevenue ?? 0 },
+        { name: "Retail", current: curr.onlineRevenue ?? 0, previous: prev?.onlineRevenue ?? 0 },
+        { name: "Live", current: curr.livestreamRevenue ?? 0, previous: prev?.livestreamRevenue ?? 0 },
+        { name: "Pre-order", current: curr.preorderRevenue ?? 0, previous: prev?.preorderRevenue ?? 0 },
+        { name: "Blindbox", current: curr.blindboxRevenue ?? 0, previous: prev?.blindboxRevenue ?? 0 },
+        { name: "Auction", current: curr.auctionRevenue ?? 0, previous: prev?.auctionRevenue ?? 0 },
+        { name: "Giveaway", current: curr.giveawayRevenue ?? 0, previous: prev?.giveawayRevenue ?? 0 },
     ];
 
     // Orders breakdown chart (All 6 types)
     const ordersComparisonData = [
-        { name: "Retail", current: curr.totalOnlineOrders, previous: prev?.totalOnlineOrders ?? 0 },
-        { name: "Live", current: curr.totalLivestreamOrders, previous: prev?.totalLivestreamOrders ?? 0 },
-        { name: "Pre-order", current: curr.preorderCount, previous: prev?.preorderCount ?? 0 },
-        { name: "Blindbox", current: curr.blindboxCount, previous: prev?.blindboxCount ?? 0 },
-        { name: "Auction", current: curr.auctionCount, previous: prev?.auctionCount ?? 0 },
-        { name: "Giveaway", current: curr.giveawayCount, previous: prev?.giveawayCount ?? 0 },
-    ];
-
-    // Shipping breakdown
-    const shippingPieData = [
-        { name: "Collected (Customer)", value: curr.shippingCollected },
-        { name: "Paid (GHN)", value: curr.shippingPaid },
+        { name: "Retail", current: curr.totalOnlineOrders ?? 0, previous: prev?.totalOnlineOrders ?? 0 },
+        { name: "Live", current: curr.totalLivestreamOrders ?? 0, previous: prev?.totalLivestreamOrders ?? 0 },
+        { name: "Pre-order", current: curr.preorderCount ?? 0, previous: prev?.preorderCount ?? 0 },
+        { name: "Blindbox", current: curr.blindboxCount ?? 0, previous: prev?.blindboxCount ?? 0 },
+        { name: "Auction", current: curr.auctionCount ?? 0, previous: prev?.auctionCount ?? 0 },
+        { name: "Giveaway", current: curr.giveawayCount ?? 0, previous: prev?.giveawayCount ?? 0 },
     ];
 
     return (
@@ -114,52 +109,52 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
                     <h2 className="text-xs font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-2">
                         <ShoppingBag className="w-3.5 h-3.5" /> Online Order Volume (Delivered)
                     </h2>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">Total: {curr.totalOrders}</Badge>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">Total: {curr.totalOrders ?? 0}</Badge>
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     <KpiCard
                         title="Retail Orders"
-                        value={curr.totalOnlineOrders.toLocaleString()}
+                        value={(curr.totalOnlineOrders ?? 0).toLocaleString()}
                         icon={ShoppingCart}
                         color="text-emerald-600" bgColor="bg-emerald-50"
-                        previousValue={prev?.totalOnlineOrders.toLocaleString()}
+                        previousValue={(prev?.totalOnlineOrders ?? 0).toLocaleString()}
                     />
                     <KpiCard
                         title="Livestream Orders"
-                        value={curr.totalLivestreamOrders.toLocaleString()}
+                        value={(curr.totalLivestreamOrders ?? 0).toLocaleString()}
                         icon={Zap}
                         color="text-purple-600" bgColor="bg-purple-50"
-                        previousValue={prev?.totalLivestreamOrders.toLocaleString()}
+                        previousValue={(prev?.totalLivestreamOrders ?? 0).toLocaleString()}
                     />
                     <KpiCard
                         title="Pre-order Contracts"
-                        value={curr.preorderCount.toLocaleString()}
+                        value={(curr.preorderCount ?? 0).toLocaleString()}
                         icon={Archive}
                         color="text-amber-600" bgColor="bg-amber-50"
-                        previousValue={prev?.preorderCount.toLocaleString()}
+                        previousValue={(prev?.preorderCount ?? 0).toLocaleString()}
                     />
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     <KpiCard
                         title="Blindbox Orders"
-                        value={curr.blindboxCount.toLocaleString()}
+                        value={(curr.blindboxCount ?? 0).toLocaleString()}
                         icon={Layout}
                         color="text-blue-600" bgColor="bg-blue-50"
-                        previousValue={prev?.blindboxCount.toLocaleString()}
+                        previousValue={(prev?.blindboxCount ?? 0).toLocaleString()}
                     />
                     <KpiCard
                         title="Auction Wins"
-                        value={curr.auctionCount.toLocaleString()}
+                        value={(curr.auctionCount ?? 0).toLocaleString()}
                         icon={Gavel}
                         color="text-pink-600" bgColor="bg-pink-50"
-                        previousValue={prev?.auctionCount.toLocaleString()}
+                        previousValue={(prev?.auctionCount ?? 0).toLocaleString()}
                     />
                     <KpiCard
                         title="Giveaway Claims"
-                        value={curr.giveawayCount.toLocaleString()}
+                        value={(curr.giveawayCount ?? 0).toLocaleString()}
                         icon={Gift}
                         color="text-indigo-600" bgColor="bg-indigo-50"
-                        previousValue={prev?.giveawayCount.toLocaleString()}
+                        previousValue={(prev?.giveawayCount ?? 0).toLocaleString()}
                     />
                 </div>
             </section>
@@ -173,50 +168,50 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
                     <KpiCard
                         title="Retail Revenue"
                         value={formatVND(curr.onlineRevenue)}
-                        subValue={`${curr.totalOnlineOrders} items`}
+                        subValue={`${curr.totalOnlineOrders ?? 0} items`}
                         icon={DollarSign}
                         color="text-emerald-600" bgColor="bg-emerald-50"
-                        previousValue={formatVND(prev?.onlineRevenue ?? 0)}
+                        previousValue={formatVND(prev?.onlineRevenue)}
                     />
                     <KpiCard
                         title="Livestream Revenue"
                         value={formatVND(curr.livestreamRevenue)}
-                        subValue={`${curr.totalLivestreamOrders} items`}
+                        subValue={`${curr.totalLivestreamOrders ?? 0} items`}
                         icon={Activity}
                         color="text-purple-600" bgColor="bg-purple-50"
-                        previousValue={formatVND(prev?.livestreamRevenue ?? 0)}
+                        previousValue={formatVND(prev?.livestreamRevenue)}
                     />
                     <KpiCard
                         title="Pre-order Revenue"
                         value={formatVND(curr.preorderRevenue)}
-                        subValue={`${curr.preorderCount} contracts`}
+                        subValue={`${curr.preorderCount ?? 0} contracts`}
                         icon={Archive}
                         color="text-amber-600" bgColor="bg-amber-50"
-                        previousValue={formatVND(prev?.preorderRevenue ?? 0)}
+                        previousValue={formatVND(prev?.preorderRevenue)}
                     />
                     <KpiCard
                         title="Blindbox Revenue"
                         value={formatVND(curr.blindboxRevenue)}
-                        subValue={`${curr.blindboxCount} units`}
+                        subValue={`${curr.blindboxCount ?? 0} units`}
                         icon={Layout}
                         color="text-blue-600" bgColor="bg-blue-50"
-                        previousValue={formatVND(prev?.blindboxRevenue ?? 0)}
+                        previousValue={formatVND(prev?.blindboxRevenue)}
                     />
                     <KpiCard
                         title="Auction Revenue"
                         value={formatVND(curr.auctionRevenue)}
-                        subValue={`${curr.auctionCount} items`}
+                        subValue={`${curr.auctionCount ?? 0} items`}
                         icon={Gavel}
                         color="text-pink-600" bgColor="bg-pink-50"
-                        previousValue={formatVND(prev?.auctionRevenue ?? 0)}
+                        previousValue={formatVND(prev?.auctionRevenue)}
                     />
                     <KpiCard
                         title="Giveaway (Cost/Tax)"
                         value={formatVND(curr.giveawayRevenue)}
-                        subValue={`${curr.giveawayCount} gifts`}
+                        subValue={`${curr.giveawayCount ?? 0} gifts`}
                         icon={Gift}
                         color="text-indigo-600" bgColor="bg-indigo-50"
-                        previousValue={formatVND(prev?.giveawayRevenue ?? 0)}
+                        previousValue={formatVND(prev?.giveawayRevenue)}
                     />
                 </div>
 
@@ -235,7 +230,7 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
                                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                                 <YAxis tickFormatter={(v) => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v} tick={{ fontSize: 10 }} width={60} />
                                 <Tooltip
-                                    formatter={(val: number | undefined) => val != null ? formatVND(val) : '0₫'}
+                                    formatter={(val: any) => formatVND(val)}
                                     contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }}
                                 />
                                 <Legend />
@@ -271,7 +266,7 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
                                 </div>
                                 <div className="space-y-1">
                                     <span className="text-[10px] text-neutral-400 uppercase font-bold">Coverage</span>
-                                    <div className="text-[10px] text-neutral-400 italic">Applied to {curr.freeshipOrders} orders</div>
+                                    <div className="text-[10px] text-neutral-400 italic">Applied to {curr.freeshipOrders ?? 0} orders</div>
                                 </div>
                             </div>
                          </div>

@@ -13,13 +13,12 @@ export interface InventoryRecommendation {
   variant_id: number;
   type: RecommendationType;
   reason: string;
-  financial_note: string | null; // NEW: Thông tin rào cản tài chính
-  suggested_action_value: string | null; // Lưu "% giảm giá" hoặc "Priority"
+  financial_note: string | null;
+  suggested_action_value: string | null;
   status: RecommendationStatus;
   created_at: string;
   updated_at: string;
   
-  // Dữ liệu Join từ Backend
   product_variants: {
     sku: string;
     stock_available: number;
@@ -33,6 +32,8 @@ export interface InventoryRecommendation {
 export interface RecommendationQueryParams {
   status?: RecommendationStatus;
   type?: RecommendationType;
+  page?: string;
+  limit?: string;
 }
 
 /**
@@ -57,7 +58,6 @@ export const inventoryAnalyticsService = {
 
   /**
    * Phê duyệt và thực thi một đề xuất AI
-   * @param id ID của bản ghi đề xuất
    */
   applyRecommendation: async (id: number): Promise<ApiResponse<any>> => {
     const response = await axiosInstance.patch(`/analytics/recommendations/${id}/apply`);

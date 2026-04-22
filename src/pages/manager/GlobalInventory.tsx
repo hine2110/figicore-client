@@ -15,11 +15,11 @@ export default function GlobalInventory() {
     const { data: globalInventory, isLoading: isInventoryLoading } = useGetGlobalInventory();
     const triggerAI = useTriggerAI();
     const applyAction = useApplyRecommendation();
-    
+
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [detailOpen, setDetailOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
-    
+
     const [restockDetailOpen, setRestockDetailOpen] = useState(false);
     const [selectedRestockItem, setSelectedRestockItem] = useState<any>(null);
 
@@ -40,18 +40,16 @@ export default function GlobalInventory() {
     };
 
     // Phân loại đề xuất để hiển thị thành 2 cột
-    const restockList = recommendations?.filter(r => r.type === 'RESTOCK') || [];
-    const clearanceList = recommendations?.filter(r => r.type === 'CLEARANCE') || [];
+    const restockList = (Array.isArray(recommendations) ? recommendations : []).filter(r => r.type === 'RESTOCK');
+    const clearanceList = (Array.isArray(recommendations) ? recommendations : []).filter(r => r.type === 'CLEARANCE');
 
     // Lọc, Tìm kiếm và phân trang cho Total Stock Distribution
     const filteredInventory = globalInventory?.filter(item => {
-        // 1. Lọc theo trạng thái
         let statusMatch = true;
         if (statusFilter === 'CRITICAL') statusMatch = item.stock <= 10;
         else if (statusFilter === 'LOW_STOCK') statusMatch = item.stock > 10 && item.stock < 50;
         else if (statusFilter === 'OPTIMIZED') statusMatch = item.stock >= 50;
 
-        // 2. Lọc theo từ khóa tìm kiếm
         let searchMatch = true;
         if (searchTerm.trim()) {
             const lowerTerm = searchTerm.toLowerCase();
@@ -81,8 +79,8 @@ export default function GlobalInventory() {
                     <p className="text-neutral-500 mt-1">Monitor stock levels and execute AI-driven optimization strategies.</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         className="gap-2 shadow-sm border-neutral-200 h-10 px-4 hover:bg-neutral-50"
                         onClick={() => setSettingsOpen(true)}
                     >
@@ -91,8 +89,8 @@ export default function GlobalInventory() {
                     <Button variant="outline" className="gap-2 shadow-sm border-neutral-200">
                         <Download className="w-4 h-4" /> Export Report
                     </Button>
-                    <Button 
-                        onClick={() => triggerAI.mutate()} 
+                    <Button
+                        onClick={() => triggerAI.mutate()}
                         disabled={triggerAI.isPending}
                         className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md transition-all active:scale-95"
                     >
@@ -108,8 +106,8 @@ export default function GlobalInventory() {
 
             {/* 2. AI Insights Ribbon */}
             <AnimatePresence>
-                {recommendations && recommendations.length > 0 && (
-                    <motion.div 
+                {Array.isArray(recommendations) && recommendations.length > 0 && (
+                    <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
@@ -127,15 +125,15 @@ export default function GlobalInventory() {
                             </div>
                         </div>
                         <div className="flex gap-2">
-                             <Badge className="bg-blue-500/20 text-blue-300 border-none">Sales Up +12%</Badge>
-                             <Badge className="bg-red-500/20 text-red-300 border-none">3 Critical Shorts</Badge>
+                            <Badge className="bg-blue-500/20 text-blue-300 border-none">Sales Up +12%</Badge>
+                            <Badge className="bg-red-500/20 text-red-300 border-none">{recommendations.length} Recommendations</Badge>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
             {/* 3. AI Recommendations Grid */}
-            {(isLoading || (recommendations && recommendations.length > 0)) && (
+            {(isLoading || (Array.isArray(recommendations) && recommendations.length > 0)) && (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     {/* RESTOCK COLUMN */}
                     <div className="space-y-4">
@@ -143,12 +141,12 @@ export default function GlobalInventory() {
                             <TrendingUp className="w-5 h-5 text-blue-600" />
                             <h2 className="font-bold text-neutral-800">Restock Recommendations</h2>
                         </div>
-                        
+
                         <div className="space-y-3">
                             {isLoading ? (
                                 [1, 2].map(i => <Skeleton key={i} className="h-32 w-full rounded-xl" />)
                             ) : (
-                                restockList.map((item, idx) => (
+                                restockList.map((item: any, idx: number) => (
                                     <motion.div
                                         key={item.id}
                                         initial={{ opacity: 0, x: -20 }}
@@ -167,7 +165,7 @@ export default function GlobalInventory() {
                                                         <AlertCircle className="w-3.5 h-3.5 inline mr-1 text-blue-500" />
                                                         {item.reason}
                                                     </p>
-                                                    
+
                                                     {item.financial_note && (
                                                         <div className="mt-2 p-2 bg-blue-50/50 rounded-lg border border-blue-100 flex gap-2 items-start">
                                                             <TrendingUp className="w-3 h-3 text-blue-600 mt-0.5 shrink-0" />
@@ -183,17 +181,17 @@ export default function GlobalInventory() {
                                                 </div>
                                             </div>
                                             <div className="mt-4 pt-3 border-t border-dotted border-neutral-100 flex justify-end gap-2">
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="ghost" 
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
                                                     className="h-8 text-xs gap-1.5 text-neutral-500 hover:text-neutral-900"
                                                     onClick={() => handleOpenRestockDetail(item)}
                                                 >
                                                     <Eye className="w-3.5 h-3.5" /> View Detail
                                                 </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="ghost" 
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
                                                     className="h-8 text-xs gap-1 group-hover:text-blue-600 transition-colors font-bold"
                                                     onClick={() => applyAction.mutate(item.id)}
                                                     disabled={applyAction.isPending}
@@ -210,7 +208,7 @@ export default function GlobalInventory() {
 
                     {/* CLEARANCE COLUMN */}
                     <div className="space-y-4">
-                         <div className="flex items-center gap-2 px-1">
+                        <div className="flex items-center gap-2 px-1">
                             <TrendingDown className="w-5 h-5 text-orange-600" />
                             <h2 className="font-bold text-neutral-800">Clearance Strategies</h2>
                         </div>
@@ -218,7 +216,7 @@ export default function GlobalInventory() {
                             {isLoading ? (
                                 [1, 2].map(i => <Skeleton key={i} className="h-32 w-full rounded-xl" />)
                             ) : (
-                                clearanceList.map((item, idx) => (
+                                clearanceList.map((item: any, idx: number) => (
                                     <motion.div
                                         key={item.id}
                                         initial={{ opacity: 0, x: 20 }}
@@ -254,18 +252,18 @@ export default function GlobalInventory() {
                                                     <div className="text-xl font-black text-orange-700">{item.product_variants.stock_available}</div>
                                                 </div>
                                             </div>
-                                             <div className="mt-4 pt-3 border-t border-dotted border-neutral-100 flex justify-end gap-2">
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="ghost" 
+                                            <div className="mt-4 pt-3 border-t border-dotted border-neutral-100 flex justify-end gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
                                                     className="h-8 text-xs gap-1.5 text-neutral-500 hover:text-neutral-900"
                                                     onClick={() => handleOpenDetail(item)}
                                                 >
                                                     <Eye className="w-3.5 h-3.5" /> View Detail
                                                 </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="ghost" 
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
                                                     className="h-8 text-xs gap-1 group-hover:text-orange-600 transition-colors font-bold"
                                                     onClick={() => applyAction.mutate(item.id)}
                                                     disabled={applyAction.isPending}
@@ -282,25 +280,25 @@ export default function GlobalInventory() {
                 </div>
             )}
 
-            {/* 4. Global Inventory Table (Existing) */}
+            {/* 4. Global Inventory Table */}
             <div className="space-y-4 pt-4">
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-bold text-neutral-900">Total Stock Distribution</h2>
                     <div className="flex gap-2">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                            <input 
-                                type="text" 
-                                placeholder="Search Name or SKU..." 
+                            <input
+                                type="text"
+                                placeholder="Search Name or SKU..."
                                 className="pl-9 pr-4 py-2 border rounded-lg text-sm bg-white shadow-sm outline-none focus:ring-2 focus:ring-purple-500/20"
                                 value={searchTerm}
                                 onChange={(e) => {
                                     setSearchTerm(e.target.value);
-                                    setCurrentPage(1); // Reset trang khi search
+                                    setCurrentPage(1);
                                 }}
                             />
                         </div>
-                        <select 
+                        <select
                             className="border border-neutral-200 rounded-lg text-sm bg-white shadow-sm px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500/20 text-neutral-700 font-medium"
                             value={statusFilter}
                             onChange={(e) => {
@@ -359,25 +357,24 @@ export default function GlobalInventory() {
                     </table>
                 </div>
 
-                {/* Pagination Controls */}
                 <div className="flex justify-between items-center pt-2">
                     <span className="text-sm text-neutral-500">
                         Showing {filteredInventory.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filteredInventory.length)} of {filteredInventory.length} entries
                     </span>
                     <div className="flex gap-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
                             className="h-8"
                         >
                             Previous
                         </Button>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages}
                             className="h-8"
                         >
@@ -386,17 +383,17 @@ export default function GlobalInventory() {
                     </div>
                 </div>
             </div>
-            
+
             <OpexSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-            <RecommendationDetailDialog 
-                open={detailOpen} 
-                onOpenChange={setDetailOpen} 
-                item={selectedItem} 
+            <RecommendationDetailDialog
+                open={detailOpen}
+                onOpenChange={setDetailOpen}
+                item={selectedItem}
             />
-            <RestockDetailDialog 
-                open={restockDetailOpen} 
-                onOpenChange={setRestockDetailOpen} 
-                item={selectedRestockItem} 
+            <RestockDetailDialog
+                open={restockDetailOpen}
+                onOpenChange={setRestockDetailOpen}
+                item={selectedRestockItem}
             />
         </div>
     );
