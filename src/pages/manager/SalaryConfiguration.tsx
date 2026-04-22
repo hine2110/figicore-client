@@ -240,7 +240,7 @@ export default function SalaryConfiguration() {
                                     <TableHead>EMP ID</TableHead>
                                     <TableHead>Employee</TableHead>
                                     <TableHead>Role</TableHead>
-                                    <TableHead className="text-right">Hourly Rate (VND/h)</TableHead>
+                                    <TableHead className="text-right">Base Salary</TableHead>
                                     <TableHead className="text-center">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -254,11 +254,16 @@ export default function SalaryConfiguration() {
                                         </TableCell>
                                         <TableCell><Badge variant="secondary">{emp.users?.role_code}</Badge></TableCell>
                                         <TableCell className="text-right font-medium">
-                                            {emp.base_salary === 0 ? (
-                                                <span className="text-red-500 text-xs italic">Not configured</span>
-                                            ) : (
-                                                <span className="text-emerald-600">{formatCurrency(emp.base_salary)}</span>
-                                            )}
+                                        {emp.base_salary === 0 ? (
+                                            <span className="text-red-500 text-xs italic">Not configured</span>
+                                        ) : (
+                                            <span className="text-emerald-600">
+                                                {formatCurrency(emp.base_salary)}
+                                                <span className="text-xs text-neutral-500 ml-1">
+                                                    {['MANAGER', 'SUPER_ADMIN'].includes(emp.users?.role_code) ? '/month' : '/h'}
+                                                </span>
+                                            </span> 
+                                        )}
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <div className="flex justify-center gap-2">
@@ -288,12 +293,15 @@ export default function SalaryConfiguration() {
                     <DialogHeader>
                         <DialogTitle>Update Employee Salary</DialogTitle>
                         <DialogDescription>
-                            Set the hourly rate for <b>{selectedEmp?.users?.full_name}</b>. The new rate will take effect next month.
+                            Set the {['MANAGER', 'SUPER_ADMIN'].includes(selectedEmp?.users?.role_code) ? 'fixed monthly salary' : 'hourly rate'} for <b>{selectedEmp?.users?.full_name}</b>. The new rate will take effect next month.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="space-y-2">
-                            <Label>Hourly Rate (VND/h) <span className="text-red-500">*</span></Label>
+                            <Label>
+                                {['MANAGER', 'SUPER_ADMIN'].includes(selectedEmp?.users?.role_code) ? 'Monthly Salary (VND/month)' : 'Hourly Rate (VND/h)'} 
+                                <span className="text-red-500">*</span>
+                            </Label>
                             <div className="relative">
                                 <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-500" />
                                 <Input
@@ -431,13 +439,19 @@ export default function SalaryConfiguration() {
                                             <div className="flex items-center justify-between space-x-2 mb-1">
                                                 <div className="font-bold text-slate-900 text-sm">
                                                     {formatCurrency(item.new_salary)}/h
+                                                    <span className="text-xs font-normal text-slate-500 ml-1">
+                                                        {['MANAGER', 'SUPER_ADMIN'].includes(selectedEmp?.users?.role_code) ? '/tháng' : '/h'}
+                                                    </span>
                                                 </div>
                                                 <time className="text-xs font-medium text-amber-600">
                                                     {new Date(item.effective_date).toLocaleDateString('en-US')}
                                                 </time>
                                             </div>
                                             <div className="text-xs text-slate-500 mb-2">
-                                                Old salary: {formatCurrency(item.old_salary)}/h
+                                                Old salary: {formatCurrency(item.old_salary)}
+                                                <span className="ml-1">
+                                                    {['MANAGER', 'SUPER_ADMIN'].includes(selectedEmp?.users?.role_code) ? '/tháng' : '/h'}
+                                                </span>
                                             </div>
                                             <div className="text-sm text-slate-700 mb-2">
                                                 <Badge variant="secondary" className="font-normal text-[10px] bg-slate-100">{item.reason}</Badge>
