@@ -43,9 +43,9 @@ export default function AuthSuccess() {
 
                     toast({
                         variant: "destructive",
-                        title: "Sign-in Unavailable",
-                        description: "This sign-in method is not available for your account. Please use your registered credentials.",
-                        duration: 5000,
+                        title: "Access Denied",
+                        description: "Staff accounts are not allowed to sign in with Google. Please use your email and password.",
+                        duration: 6000,
                     });
 
                     navigate("/guest/home");
