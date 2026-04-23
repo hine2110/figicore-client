@@ -492,7 +492,7 @@ export default function CustomerLivestreamRoom() {
             toast({ title: "Added to Cart!", description: `${variant.products?.name || variant.option_name} is ready.` });
             if (immediate) navigate('/customer/cart');
         } catch (error: any) {
-            toast({ title: "Failed", description: error.response?.data?.message || "Out of stock", variant: "destructive" });
+            toast({ title: "Failed", description: error.message || "Out of stock", variant: "destructive" });
         }
     }, [addToCart, id, navigate, toast]);
 
