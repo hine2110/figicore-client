@@ -1,5 +1,6 @@
 import axios from "axios";
 import { axiosInstance } from "@/lib/axiosInstance";
+import api from "./api";
 import { GHN_TOKEN } from "./api";
 
 export const shipmentService = {
@@ -19,54 +20,41 @@ export const shipmentService = {
         return response.data;
     },
 
-    uploadVideo: async (file: File) => {
+    uploadVideo: async (file: File, onProgress?: (pct: number) => void) => {
         // 1. Get Signature from Backend
         const { data: signData } = await axiosInstance.get('/upload/signature?folder=figicore_shipments');
         const { signature, timestamp, cloudName, apiKey, folder } = signData;
 
-        const chunkSize = 10 * 1024 * 1024; // 10MB Chunks
-        const totalSize = file.size;
-        const uniqueId = `upload_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        // 2. Detect resource type (image or video)
+        const resourceType = file.type.startsWith('video') ? 'video' : 'image';
 
-        let lastResponse: any;
+        // 3. Create FormData for DIRECT upload
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('api_key', apiKey);
+        formData.append('timestamp', timestamp);
+        formData.append('signature', signature);
+        formData.append('folder', folder);
 
-        // 2. Upload in chunks
-        for (let start = 0; start < totalSize; start += chunkSize) {
-            const end = Math.min(start + chunkSize, totalSize);
-            const chunk = file.slice(start, end);
-
-            const formData = new FormData();
-            formData.append('file', chunk);
-            formData.append('api_key', apiKey);
-            formData.append('timestamp', timestamp);
-            formData.append('signature', signature);
-            formData.append('folder', folder);
-
-            const contentRange = `bytes ${start}-${end - 1}/${totalSize}`;
-
-            try {
-                lastResponse = await axios.post(
-                    `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
-                    formData,
-                    {
-                        headers: {
-                            'X-Unique-Upload-Id': uniqueId,
-                            'Content-Range': contentRange
-                        },
-                        timeout: 600000 // 10 mins per chunk
+        // 4. Direct POST to Cloudinary with correct endpoint
+        const response = await axios.post(
+            `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
+            formData,
+            {
+                onUploadProgress: (progressEvent) => {
+                    if (onProgress && progressEvent.total) {
+                        const pct = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                        onProgress(pct);
                     }
-                );
-                console.log(`[Upload] Chunk ${start}-${end} uploaded successfully.`);
-            } catch (error: any) {
-                console.error(`[Upload] Chunk ${start}-${end} failed:`, error.response?.data || error.message);
-                throw new Error(error.response?.data?.error?.message || "Chunked upload failed");
+                },
+                timeout: 600000 // 10 minutes
             }
-        }
+        );
 
         return {
-            url: lastResponse.data.secure_url,
-            type: lastResponse.data.resource_type.toUpperCase(),
-            public_id: lastResponse.data.public_id
+            url: response.data.secure_url,
+            type: response.data.resource_type.toUpperCase(),
+            public_id: response.data.public_id
         };
     },
 
