@@ -239,19 +239,10 @@ export default function CustomerAuctionRoom() {
                 }
 
                 // Initialize Socket - always connect to receive room_closed
-                const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
+                const socketUrl = `${(import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com').replace('/api', '')}/auction-live`;
                 
-                // Robust URL parsing to ensure correct host for production (api.figicore.com)
-                let socketOrigin = 'https://api.figicore.com';
-                try {
-                    const url = new URL(rawBaseUrl.startsWith('http') ? rawBaseUrl : `https://${rawBaseUrl}`);
-                    socketOrigin = url.origin;
-                } catch (e) {
-                    console.error("[Socket] URL parsing failed, using fallback:", e);
-                }
-
-                console.log(`[Socket] Connecting to origin: ${socketOrigin}, namespace: /auction-live`);
-                const socket = io(`${socketOrigin}/auction-live`, {
+                console.log(`[Socket] Connecting to: ${socketUrl}`);
+                const socket = io(socketUrl, {
                     transports: ['websocket', 'polling'],
                     withCredentials: true,
                     reconnection: true,
