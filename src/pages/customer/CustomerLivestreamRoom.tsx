@@ -281,18 +281,17 @@ export default function CustomerLivestreamRoom() {
 
                 if (!isMounted) return;
 
-                const socketUrl = `${(import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com').replace('/api', '')}/livestream-live`;
+                const isLocal = window.location.hostname === 'localhost';
+                const socketUrl = isLocal 
+                    ? 'http://localhost:3000/livestream-live' 
+                    : 'https://api.figicore.com/livestream-live';
                 
-                console.log(`[Socket] Connecting to: ${socketUrl}`);
+                console.log(`[Socket] Connecting to: ${socketUrl} (isLocal: ${isLocal})`);
                 const socket = io(socketUrl, {
                     auth: {
                         token: localStorage.getItem('accessToken')
                     },
-                    transports: ['websocket', 'polling'],
-                    withCredentials: true,
-                    reconnection: true,
-                    reconnectionAttempts: 5,
-                    reconnectionDelay: 1000,
+                    transports: ['websocket', 'polling']
                 });
                 socketRef.current = socket;
 

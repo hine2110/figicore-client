@@ -239,15 +239,14 @@ export default function CustomerAuctionRoom() {
                 }
 
                 // Initialize Socket - always connect to receive room_closed
-                const socketUrl = `${(import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com').replace('/api', '')}/auction-live`;
+                const isLocal = window.location.hostname === 'localhost';
+                const socketUrl = isLocal 
+                    ? 'http://localhost:3000/auction-live' 
+                    : 'https://api.figicore.com/auction-live';
                 
-                console.log(`[Socket] Connecting to: ${socketUrl}`);
+                console.log(`[Socket] Connecting to: ${socketUrl} (isLocal: ${isLocal})`);
                 const socket = io(socketUrl, {
-                    transports: ['websocket', 'polling'],
-                    withCredentials: true,
-                    reconnection: true,
-                    reconnectionAttempts: 5,
-                    reconnectionDelay: 1000,
+                    transports: ['websocket', 'polling']
                 });
                 socketRef.current = socket;
 
