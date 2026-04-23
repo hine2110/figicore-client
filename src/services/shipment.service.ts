@@ -24,27 +24,49 @@ export const shipmentService = {
         const { data: signData } = await axiosInstance.get('/upload/signature?folder=figicore_shipments');
         const { signature, timestamp, cloudName, apiKey, folder } = signData;
 
-        // 2. Upload directly to Cloudinary
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('api_key', apiKey);
-        formData.append('timestamp', timestamp);
-        formData.append('signature', signature);
-        formData.append('folder', folder);
+        const chunkSize = 10 * 1024 * 1024; // 10MB Chunks
+        const totalSize = file.size;
+        const uniqueId = `upload_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-        const response = await axios.post(
-            `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
-            formData,
-            {
-                headers: { 'Content-Type': 'multipart/form-data' },
-                timeout: 600000 // 10 minutes for direct video upload
+        let lastResponse: any;
+
+        // 2. Upload in chunks
+        for (let start = 0; start < totalSize; start += chunkSize) {
+            const end = Math.min(start + chunkSize, totalSize);
+            const chunk = file.slice(start, end);
+
+            const formData = new FormData();
+            formData.append('file', chunk);
+            formData.append('api_key', apiKey);
+            formData.append('timestamp', timestamp);
+            formData.append('signature', signature);
+            formData.append('folder', folder);
+
+            const contentRange = `bytes ${start}-${end - 1}/${totalSize}`;
+
+            try {
+                lastResponse = await axios.post(
+                    `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+                    formData,
+                    {
+                        headers: {
+                            'X-Unique-Upload-Id': uniqueId,
+                            'Content-Range': contentRange
+                        },
+                        timeout: 600000 // 10 mins per chunk
+                    }
+                );
+                console.log(`[Upload] Chunk ${start}-${end} uploaded successfully.`);
+            } catch (error: any) {
+                console.error(`[Upload] Chunk ${start}-${end} failed:`, error.response?.data || error.message);
+                throw new Error(error.response?.data?.error?.message || "Chunked upload failed");
             }
-        );
+        }
 
         return {
-            url: response.data.secure_url,
-            type: response.data.resource_type.toUpperCase(),
-            public_id: response.data.public_id
+            url: lastResponse.data.secure_url,
+            type: lastResponse.data.resource_type.toUpperCase(),
+            public_id: lastResponse.data.public_id
         };
     },
 
