@@ -16,6 +16,8 @@ export default function PackingFulfillment() {
     const [selectedOrder, setSelectedOrder] = useState<PackingOrder | null>(null);
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadSpeed, setUploadSpeed] = useState<string | null>(null);
     const [isPacking, setIsPacking] = useState(false);
     const [activeTab, setActiveTab] = useState("queue");
     const [history, setHistory] = useState<any[]>([]);
@@ -94,8 +96,22 @@ export default function PackingFulfillment() {
 
     const handleUpload = async (file: File): Promise<string> => {
         setIsUploading(true);
+        setUploadProgress(0);
+        setUploadSpeed(null);
+        const startTime = Date.now();
+
         try {
-            const res = await shipmentService.uploadVideo(file);
+            const res = await shipmentService.uploadVideo(file, (pct) => {
+                setUploadProgress(pct);
+                // Calculate speed
+                const elapsedSeconds = (Date.now() - startTime) / 1000;
+                if (elapsedSeconds > 0) {
+                    const uploadedMB = (file.size * (pct / 100)) / (1024 * 1024);
+                    const speed = (uploadedMB / elapsedSeconds).toFixed(2);
+                    setUploadSpeed(`${speed} MB/s`);
+                }
+            });
+            console.log("Upload Success, Video URL:", res.url);
             setVideoUrl(res.url);
             toast({ title: "Evidence Recorded", description: "Video uploaded successfully." });
             return res.url;
@@ -105,6 +121,8 @@ export default function PackingFulfillment() {
             throw error;
         } finally {
             setIsUploading(false);
+            setUploadProgress(0);
+            setUploadSpeed(null);
         }
     };
 
@@ -208,6 +226,8 @@ export default function PackingFulfillment() {
                                     onConfirm={handleConfirmPacking}
                                     onUpload={handleUpload}
                                     isUploading={isUploading}
+                                    uploadProgress={uploadProgress}
+                                    uploadSpeed={uploadSpeed}
                                     isPacking={isPacking}
                                     videoUrl={videoUrl}
                                 />

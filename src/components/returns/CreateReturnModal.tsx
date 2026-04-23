@@ -109,23 +109,34 @@ export function CreateReturnModal({ open, onOpenChange, order, onSuccess }: Crea
 
         try {
             setLoading(true);
-            setUploadProgress(10); // Start progress indicating upload
+            setUploadProgress(1);
 
-            // 1. Upload Video
-            const uploadResult = await shipmentService.uploadVideo(videoFile);
+            // 1. Upload Video with Real Progress
+            const uploadResult = await shipmentService.uploadVideo(videoFile, (pct) => {
+                // Map video upload to 0-70% of the total progress
+                setUploadProgress(Math.round(pct * 0.7));
+            });
             const uploadedVideoUrl = uploadResult.url;
-            setUploadProgress(40); // Base progress
 
-            // 2. Upload Images (Parallel execution!)
+            // 2. Upload Images
             const uploadedImageUrls: string[] = [];
             if (imageFiles.length > 0) {
-                const uploadPromises = imageFiles.map((file) => shipmentService.uploadVideo(file));
-                const results = await Promise.all(uploadPromises);
+                const totalImages = imageFiles.length;
+                let completedImages = 0;
+                
+                const results = await Promise.all(imageFiles.map(async (file) => {
+                    const res = await shipmentService.uploadVideo(file);
+                    completedImages++;
+                    // Map image uploads to 70-95% of the total progress
+                    setUploadProgress(70 + Math.round((completedImages / totalImages) * 25));
+                    return res;
+                }));
+                
                 uploadedImageUrls.push(...results.map(res => res.url));
-                setUploadProgress(80); // Quick jump as they complete together
             }
 
             // 3. Submit Return Request
+            setUploadProgress(96);
             await returnService.createRequest({
                 order_id: order.order_id,
                 reason,
