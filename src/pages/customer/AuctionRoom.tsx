@@ -239,7 +239,25 @@ export default function CustomerAuctionRoom() {
                 }
 
                 // Initialize Socket - always connect to receive room_closed
-                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://api.figicore.com'}/auction-live`);
+                const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
+                
+                // Robust URL parsing to ensure correct host for production (api.figicore.com)
+                let socketOrigin = 'https://api.figicore.com';
+                try {
+                    const url = new URL(rawBaseUrl.startsWith('http') ? rawBaseUrl : `https://${rawBaseUrl}`);
+                    socketOrigin = url.origin;
+                } catch (e) {
+                    console.error("[Socket] URL parsing failed, using fallback:", e);
+                }
+
+                console.log(`[Socket] Connecting to origin: ${socketOrigin}, namespace: /auction-live`);
+                const socket = io(`${socketOrigin}/auction-live`, {
+                    transports: ['websocket', 'polling'],
+                    withCredentials: true,
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
+                });
                 socketRef.current = socket;
 
                 // [Gap 11] Initialize countdown from auction times

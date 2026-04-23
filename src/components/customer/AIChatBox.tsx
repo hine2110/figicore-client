@@ -133,10 +133,24 @@ export const AIChatBox: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
-        const socketUrl = baseUrl.includes('localhost') ? baseUrl.replace('/api', '') : 'https://api.figicore.com';
-        const socket = io(`${socketUrl}/chat`, {
-            transports: ['websocket', 'polling']
+        const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
+        
+        // Robust URL parsing for production (api.figicore.com)
+        let socketOrigin = 'https://api.figicore.com';
+        try {
+            const url = new URL(rawBaseUrl.startsWith('http') ? rawBaseUrl : `https://${rawBaseUrl}`);
+            socketOrigin = url.origin;
+        } catch (e) {
+            console.error("[Socket] URL parsing failed, using fallback:", e);
+        }
+
+        console.log(`[Socket] Connecting to origin: ${socketOrigin}, namespace: /chat`);
+        const socket = io(`${socketOrigin}/chat`, {
+            transports: ['websocket', 'polling'],
+            withCredentials: true,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
         });
         socketRef.current = socket;
 

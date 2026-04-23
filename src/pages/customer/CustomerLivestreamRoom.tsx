@@ -281,10 +281,27 @@ export default function CustomerLivestreamRoom() {
 
                 if (!isMounted) return;
 
-                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://api.figicore.com'}/livestream-live`, {
+                const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
+                
+                // Robust URL parsing for production (api.figicore.com)
+                let socketOrigin = 'https://api.figicore.com';
+                try {
+                    const url = new URL(rawBaseUrl.startsWith('http') ? rawBaseUrl : `https://${rawBaseUrl}`);
+                    socketOrigin = url.origin;
+                } catch (e) {
+                    console.error("[Socket] URL parsing failed, using fallback:", e);
+                }
+
+                console.log(`[Socket] Connecting to origin: ${socketOrigin}, namespace: /livestream-live`);
+                const socket = io(`${socketOrigin}/livestream-live`, {
                     auth: {
                         token: localStorage.getItem('token')
-                    }
+                    },
+                    transports: ['websocket', 'polling'],
+                    withCredentials: true,
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
                 });
                 socketRef.current = socket;
 
