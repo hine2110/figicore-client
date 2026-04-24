@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Lock, Smartphone, Globe, Bell, Trash2, Plus, ShieldAlert, Image, Edit, ExternalLink } from 'lucide-react';
+import { Save, Lock, Smartphone, Globe, Bell, Trash2, Plus, ShieldAlert, Image, Edit, ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
@@ -297,29 +298,50 @@ export default function SystemSettings() {
                                                 placeholder="e.g. Empire of Models"
                                             />
                                         </div>
-                                        <div className="grid gap-2">
-                                            <Label>Image URL</Label>
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    value={bannerForm.image_url}
-                                                    onChange={e => setBannerForm(prev => ({ ...prev, image_url: e.target.value }))}
-                                                    placeholder="https://..."
-                                                />
-                                                <div className="relative">
-                                                    <Button variant="outline" disabled={isUploading} className="relative overflow-hidden">
-                                                        {isUploading ? '...' : 'Upload'}
-                                                        <input
-                                                            type="file"
-                                                            className="absolute inset-0 opacity-0 cursor-pointer"
-                                                            onChange={handleBannerUpload}
-                                                            accept="image/*"
-                                                        />
-                                                    </Button>
-                                                </div>
+                                        <div className="space-y-4">
+                                            <Label>Banner Media</Label>
+                                            <div 
+                                                className={cn(
+                                                    "relative aspect-[16/6] w-full rounded-2xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center overflow-hidden group",
+                                                    bannerForm.image_url ? "border-transparent" : "border-neutral-200 bg-neutral-50 hover:bg-neutral-100 hover:border-blue-400"
+                                                )}
+                                            >
+                                                {bannerForm.image_url ? (
+                                                    <>
+                                                        <img src={bannerForm.image_url} alt="Banner Preview" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                            <Button variant="secondary" size="sm" className="relative h-9 rounded-full bg-white/90 backdrop-blur-sm text-black">
+                                                                <RefreshCw className={cn("w-4 h-4 mr-2", isUploading && "animate-spin")} />
+                                                                Change Image
+                                                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleBannerUpload} accept="image/*" disabled={isUploading} />
+                                                            </Button>
+                                                            <Button variant="destructive" size="sm" className="h-9 rounded-full" onClick={() => setBannerForm(prev => ({ ...prev, image_url: '' }))}>
+                                                                <Trash2 className="w-4 h-4 mr-2" /> Remove
+                                                            </Button>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-3">
+                                                        <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                                                            {isUploading ? <Loader2 className="w-7 h-7 animate-spin" /> : <Image className="w-7 h-7" />}
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <p className="text-sm font-bold text-neutral-900">{isUploading ? "Uploading to Cloudinary..." : "Click to upload banner"}</p>
+                                                            <p className="text-[10px] text-neutral-400 uppercase tracking-widest mt-1">Recommended: 1920x720 (16:6)</p>
+                                                        </div>
+                                                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleBannerUpload} accept="image/*" disabled={isUploading} />
+                                                    </div>
+                                                )}
+                                                
+                                                {isUploading && (
+                                                    <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                                                            <span className="text-xs font-bold text-blue-600 animate-pulse uppercase tracking-widest">Processing Media...</span>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                            {bannerForm.image_url && (
-                                                <img src={bannerForm.image_url} alt="Preview" className="h-20 w-auto object-cover rounded border" />
-                                            )}
                                         </div>
                                         <div className="grid gap-4 grid-cols-2">
                                             <div className="grid gap-2">

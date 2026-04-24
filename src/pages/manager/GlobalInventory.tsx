@@ -12,7 +12,7 @@ import { RestockDetailDialog } from '@/components/manager/inventory/RestockDetai
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function GlobalInventory() {
-    const { data: recommendations, isLoading } = useGetRecommendations({ status: 'PENDING' });
+    const { data: recommendations, isLoading } = useGetRecommendations({ status: 'PENDING', limit: '200' });
     const { data: globalInventory, isLoading: isInventoryLoading } = useGetGlobalInventory();
     const triggerAI = useTriggerAI();
     const applyAction = useApplyRecommendation();
