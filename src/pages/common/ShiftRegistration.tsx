@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Clock, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Clock, CalendarDays, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
@@ -37,6 +37,25 @@ export default function ShiftRegistration() {
         const end = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
         return `Week of ${format(start, 'MMM dd')} - ${format(end, 'MMM dd, yyyy')}`;
     }, [currentWeekStart]);
+
+    const isNextWeek = useMemo(() => {
+        const nextWeekStart = addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 7);
+        return format(currentWeekStart, 'yyyy-MM-dd') === format(nextWeekStart, 'yyyy-MM-dd');
+    }, [currentWeekStart]);
+
+    const totalRegisteredHours = useMemo(() => {
+        const validSchedules = schedules.filter(s => s.status_code === 'PENDING' || s.status_code === 'PUBLISHED');
+        return validSchedules.length * 4;
+    }, [schedules]);
+
+    const isRegistrationWindow = useMemo(() => {
+        const now = new Date();
+        const currentDay = now.getDay(); // 0 is Sunday, 4 is Thursday, 5 is Friday
+        
+        if (currentDay === 5) return true;
+        if (currentDay === 4 && (now.getHours() > 0 || now.getMinutes() > 0)) return true;
+        return false;
+    }, []);
 
     const fetchSchedules = async () => {
         setLoading(true);
@@ -110,6 +129,7 @@ export default function ShiftRegistration() {
         });
 
         const isPast = new Date(dayStr) < new Date(format(new Date(), 'yyyy-MM-dd'));
+        const disabled = isPast || !isNextWeek || !isRegistrationWindow;
 
         return (
             <div className="flex flex-col gap-2 min-h-[100px] justify-center items-center p-2 rounded-lg border border-dashed border-neutral-200">
@@ -117,13 +137,13 @@ export default function ShiftRegistration() {
                     schedule.status_code === 'PENDING' ? (
                         <Button 
                             variant="outline" 
-                            className="w-full flex-col h-auto py-3 bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-700 transition-all"
+                            className={`w-full flex-col h-auto py-3 transition-all ${disabled ? 'bg-neutral-50 text-neutral-400 border-neutral-200 opacity-70 cursor-not-allowed' : 'bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-700'}`}
                             onClick={() => handleToggleRegistration(dayDate, shiftCode, schedule)}
-                            disabled={isPast}
+                            disabled={disabled}
                         >
                             <Clock className="w-5 h-5 mb-1" />
                             <span className="font-semibold text-sm">Pending</span>
-                            <span className="text-[10px] uppercase tracking-wider opacity-80 mt-1">Tap to cancel</span>
+                            {!disabled && <span className="text-[10px] uppercase tracking-wider opacity-80 mt-1">Tap to cancel</span>}
                         </Button>
                     ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center p-3 rounded-md bg-green-50 border border-green-200 text-green-700">
@@ -135,12 +155,12 @@ export default function ShiftRegistration() {
                 ) : (
                     <Button 
                         variant="ghost" 
-                        className="w-full flex-col h-full min-h-[80px] hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-100 transition-all text-neutral-400"
+                        className={`w-full flex-col h-full min-h-[80px] transition-all ${disabled ? 'opacity-50 cursor-not-allowed bg-neutral-50/50 text-neutral-400' : 'hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-100 text-neutral-400'}`}
                         onClick={() => handleToggleRegistration(dayDate, shiftCode)}
-                        disabled={isPast}
+                        disabled={disabled}
                     >
                         <CalendarDays className="w-6 h-6 mb-1 opacity-50" />
-                        <span className="font-medium text-xs">Register</span>
+                        <span className="font-medium text-xs">{disabled ? '-' : 'Register'}</span>
                     </Button>
                 )}
             </div>
@@ -156,6 +176,44 @@ export default function ShiftRegistration() {
                     </h1>
                     <p className="text-neutral-500">Pick the shifts you want to work for the upcoming weeks.</p>
                 </div>
+            </div>
+
+            {/* Progress Bar & Warning */}
+            <div className="flex flex-col gap-4">
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-neutral-200">
+                    <div className="flex justify-between items-end mb-3">
+                        <div>
+                            <h3 className="font-semibold text-neutral-900 text-lg">Weekly Target</h3>
+                            <p className="text-sm text-neutral-500 mt-1">Minimum 32 hours (8 shifts) required per week.</p>
+                        </div>
+                        <div className="text-right">
+                            <span className={`text-2xl font-bold ${totalRegisteredHours >= 32 ? 'text-green-600' : 'text-blue-600'}`}>
+                                {totalRegisteredHours}
+                            </span>
+                            <span className="text-neutral-500 font-medium"> / 32 hrs</span>
+                        </div>
+                    </div>
+                    <div className="w-full bg-neutral-100 rounded-full h-3 overflow-hidden">
+                        <div 
+                            className={`h-3 rounded-full transition-all duration-500 ${totalRegisteredHours >= 32 ? 'bg-green-500' : 'bg-blue-500'}`} 
+                            style={{ width: `${Math.min((totalRegisteredHours / 32) * 100, 100)}%` }}
+                        ></div>
+                    </div>
+                </div>
+
+                {!isNextWeek && isRegistrationWindow && (
+                    <div className="bg-amber-50 text-amber-800 p-4 rounded-xl flex items-center gap-3 border border-amber-200">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <span className="font-medium">You can only register or modify shifts for the <strong>Next Week</strong>.</span>
+                    </div>
+                )}
+
+                {!isRegistrationWindow && (
+                    <div className="bg-red-50 text-red-800 p-4 rounded-xl flex items-center gap-3 border border-red-200">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <span className="font-medium">Registration is currently <strong>CLOSED</strong>. You can only register or modify shifts from Thursday 00:01 to Friday 23:59.</span>
+                    </div>
+                )}
             </div>
 
             <Card className="shadow-sm border-neutral-200 overflow-hidden">
@@ -199,7 +257,7 @@ export default function ShiftRegistration() {
                                     <span className="text-sm text-neutral-500">{format(dayDate, 'MMM dd')}</span>
                                 </div>
                                 {SHIFTS.map(shift => (
-                                    <div key={shift.code} className="p-2">
+                                    <div key={shift.code} className="p-0">
                                         {renderShiftCell(dayDate, shift.code)}
                                     </div>
                                 ))}

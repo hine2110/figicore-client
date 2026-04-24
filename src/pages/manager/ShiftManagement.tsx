@@ -164,6 +164,57 @@ export default function ShiftManagement() {
         return user ? user.full_name : `User #${schedule.user_id}`;
     };
 
+    const getUserRole = (schedule: WorkSchedule) => {
+        const user = users.find(u => u.user_id === schedule.user_id);
+        return user ? user.role_code : '';
+    };
+
+    const getCardStyles = (schedule: WorkSchedule) => {
+        const role = getUserRole(schedule);
+        const isPending = schedule.status_code === 'PENDING';
+
+        if (isPending) {
+            if (role === 'STAFF_POS') {
+                return {
+                    card: 'bg-blue-50 border-y-blue-200 border-r-blue-200 border-l-4 border-l-blue-400',
+                    iconBg: 'bg-blue-200 text-blue-800',
+                    badge: 'text-blue-600 bg-blue-200/50',
+                    hoverActions: 'bg-blue-50 border-blue-200',
+                    timeText: 'text-blue-600/80'
+                };
+            }
+            if (role === 'STAFF_INVENTORY') {
+                return {
+                    card: 'bg-yellow-50 border-y-yellow-200 border-r-yellow-200 border-l-4 border-l-yellow-400',
+                    iconBg: 'bg-yellow-200 text-yellow-800',
+                    badge: 'text-yellow-600 bg-yellow-200/50',
+                    hoverActions: 'bg-yellow-50 border-yellow-200',
+                    timeText: 'text-yellow-600/80'
+                };
+            }
+            return {
+                card: 'bg-neutral-50 border-y-neutral-200 border-r-neutral-200 border-l-4 border-l-neutral-300',
+                iconBg: 'bg-neutral-200 text-neutral-800',
+                badge: 'text-neutral-600 bg-neutral-200/50',
+                hoverActions: 'bg-neutral-50 border-neutral-200',
+                timeText: 'text-neutral-600/80'
+            };
+        }
+
+        // PUBLISHED / other states
+        let borderLeft = 'border-l-neutral-300';
+        if (role === 'STAFF_POS') borderLeft = 'border-l-blue-400';
+        else if (role === 'STAFF_INVENTORY') borderLeft = 'border-l-yellow-400';
+
+        return {
+            card: `bg-white border-y-neutral-200 border-r-neutral-200 border-l-4 ${borderLeft}`,
+            iconBg: 'bg-neutral-100 text-neutral-600',
+            badge: '',
+            hoverActions: 'bg-white/90 border-neutral-200',
+            timeText: 'text-neutral-400'
+        };
+    };
+
     // --- API Methods ---
 
     const fetchUsers = async () => {
@@ -385,26 +436,28 @@ export default function ShiftManagement() {
 
         return (
             <div className="flex flex-col gap-2 min-h-[100px]">
-                {daySchedules.map(schedule => (
-                    <div key={schedule.schedule_id} className={`relative group border rounded-lg p-3 shadow-sm hover:shadow-md transition-all ${schedule.status_code === 'PENDING' ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-neutral-200'}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${schedule.status_code === 'PENDING' ? 'bg-yellow-200 text-yellow-800' : 'bg-neutral-100 text-neutral-600'}`}>
-                                <UserIcon className="w-3 h-3" />
+                {daySchedules.map(schedule => {
+                    const styles = getCardStyles(schedule);
+                    return (
+                        <div key={schedule.schedule_id} className={`relative group rounded-lg p-3 shadow-sm hover:shadow-md transition-all border ${styles.card}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${styles.iconBg}`}>
+                                    <UserIcon className="w-3 h-3" />
+                                </div>
+                                <span className="text-sm font-medium truncate max-w-[120px]" title={getUserName(schedule)}>
+                                    {getUserName(schedule)}
+                                </span>
+                                {schedule.status_code === 'PENDING' && (
+                                    <span className={`ml-auto text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${styles.badge}`}>Pending</span>
+                                )}
                             </div>
-                            <span className="text-sm font-medium truncate max-w-[120px]" title={getUserName(schedule)}>
-                                {getUserName(schedule)}
-                            </span>
-                            {schedule.status_code === 'PENDING' && (
-                                <span className="ml-auto text-[10px] font-bold text-yellow-600 uppercase tracking-wider bg-yellow-200/50 px-1.5 py-0.5 rounded">Pending</span>
-                            )}
-                        </div>
-                        <div className={`text-xs mb-1 ${schedule.status_code === 'PENDING' ? 'text-yellow-600/80' : 'text-neutral-400'}`}>
-                            {getTimeFromIso(schedule.expected_start)} - {getTimeFromIso(schedule.expected_end)}
-                        </div>
+                            <div className={`text-xs mb-1 ${styles.timeText}`}>
+                                {getTimeFromIso(schedule.expected_start)} - {getTimeFromIso(schedule.expected_end)}
+                            </div>
 
-                        {/* Action Buttons Overlay */}
-                        {!isLocked && (
-                            <div className={`flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity absolute top-1 right-1 p-1 rounded border shadow-sm ${schedule.status_code === 'PENDING' ? 'bg-yellow-50 border-yellow-200' : 'bg-white/90 border-neutral-200'}`}>
+                            {/* Action Buttons Overlay */}
+                            {!isLocked && (
+                                <div className={`flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity absolute top-1 right-1 p-1 rounded border shadow-sm ${styles.hoverActions}`}>
                                 {schedule.status_code === 'PENDING' ? (
                                     <>
                                         <Button
@@ -460,7 +513,7 @@ export default function ShiftManagement() {
                             </div>
                         )}
                     </div>
-                ))}
+                )})}
 
                 <div className="mt-auto flex flex-col gap-1">
                     {!isLocked && (
@@ -498,9 +551,12 @@ export default function ShiftManagement() {
                 <div>
                     <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
                         Shift Management
-
                     </h1>
                     <p className="text-neutral-500">Weekly employee shift assignments.</p>
+                    <div className="flex gap-4 mt-2 text-xs font-medium text-neutral-600">
+                        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-blue-400"></div> POS Staff</div>
+                        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-yellow-400"></div> Inventory Staff</div>
+                    </div>
                 </div>
                 <div className="flex gap-2">
                     {!stationToken && (

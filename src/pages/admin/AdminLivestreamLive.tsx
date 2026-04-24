@@ -467,133 +467,107 @@ const SystemHealth = memo(() => {
     );
 });
 
-// ── NEW PREMIUM GIVEAWAY COMPONENTS ──
+const SEGMENT_COLORS = [
+    '#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', 
+    '#06b6d4', '#ec4899', '#f97316', '#6366f1', '#14b8a6'
+];
 
 const PublicLuckyWheel = memo(({
     participants,
     winnerId,
-    onClose,
-    title = "Luxury Giveaway"
+    onFinish
 }: {
     participants: { userId: number, name: string }[],
     winnerId?: number,
-    onClose?: () => void,
-    title?: string
+    onFinish: () => void
 }) => {
-    const [isSpinning, setIsSpinning] = useState(true);
     const [rotation, setRotation] = useState(0);
-    const [showWinner, setShowWinner] = useState(false);
+    const [isRevealed, setIsRevealed] = useState(false);
+    const [isSpinning, setIsSpinning] = useState(true);
 
     useEffect(() => {
         if (!winnerId) {
             setRotation(0);
             setIsSpinning(true);
-            setShowWinner(false);
+            setIsRevealed(false);
             return;
         }
 
         const winnerIndex = participants.findIndex(p => p.userId === winnerId);
-        if (winnerIndex === -1) return;
+        if (winnerIndex === -1) {
+            onFinish();
+            return;
+        }
 
         const segmentAngle = 360 / participants.length;
-        const targetRotation = 360 * 10 + (360 - (winnerIndex * segmentAngle) - (segmentAngle / 2));
+        const extraSpins = 8 + Math.floor(Math.random() * 4); 
+        const randomOffset = (Math.random() * 0.8 + 0.1) * segmentAngle;
+        const targetRotation = (360 * extraSpins) + (360 - (winnerIndex * segmentAngle + randomOffset));
 
         setTimeout(() => {
             setRotation(targetRotation);
             setIsSpinning(false);
-            setTimeout(() => setShowWinner(true), 5500);
         }, 100);
-    }, [winnerId, participants]);
-
-    const particles = useMemo(() => [...Array(15)].map((_, i) => ({
-        id: i,
-        x: Math.random() * 100 - 50,
-        y: Math.random() * 100 - 50,
-        scale: Math.random() * 0.5 + 0.5,
-        duration: Math.random() * 2 + 1
-    })), []);
+    }, [winnerId, participants, onFinish]);
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md">
-            <div className="relative w-full max-w-2xl aspect-square flex items-center justify-center">
-                {/* Background Glow */}
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 rounded-full blur-[120px] animate-pulse" />
-
-                {/* Main Wheel Container */}
-                <div className="relative z-10 w-[80%] aspect-square rounded-full border-[12px] border-[#1a1b23] shadow-[0_0_100px_rgba(245,158,11,0.3)] overflow-hidden bg-[#0a0b10]">
-                    <motion.div
-                        animate={{ rotate: rotation }}
-                        transition={isSpinning ? { duration: 2, repeat: Infinity, ease: "linear" } : { duration: 5, ease: [0.1, 0, 0.1, 1] }}
-                        className="w-full h-full relative"
-                    >
-                        {participants.map((p, i) => (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 overflow-hidden">
+            <div className="relative w-full max-w-[500px] aspect-square flex items-center justify-center">
+                <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${isRevealed ? 'bg-rose-500/20 blur-[120px] scale-110' : 'bg-blue-500/10 blur-[80px]'}`} />
+                
+                <motion.div
+                    animate={{ rotate: rotation }}
+                    transition={isSpinning 
+                        ? { duration: 2, repeat: Infinity, ease: "linear" } 
+                        : { duration: 7, ease: [0.15, 0, 0.15, 1] }}
+                    onAnimationComplete={() => {
+                        if (!isSpinning && winnerId) {
+                            setIsRevealed(true);
+                            setTimeout(onFinish, 2500);
+                        }
+                    }}
+                    style={{ 
+                        background: `conic-gradient(${participants.map((_, i) => 
+                            `${SEGMENT_COLORS[i % SEGMENT_COLORS.length]} ${i * (360 / participants.length)}deg ${(i + 1) * (360 / participants.length)}deg`
+                        ).join(', ')})` 
+                    }}
+                    className="w-full h-full relative rounded-full border-[12px] border-[#1a1b23] shadow-[0_0_80px_rgba(0,0,0,0.8)]"
+                >
+                    {participants.map((p, i) => {
+                        const angle = 360 / participants.length;
+                        return (
                             <div
                                 key={p.userId}
-                                className="absolute top-0 left-1/2 w-0 h-1/2 origin-bottom -translate-x-1/2"
-                                style={{
-                                    transform: `translateX(-50%) rotate(${i * (360 / participants.length)}deg)`,
-                                    borderLeft: `${Math.tan((180 / participants.length) * (Math.PI / 180)) * 100}% solid transparent`,
-                                    borderRight: `${Math.tan((180 / participants.length) * (Math.PI / 180)) * 100}% solid transparent`,
-                                    borderTop: `100% solid ${i % 2 === 0 ? '#1a1b23' : '#22242d'}`,
-                                }}
+                                className="absolute top-0 left-1/2 h-1/2 origin-bottom -translate-x-1/2"
+                                style={{ transform: `translateX(-50%) rotate(${i * angle + angle/2}deg)` }}
                             >
-                                <span
-                                    className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full origin-bottom text-[10px] font-black text-amber-500 uppercase tracking-widest pt-8"
-                                    style={{ transform: `translateX(-50%) translateY(40px) rotate(0deg)`, writingMode: 'vertical-rl' }}
+                                <div 
+                                    className={`mt-10 font-black text-white uppercase transition-all duration-500 
+                                        ${isRevealed && p.userId === winnerId ? 'scale-150 drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]' : 'opacity-70'}
+                                    `}
+                                    style={{ 
+                                        writingMode: 'vertical-rl',
+                                        fontSize: participants.length > 12 ? '8px' : '11px'
+                                    }}
                                 >
                                     {p.name}
-                                </span>
+                                </div>
                             </div>
-                        ))}
-                    </motion.div>
+                        );
+                    })}
+                </motion.div>
 
-                    {/* Center Cap */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 border-4 border-[#0a0b10] shadow-[0_0_30px_rgba(245,158,11,0.5)] z-20 flex items-center justify-center">
-                            <Trophy className="w-6 h-6 text-white" />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-24 h-24 rounded-full bg-[#1a1b23] border-4 border-white/10 shadow-2xl z-20 flex items-center justify-center">
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-700 ${isRevealed ? 'bg-rose-500 shadow-[0_0_30px_rgba(225,29,72,0.8)] scale-110' : 'bg-neutral-800'}`}>
+                            <Trophy className="w-7 h-7 text-white" />
                         </div>
                     </div>
                 </div>
 
-                {/* Pointer */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-30">
-                    <div className="w-8 h-10 bg-rose-500 clip-path-triangle shadow-xl" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 50% 100%)' }} />
+                <div className="absolute top-[-15px] left-1/2 -translate-x-1/2 z-30 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] pointer-events-none">
+                    <div className="w-12 h-14 bg-white" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 50% 100%)' }} />
                 </div>
-
-                {/* Winner Announcement */}
-                <AnimatePresence>
-                    {showWinner && winnerId && (
-                        <motion.div
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-[3rem]"
-                        >
-                            <div className="relative">
-                                {particles.map((p) => (
-                                    <motion.div
-                                        key={p.id}
-                                        animate={{ x: p.x * 4, y: p.y * 4, opacity: 0 }}
-                                        transition={{ duration: p.duration, repeat: Infinity }}
-                                        className="absolute w-2 h-2 rounded-full bg-amber-400"
-                                    />
-                                ))}
-                                <div className="bg-gradient-to-b from-[#1a1b23] to-[#0a0b10] border-2 border-amber-500/50 rounded-[2.5rem] p-10 flex flex-col items-center text-center shadow-[0_0_80px_rgba(245,158,11,0.4)]">
-                                    <Crown className="w-16 h-16 text-amber-500 mb-6 animate-bounce" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-500/60 mb-2">Winner Identified</span>
-                                    <h2 className="text-4xl font-black text-white italic uppercase tracking-tighter mb-8">
-                                        {participants.find(p => p.userId === winnerId)?.name}
-                                    </h2>
-                                    <Button
-                                        onClick={onClose}
-                                        className="bg-amber-600 hover:bg-amber-500 text-white font-black uppercase tracking-widest px-8 h-12 rounded-2xl"
-                                    >
-                                        Celebrate Result
-                                    </Button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
         </div>
     );
@@ -651,12 +625,12 @@ const LiveChatLog = memo(({
 const GiveawaySidebarCard = memo(({ isSetupMode, giveawayParticipantCount, onDrawWinner, onOpenConfig, slots, onAbort }: any) => {
     return (
         <div className="bg-[#111218] rounded-[2rem] border border-white/5 p-5 flex flex-col gap-4 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-8 bg-amber-500/5 blur-3xl rounded-full -mr-4 -mt-4" />
+            <div className="absolute top-0 right-0 p-8 bg-rose-500/5 blur-3xl rounded-full -mr-4 -mt-4" />
             
             <div className="flex items-center justify-between relative z-10">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                        <Gift className="w-5 h-5 text-amber-500" />
+                    <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                        <Gift className="w-5 h-5 text-rose-500" />
                     </div>
                     <div className="flex flex-col">
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Giveaway Control</span>
@@ -692,7 +666,7 @@ const GiveawaySidebarCard = memo(({ isSetupMode, giveawayParticipantCount, onDra
                         </div>
                         <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                             <motion.div 
-                                className="h-full bg-amber-500"
+                                className="h-full bg-rose-500"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${Math.min((giveawayParticipantCount / (slots || 1)) * 100, 100)}%` }}
                             />
@@ -705,7 +679,7 @@ const GiveawaySidebarCard = memo(({ isSetupMode, giveawayParticipantCount, onDra
                 {isSetupMode ? (
                     <Button 
                         onClick={onOpenConfig}
-                        className="w-full h-12 bg-amber-600 hover:bg-amber-500 text-white font-black uppercase tracking-widest rounded-xl transition-all"
+                        className="w-full h-12 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase tracking-widest rounded-xl transition-all"
                     >
                         Configure Event
                     </Button>
@@ -746,11 +720,11 @@ const GiveawayConfigModal = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[500px] bg-[#0a0b10] border-white/10 rounded-[2.5rem] p-0 overflow-hidden shadow-[0_0_100px_rgba(245,158,11,0.15)]">
+            <DialogContent className="max-w-[500px] bg-[#0a0b10] border-white/10 rounded-[2.5rem] p-0 overflow-hidden shadow-[0_0_100px_rgba(225,29,72,0.15)]">
                 <div className="p-8 space-y-8">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                            <Gift className="w-6 h-6 text-amber-500" />
+                        <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                            <Gift className="w-6 h-6 text-rose-500" />
                         </div>
                         <div className="flex flex-col">
                             <h2 className="text-lg font-black text-white uppercase tracking-widest">Giveaway Setup</h2>
@@ -765,13 +739,13 @@ const GiveawayConfigModal = ({
                         </div>
                         
                         <div className="relative group">
-                            <Search className="absolute left-4 top-3.5 w-4 h-4 text-neutral-600 group-focus-within:text-amber-500 transition-colors" />
+                            <Search className="absolute left-4 top-3.5 w-4 h-4 text-neutral-600 group-focus-within:text-rose-500 transition-colors" />
                             <input
                                 type="text"
                                 placeholder="Search inventory..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full h-12 bg-black/40 border border-white/5 rounded-2xl pl-12 pr-4 text-xs text-white focus:border-amber-500 transition-all outline-none"
+                                className="w-full h-12 bg-black/40 border border-white/5 rounded-2xl pl-12 pr-4 text-xs text-white focus:border-rose-500 transition-all outline-none"
                             />
                         </div>
 
@@ -781,12 +755,12 @@ const GiveawayConfigModal = ({
                                     <button
                                         key={p.variant_id}
                                         onClick={() => setGiveawayConfig({ ...giveawayConfig, variantId: p.variant_id })}
-                                        className={`aspect-square rounded-[1.5rem] border p-2 transition-all group relative overflow-hidden ${giveawayConfig.variantId === p.variant_id ? 'border-amber-500 bg-amber-500/10' : 'border-white/5 bg-white/5 hover:border-white/20'}`}
+                                        className={`aspect-square rounded-[1.5rem] border p-2 transition-all group relative overflow-hidden ${giveawayConfig.variantId === p.variant_id ? 'border-rose-500 bg-rose-500/10' : 'border-white/5 bg-white/5 hover:border-white/20'}`}
                                     >
                                         <img src={resolveProductImage(p)} className="w-full h-full object-contain transition-transform group-hover:scale-110" alt="" />
                                         {giveawayConfig.variantId === p.variant_id && (
-                                            <div className="absolute inset-0 bg-amber-500/10 flex items-center justify-center">
-                                                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
+                                            <div className="absolute inset-0 bg-rose-500/10 flex items-center justify-center">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(225,29,72,0.5)]" />
                                             </div>
                                         )}
                                     </button>
@@ -804,9 +778,9 @@ const GiveawayConfigModal = ({
                                     value={giveawayConfig.keyword}
                                     onChange={(e) => setGiveawayConfig({ ...giveawayConfig, keyword: e.target.value })}
                                     placeholder="e.g. FIGICORE"
-                                    className="w-full h-12 bg-black/40 border border-white/5 rounded-2xl px-5 text-xs text-white focus:border-amber-500 transition-all uppercase font-black"
+                                    className="w-full h-12 bg-black/40 border border-white/5 rounded-2xl px-5 text-xs text-white focus:border-rose-500 transition-all uppercase font-black"
                                 />
-                                <Sparkles className="absolute right-4 top-4 w-4 h-4 text-amber-500/50" />
+                                <Sparkles className="absolute right-4 top-4 w-4 h-4 text-rose-500/50" />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -816,7 +790,7 @@ const GiveawayConfigModal = ({
                                     type="number"
                                     value={giveawayConfig.durationSeconds}
                                     onChange={(e) => setGiveawayConfig({ ...giveawayConfig, durationSeconds: Number(e.target.value) })}
-                                    className="w-full h-12 bg-black/40 border border-white/5 rounded-2xl px-4 text-xs text-white focus:border-amber-500 transition-all font-mono"
+                                    className="w-full h-12 bg-black/40 border border-white/5 rounded-2xl px-4 text-xs text-white focus:border-rose-500 transition-all font-mono"
                                 />
                             </div>
                             <div className="space-y-3">
@@ -825,7 +799,7 @@ const GiveawayConfigModal = ({
                                     type="number"
                                     value={giveawayConfig.slots}
                                     onChange={(e) => setGiveawayConfig({ ...giveawayConfig, slots: Number(e.target.value) })}
-                                    className="w-full h-12 bg-black/40 border border-white/5 rounded-2xl px-4 text-xs text-white focus:border-amber-500 transition-all font-mono"
+                                    className="w-full h-12 bg-black/40 border border-white/5 rounded-2xl px-4 text-xs text-white focus:border-rose-500 transition-all font-mono"
                                 />
                             </div>
                         </div>
@@ -833,7 +807,7 @@ const GiveawayConfigModal = ({
 
                     <Button
                         onClick={onStart}
-                        className="w-full h-16 bg-amber-600 hover:bg-amber-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-[0_15px_40px_rgba(245,158,11,0.25)] transition-all"
+                        className="w-full h-16 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-[0_15px_40px_rgba(225,29,72,0.25)] transition-all"
                     >
                         Initialize Broadcast
                     </Button>
@@ -1013,6 +987,11 @@ export default function AdminLivestreamLive() {
                 });
                 socket.on('giveaway_entry_count', (data: any) => {
                     setGiveawayParticipantCount(data.count);
+                });
+                socket.on('giveaway_participant_joined', (data: any) => {
+                    if (data.entryCount) {
+                        setGiveawayParticipantCount(data.entryCount);
+                    }
                 });
                 socket.on('giveaway_draw_started', (data: any) => {
                     setGiveawayParticipantsList(data.participants || []);
@@ -1666,9 +1645,11 @@ function AdminStudioContent(props: any) {
                     <PublicLuckyWheel
                         participants={giveawayParticipantsList}
                         winnerId={giveawayWinner?.user_id}
-                        onClose={() => {
+                        onFinish={() => {
                             setIsGiveawayWheelVisible(false);
                             setGiveawayParticipantsList([]);
+                            // Admin không cần hiện WinnerCelebration riêng như customer
+                            // vì đã có giveawayWinner state để hiển thị ở các chỗ khác nếu cần.
                         }}
                     />
                 )}
