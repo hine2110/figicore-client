@@ -35,6 +35,7 @@ export interface ManagerStats {
 export interface WarehouseStats {
   readyToPack: number;
   packedCount: number;
+  shippingCount: number;
   deliveredCount: number;
   lowStockAlerts: number;
   inventoryTrend: any[];

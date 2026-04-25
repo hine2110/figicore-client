@@ -25,9 +25,7 @@ import ShiftRegistration from "@/pages/common/ShiftRegistration";
 import AuctionManagement from "@/pages/admin/AuctionManagement";
 import AdminAuctionDetail from "@/pages/admin/AdminAuctionDetail";
 import AdminAuctionLive from "@/pages/admin/AdminAuctionLive";
-import ManualRefund from "@/pages/admin/ManualRefund";
 import SystemSettings from "@/pages/admin/SystemSettings";
-import AuditLogs from "@/pages/admin/AuditLogs";
 
 //manager
 import ManagerDashboard from "@/pages/manager/ManagerDashboard";
@@ -156,9 +154,7 @@ export default function App() {
                             <Route path="auctions" element={<AuctionManagement />} />
                             <Route path="auctions/:id" element={<AdminAuctionDetail />} />
                             <Route path="auctions/:id/live" element={<AdminAuctionLive />} />
-                            <Route path="refunds" element={<ManualRefund />} />
                             <Route path="settings" element={<SystemSettings />} />
-                            <Route path="logs" element={<AuditLogs />} />
                             <Route path="accounts" element={<AccountManagement />} />
                             <Route path="livestreams" element={<LivestreamManagement />} />
                             <Route path="livestreams/:id/live" element={<AdminLivestreamLive />} />

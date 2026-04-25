@@ -79,27 +79,61 @@ export interface WarehouseAnalyticsContentProps {
 export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMonthLabel }: WarehouseAnalyticsContentProps) {
     if (!kpi) return null;
 
-    const { current: curr = {}, previous: prev = {}, growth = {}, activePreorderContracts = [] } = kpi;
+    const currRaw = kpi.current || kpi.currentMonth || {};
+    const prevRaw = kpi.previous || kpi.previousMonth || {};
+    const growth = kpi.growth || {};
+
+    const extract = (raw: any, flatKey: string, nestedGroup: 'revenue' | 'counts', nestedKey: string) => {
+        if (raw?.[nestedGroup]?.[nestedKey] !== undefined) return raw[nestedGroup][nestedKey];
+        return raw?.[flatKey] ?? 0;
+    };
+
+    const normalize = (raw: any) => ({
+        onlineRevenue: extract(raw, 'onlineRevenue', 'revenue', 'retail'),
+        livestreamRevenue: extract(raw, 'livestreamRevenue', 'revenue', 'livestream'),
+        preorderRevenue: extract(raw, 'preorderRevenue', 'revenue', 'preorder'),
+        blindboxRevenue: extract(raw, 'blindboxRevenue', 'revenue', 'blindbox'),
+        auctionRevenue: extract(raw, 'auctionRevenue', 'revenue', 'auction'),
+        giveawayRevenue: extract(raw, 'giveawayRevenue', 'revenue', 'giveaway'),
+        
+        totalOnlineOrders: extract(raw, 'totalOnlineOrders', 'counts', 'retail'),
+        totalLivestreamOrders: extract(raw, 'totalLivestreamOrders', 'counts', 'livestream'),
+        preorderCount: extract(raw, 'preorderCount', 'counts', 'preorder'),
+        blindboxCount: extract(raw, 'blindboxCount', 'counts', 'blindbox'),
+        auctionCount: extract(raw, 'auctionCount', 'counts', 'auction'),
+        giveawayCount: extract(raw, 'giveawayCount', 'counts', 'giveaway'),
+        
+        totalOrders: raw.totalOrders ?? 0,
+        shippingCollected: raw.shippingCollected ?? 0,
+        shippingPaid: raw.shippingPaid ?? 0,
+        shippingDiscount: raw.shippingDiscount ?? 0,
+        freeshipOrders: raw.freeshipOrders ?? 0,
+    });
+
+    const curr = normalize(currRaw);
+    const prev = normalize(prevRaw);
 
     // Chart data — Revenue comparison (All 6 types)
     const revenueComparisonData = [
-        { name: "Retail", current: curr.onlineRevenue ?? 0, previous: prev?.onlineRevenue ?? 0 },
-        { name: "Live", current: curr.livestreamRevenue ?? 0, previous: prev?.livestreamRevenue ?? 0 },
-        { name: "Pre-order", current: curr.preorderRevenue ?? 0, previous: prev?.preorderRevenue ?? 0 },
-        { name: "Blindbox", current: curr.blindboxRevenue ?? 0, previous: prev?.blindboxRevenue ?? 0 },
-        { name: "Auction", current: curr.auctionRevenue ?? 0, previous: prev?.auctionRevenue ?? 0 },
-        { name: "Giveaway", current: curr.giveawayRevenue ?? 0, previous: prev?.giveawayRevenue ?? 0 },
+        { name: "Retail", current: curr.onlineRevenue, previous: prev.onlineRevenue },
+        { name: "Live", current: curr.livestreamRevenue, previous: prev.livestreamRevenue },
+        { name: "Pre-order", current: curr.preorderRevenue, previous: prev.preorderRevenue },
+        { name: "Blindbox", current: curr.blindboxRevenue, previous: prev.blindboxRevenue },
+        { name: "Auction", current: curr.auctionRevenue, previous: prev.auctionRevenue },
+        { name: "Giveaway", current: curr.giveawayRevenue, previous: prev.giveawayRevenue },
     ];
 
     // Orders breakdown chart (All 6 types)
     const ordersComparisonData = [
-        { name: "Retail", current: curr.totalOnlineOrders ?? 0, previous: prev?.totalOnlineOrders ?? 0 },
-        { name: "Live", current: curr.totalLivestreamOrders ?? 0, previous: prev?.totalLivestreamOrders ?? 0 },
-        { name: "Pre-order", current: curr.preorderCount ?? 0, previous: prev?.preorderCount ?? 0 },
-        { name: "Blindbox", current: curr.blindboxCount ?? 0, previous: prev?.blindboxCount ?? 0 },
-        { name: "Auction", current: curr.auctionCount ?? 0, previous: prev?.auctionCount ?? 0 },
-        { name: "Giveaway", current: curr.giveawayCount ?? 0, previous: prev?.giveawayCount ?? 0 },
+        { name: "Retail", current: curr.totalOnlineOrders, previous: prev.totalOnlineOrders },
+        { name: "Live", current: curr.totalLivestreamOrders, previous: prev.totalLivestreamOrders },
+        { name: "Pre-order", current: curr.preorderCount, previous: prev.preorderCount },
+        { name: "Blindbox", current: curr.blindboxCount, previous: prev.blindboxCount },
+        { name: "Auction", current: curr.auctionCount, previous: prev.auctionCount },
+        { name: "Giveaway", current: curr.giveawayCount, previous: prev.giveawayCount },
     ];
+
+    const netShipping = (curr.shippingCollected ?? 0) - (curr.shippingPaid ?? 0);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -263,10 +297,13 @@ export function WarehouseAnalyticsContent({ kpi, currentMonthLabel, previousMont
                                 <div className="space-y-1">
                                     <span className="text-[10px] text-orange-600 uppercase font-bold">Shipping Discounts</span>
                                     <div className="font-bold text-orange-600 text-sm">{formatVND(curr.shippingDiscount)}</div>
+                                    <div className="text-[10px] text-neutral-400 italic">Applied to {curr.freeshipOrders ?? 0} orders</div>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="text-[10px] text-neutral-400 uppercase font-bold">Coverage</span>
-                                    <div className="text-[10px] text-neutral-400 italic">Applied to {curr.freeshipOrders ?? 0} orders</div>
+                                    <span className="text-[10px] text-neutral-400 uppercase font-bold">Net Profit / Loss</span>
+                                    <div className={cn("font-bold text-sm", netShipping >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                                        {netShipping >= 0 ? '+' : '-'} {formatVND(Math.abs(netShipping))}
+                                    </div>
                                 </div>
                             </div>
                          </div>

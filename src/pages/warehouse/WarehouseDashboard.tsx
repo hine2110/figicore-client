@@ -21,7 +21,9 @@ import {
 import { Input } from "@/components/ui/input";
 
 import { dashboardService, WarehouseStats } from "@/services/dashboard.service";
+import { productsService } from "@/services/products.service";
 import { WarehouseAnalyticsContent } from "@/components/warehouse/WarehouseAnalyticsContent";
+import { io } from "socket.io-client";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function GrowthBadge({ value }: { value: number }) {
@@ -40,9 +42,33 @@ export default function StaffDashboard() {
     // ── Operational state ─────────────────────────────────────────────────────
     const [stats, setStats] = useState<WarehouseStats | null>(null);
     const [loading, setLoading] = useState(true);
-    const [timeRange, setTimeRange] = useState("week");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const defaultStart = new Date(y, m, 1).toLocaleDateString('en-CA');
+    const defaultEnd = new Date(y, m + 1, 1).toLocaleDateString('en-CA');
+
+    const [timeRange, setTimeRange] = useState("month");
+    const [startDate, setStartDate] = useState(defaultStart);
+    const [endDate, setEndDate] = useState(defaultEnd);
+    const [preorders, setPreorders] = useState<any[]>([]);
+
+    // Countdown state for preorders
+    const [, setTick] = useState(0);
+    useEffect(() => {
+        const timer = setInterval(() => setTick(t => t + 1), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const fetchPreorders = async () => {
+        try {
+            const res = await productsService.getProducts({ type_code: 'PREORDER' });
+            setPreorders(Array.isArray(res) ? res : (res as any).data || []);
+        } catch (error) {
+            console.error("Failed to fetch preorders", error);
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -54,11 +80,31 @@ export default function StaffDashboard() {
         } finally {
             setLoading(false);
         }
+        fetchPreorders();
     };
 
     useEffect(() => {
         fetchData();
     }, [timeRange]);
+
+    useEffect(() => {
+        const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000/events', {
+            withCredentials: true,
+            transports: ['websocket', 'polling']
+        });
+
+        socket.on('warehouse:new_order', () => {
+            fetchData();
+        });
+
+        socket.on('warehouse:order_status_update', () => {
+            fetchData();
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
 
     const handleSearch = () => {
         if (startDate && endDate) {
@@ -112,7 +158,14 @@ export default function StaffDashboard() {
                         </Button>
                     </div>
 
-                    <Select value={timeRange} onValueChange={setTimeRange}>
+                    <Select 
+                        value={timeRange} 
+                        onValueChange={(value) => {
+                            setTimeRange(value);
+                            setStartDate("");
+                            setEndDate("");
+                        }}
+                    >
                         <SelectTrigger className="w-[140px] h-10 bg-white border-neutral-200 shadow-sm">
                             <Calendar className="w-4 h-4 mr-2 text-neutral-400" />
                             <SelectValue placeholder="Time Range" />
@@ -167,15 +220,31 @@ export default function StaffDashboard() {
 
                         <Card className="border-0 shadow-sm relative overflow-hidden group">
                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform text-amber-500">
-                                <Truck className="w-12 h-12" />
+                                <PackageSearch className="w-12 h-12" />
                             </div>
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Packed & Shipping</CardTitle>
+                                <CardTitle className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Packed</CardTitle>
                                 <div className="text-3xl font-black text-amber-600">{stats?.packedCount || 0}</div>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="secondary" className="bg-amber-50 text-amber-600 border-amber-100 text-[10px]">On Transit</Badge>
+                                    <Badge variant="secondary" className="bg-amber-50 text-amber-600 border-amber-100 text-[10px]">Packed</Badge>
+                                    <span className="text-[10px] text-neutral-400">awaiting shipper</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-0 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform text-blue-500">
+                                <Truck className="w-12 h-12" />
+                            </div>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Shipping</CardTitle>
+                                <div className="text-3xl font-black text-blue-600">{stats?.shippingCount || 0}</div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 text-[10px]">On Transit</Badge>
                                     <span className="text-[10px] text-neutral-400">out of warehouse</span>
                                 </div>
                             </CardContent>
@@ -196,23 +265,95 @@ export default function StaffDashboard() {
                                 </div>
                             </CardContent>
                         </Card>
-
-                        <Card className="border-0 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform text-rose-500">
-                                <AlertTriangle className="w-12 h-12" />
-                            </div>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Restock Alerts</CardTitle>
-                                <div className="text-3xl font-black text-rose-600">{stats?.lowStockAlerts || 0}</div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center gap-2">
-                                    <Badge variant="secondary" className="bg-rose-50 text-rose-600 border-rose-100 text-[10px]">Low Stock</Badge>
-                                    <span className="text-[10px] text-neutral-400">inventory needed</span>
-                                </div>
-                            </CardContent>
-                        </Card>
                     </div>
+
+                    {/* Pre-order Management Section */}
+                    <Card className="border-0 shadow-sm mt-8">
+                        <CardHeader>
+                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                <Archive className="w-4 h-4 text-amber-500" /> Active Pre-orders (Booking Phase)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {preorders.length === 0 ? (
+                                <p className="text-sm text-neutral-500">No active pre-orders found.</p>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {preorders.map(product => {
+                                        const variant = product.product_variants?.[0];
+                                        const config = variant?.product_preorder_configs;
+                                        if (!config || !config.booking_end_date) return null;
+
+                                        const deadline = new Date(config.booking_end_date).getTime();
+                                        const now = Date.now();
+                                        const diff = deadline - now;
+                                        const isExpired = diff <= 0;
+                                        
+                                        const days = Math.max(0, Math.floor(diff / 86400000));
+                                        const hours = Math.max(0, Math.floor((diff % 86400000) / 3600000));
+                                        const mins = Math.max(0, Math.floor((diff % 3600000) / 60000));
+                                        
+                                        const totalSlots = config.total_slots || 0;
+                                        const soldSlots = config.sold_slots || 0;
+                                        const isLowSlots = soldSlots < (totalSlots * 0.3); // Consider low if < 30% sold
+                                        const isExtended = (config.extension_count || 0) >= 1;
+
+                                        return (
+                                            <div key={product.product_id} className={cn(
+                                                "p-4 rounded-xl border flex flex-col justify-between gap-4",
+                                                isExpired ? "bg-neutral-50 border-neutral-200" : "bg-white border-amber-100 shadow-sm"
+                                            )}>
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="font-bold text-sm text-neutral-900 line-clamp-1">{product.name}</h4>
+                                                        <p className="text-xs text-neutral-500">SKU: {variant?.sku}</p>
+                                                    </div>
+                                                    <Badge variant={isExpired ? 'secondary' : 'default'} className={cn(!isExpired && "bg-amber-500 hover:bg-amber-600")}>
+                                                        {soldSlots} / {totalSlots} Sold
+                                                    </Badge>
+                                                </div>
+
+                                                <div className="flex items-center justify-between mt-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className={cn("w-4 h-4", isExpired ? "text-neutral-400" : "text-amber-500")} />
+                                                        <span className={cn(
+                                                            "text-xs font-mono font-bold",
+                                                            isExpired ? "text-neutral-400" : "text-amber-600"
+                                                        )}>
+                                                            {isExpired ? 'BOOKING CLOSED' : `${days}d ${hours}h ${mins}m left`}
+                                                        </span>
+                                                        {isExtended && <Badge className="bg-orange-100 text-orange-600 border-orange-200 text-[9px] px-1 py-0">+2WK EXT</Badge>}
+                                                    </div>
+                                                    
+                                                    {!isExpired && !isExtended && (
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant={isLowSlots ? 'default' : 'outline'}
+                                                            className={cn(
+                                                                "h-7 text-xs font-bold", 
+                                                                isLowSlots && "bg-amber-500 hover:bg-amber-600 text-white"
+                                                            )}
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await productsService.extendPreorderBooking(variant.variant_id);
+                                                                    toast({ title: "Success", description: "Extended booking by 2 weeks." });
+                                                                    fetchPreorders(); // Refresh list
+                                                                } catch (error: any) {
+                                                                    toast({ title: "Error", description: error.message || "Failed to extend", variant: "destructive" });
+                                                                }
+                                                            }}
+                                                        >
+                                                            Extend +2 Weeks
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
                 </TabsContent>
 
