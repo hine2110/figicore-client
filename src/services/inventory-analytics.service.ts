@@ -79,4 +79,20 @@ export const inventoryAnalyticsService = {
     const response = await axiosInstance.post('/analytics/blindbox-pricing', payload);
     return response.data;
   },
+
+  /**
+   * Trigger Market Intelligence Scan (Tavily + Groq)
+   */
+  triggerMarketScan: async (): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.post('/analytics/market-intel/scan');
+    return response.data;
+  },
+
+  /**
+   * Lấy danh sách Market Intelligence từ DB
+   */
+  getMarketIntel: async (params?: { brand?: string; status?: string; category?: string; page?: string; limit?: string }): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.get('/analytics/market-intel', { params });
+    return response.data;
+  },
 };
