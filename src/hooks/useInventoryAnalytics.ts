@@ -105,3 +105,45 @@ export const useGetGlobalInventory = () => {
     }
   });
 };
+
+/**
+ * Hook lấy danh sách Market Intelligence từ DB
+ */
+export const useGetMarketIntel = (params?: { brand?: string; status?: string; category?: string }) => {
+  return useQuery({
+    queryKey: ['market-intel', params],
+    queryFn: async () => {
+      const response = await inventoryAnalyticsService.getMarketIntel({ ...params, limit: '50' });
+      if (!response.success) throw new Error('Failed to fetch market intel');
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5, // 5 phút cache
+  });
+};
+
+/**
+ * Hook trigger Market Intelligence Scan (Tavily + Groq)
+ */
+export const useTriggerMarketScan = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const promise = inventoryAnalyticsService.triggerMarketScan();
+      toast.promise(promise, {
+        loading: '🌐 AI đang quét thị trường... (có thể mất 15-30 giây)',
+        success: (res: any) => `✅ Quét xong! Tìm thấy ${res?.data?.saved || 0} sản phẩm mới`,
+        error: 'Lỗi khi quét thị trường. Kiểm tra TAVILY_API_KEY.',
+      });
+      const response = await promise;
+      if (!response.success) throw new Error('Market scan failed');
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['market-intel'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Lỗi khi quét thị trường');
+    },
+  });
+};

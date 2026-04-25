@@ -1,14 +1,15 @@
-import { Search, Download, Sparkles, AlertCircle, TrendingDown, TrendingUp, RefreshCw, ChevronRight, Settings, Eye, Package, Boxes, ShoppingCart, DollarSign, ChevronLeft } from 'lucide-react';
+import { Search, Download, Sparkles, AlertCircle, TrendingUp, RefreshCw, ChevronRight, Settings, Eye, Package, Boxes, Globe, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { useGetRecommendations, useTriggerAI, useApplyRecommendation, useGetGlobalInventory } from '@/hooks/useInventoryAnalytics';
+import { useGetRecommendations, useTriggerAI, useApplyRecommendation, useGetGlobalInventory, useGetMarketIntel, useTriggerMarketScan } from '@/hooks/useInventoryAnalytics';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useMemo } from 'react';
 import { OpexSettingsDialog } from '@/components/manager/inventory/OpexSettingsDialog';
 import { RecommendationDetailDialog } from '@/components/manager/inventory/RecommendationDetailDialog';
 import { RestockDetailDialog } from '@/components/manager/inventory/RestockDetailDialog';
+import { MarketIntelCard } from '@/components/manager/inventory/MarketIntelCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function GlobalInventory() {
@@ -16,6 +17,16 @@ export default function GlobalInventory() {
     const { data: globalInventory, isLoading: isInventoryLoading } = useGetGlobalInventory();
     const triggerAI = useTriggerAI();
     const applyAction = useApplyRecommendation();
+
+    // Market Intelligence state
+    const [activeBrandFilter, setActiveBrandFilter] = useState('all');
+    const [activeStatusFilter, setActiveStatusFilter] = useState('all');
+    const { data: marketIntelData, isLoading: isMarketLoading } = useGetMarketIntel(
+        activeBrandFilter !== 'all' || activeStatusFilter !== 'all'
+            ? { brand: activeBrandFilter !== 'all' ? activeBrandFilter : undefined, status: activeStatusFilter !== 'all' ? activeStatusFilter : undefined }
+            : undefined
+    );
+    const triggerMarketScan = useTriggerMarketScan();
 
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [detailOpen, setDetailOpen] = useState(false);
@@ -34,6 +45,9 @@ export default function GlobalInventory() {
     const [activeRecTab, setActiveRecTab] = useState<'RESTOCK' | 'CLEARANCE'>('RESTOCK');
     const [recPage, setRecPage] = useState(1);
     const REC_PER_PAGE = 6;
+
+    // Master Layout Tab State
+    const [mainTab, setMainTab] = useState('market');
 
     const formatVND = (v: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
 
@@ -101,6 +115,10 @@ export default function GlobalInventory() {
         setRestockDetailOpen(true);
     };
 
+    const marketItems: any[] = marketIntelData?.data || [];
+    const marketBrands: string[] = marketIntelData?.brands || [];
+    const lastScanned: string | null = marketIntelData?.meta?.lastScanned || null;
+
     return (
         <div className="space-y-8 pb-20">
             {/* --- HEADER --- */}
@@ -121,26 +139,57 @@ export default function GlobalInventory() {
                     <Button variant="outline" className="gap-2 border-neutral-200 h-10 px-4">
                         <Download className="w-4 h-4" /> Export
                     </Button>
-                    <Button
-                        onClick={() => triggerAI.mutate()}
-                        disabled={triggerAI.isPending}
-                        className="gap-2 bg-neutral-900 hover:bg-black text-white h-10 px-5 shadow-lg shadow-neutral-200"
-                    >
-                        {triggerAI.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        {triggerAI.isPending ? 'Analyzing...' : 'Trigger AI Deep Scan'}
-                    </Button>
                 </div>
             </div>
 
-            {/* --- ZONE 2: AI RECOMMENDATIONS --- */}
-            <div className="bg-white rounded-3xl border border-neutral-100 shadow-sm overflow-hidden">
+            {/* --- MASTER TABS NAV --- */}
+            <Tabs value={mainTab} onValueChange={setMainTab} className="w-full space-y-6">
+                <div className="bg-white p-2 rounded-2xl border border-neutral-100 shadow-sm flex overflow-x-auto hide-scrollbar">
+                    <TabsList className="bg-transparent gap-2 h-auto p-0">
+                        <TabsTrigger 
+                            value="market" 
+                            className="rounded-xl px-5 py-2.5 font-bold data-[state=active]:bg-neutral-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all flex items-center gap-2 text-neutral-500 hover:text-neutral-900"
+                        >
+                            <Globe className="w-4 h-4" /> Market Intelligence
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="ai_hub" 
+                            className="rounded-xl px-5 py-2.5 font-bold data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all flex items-center gap-2 text-neutral-500 hover:text-neutral-900"
+                        >
+                            <Sparkles className="w-4 h-4" /> AI Optimization Hub
+                            {(kpis.restockNeeded + kpis.clearanceNeeded) > 0 && (
+                                <Badge className="bg-white/20 text-current hover:bg-white/20 ml-1 px-1.5 h-5">{kpis.restockNeeded + kpis.clearanceNeeded}</Badge>
+                            )}
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="inventory" 
+                            className="rounded-xl px-5 py-2.5 font-bold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all flex items-center gap-2 text-neutral-500 hover:text-neutral-900"
+                        >
+                            <Boxes className="w-4 h-4" /> Global Inventory
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                {/* --- ZONE 2: AI RECOMMENDATIONS --- */}
+                <TabsContent value="ai_hub" className="mt-0 outline-none">
+                    <div className="bg-white rounded-3xl border border-neutral-100 shadow-sm overflow-hidden">
                 <Tabs value={activeRecTab} onValueChange={(v: any) => { setActiveRecTab(v); setRecPage(1); }} className="w-full">
                     <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-neutral-50/50 border-b border-neutral-100 gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                                <Sparkles className="w-4 h-4 text-purple-600" />
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                                    <Sparkles className="w-4 h-4 text-purple-600" />
+                                </div>
+                                <h2 className="font-bold text-neutral-900 uppercase tracking-wider text-sm">AI Optimization Hub</h2>
                             </div>
-                            <h2 className="font-bold text-neutral-900 uppercase tracking-wider text-sm">AI Optimization Hub</h2>
+                            <Button
+                                onClick={() => triggerAI.mutate()}
+                                disabled={triggerAI.isPending}
+                                className="gap-2 bg-purple-600 hover:bg-purple-700 text-white h-8 px-4 text-xs font-black rounded-lg shadow-md transition-all active:scale-95 shrink-0"
+                            >
+                                {triggerAI.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                {triggerAI.isPending ? 'Analyzing...' : 'Trigger AI Scan'}
+                            </Button>
                         </div>
                         <TabsList className="bg-neutral-200/50 p-1 rounded-xl">
                             <TabsTrigger value="RESTOCK" className="rounded-lg px-4 font-bold data-[state=active]:bg-white data-[state=active]:text-blue-600">
@@ -253,8 +302,10 @@ export default function GlobalInventory() {
                     </div>
                 </Tabs>
             </div>
+            </TabsContent>
 
             {/* --- ZONE 3: GLOBAL INVENTORY TABLE --- */}
+            <TabsContent value="inventory" className="mt-0 outline-none">
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
@@ -379,6 +430,117 @@ export default function GlobalInventory() {
                     </div>
                 </div>
             </div>
+            </TabsContent>
+
+            {/* ── MARKET INTELLIGENCE ────────────────────────────────────────── */}
+            <TabsContent value="market" className="mt-0 outline-none">
+            <div className="bg-white rounded-3xl border border-neutral-100 shadow-sm overflow-hidden">
+
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-5 border-b border-neutral-100 gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-neutral-900 flex items-center justify-center shadow-md shrink-0">
+                            <Globe className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="font-black text-neutral-900 text-base tracking-tight">Market Intelligence</h2>
+                            <p className="text-[11px] text-neutral-400 font-medium">
+                                {lastScanned
+                                    ? `Last scanned: ${new Date(lastScanned).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                                    : 'No data yet — click Scan Market to start'}
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={() => triggerMarketScan.mutate()}
+                        disabled={triggerMarketScan.isPending}
+                        className="gap-2 bg-neutral-900 hover:bg-black text-white h-9 px-5 text-xs font-black rounded-xl shadow-md transition-all active:scale-95 shrink-0"
+                    >
+                        {triggerMarketScan.isPending
+                            ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            : <Globe className="w-3.5 h-3.5" />}
+                        {triggerMarketScan.isPending ? 'Scanning...' : 'Scan Market'}
+                    </Button>
+                </div>
+
+                {/* Filters */}
+                {marketBrands.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-neutral-100 bg-neutral-50/50">
+                        {/* Brand filters */}
+                        {['all', ...marketBrands].map(brand => (
+                            <button
+                                key={brand}
+                                onClick={() => setActiveBrandFilter(brand)}
+                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+                                    activeBrandFilter === brand
+                                        ? 'bg-neutral-900 text-white border-transparent'
+                                        : 'bg-white text-neutral-400 border-neutral-200 hover:border-neutral-400 hover:text-neutral-700'
+                                }`}
+                            >
+                                {brand === 'all' ? 'All Brands' : brand}
+                            </button>
+                        ))}
+
+                        <div className="w-px h-4 bg-neutral-300 mx-1" />
+
+                        {/* Status filters */}
+                        {[
+                            { key: 'all',      label: 'All Status' },
+                            { key: 'UPCOMING', label: 'Upcoming'   },
+                            { key: 'RELEASED', label: 'Released'   },
+                            { key: 'RUMORED',  label: 'Rumored'    },
+                        ].map(({ key, label }) => (
+                            <button
+                                key={key}
+                                onClick={() => setActiveStatusFilter(key)}
+                                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+                                    activeStatusFilter === key
+                                        ? 'bg-blue-600 text-white border-transparent'
+                                        : 'bg-white text-neutral-400 border-neutral-200 hover:border-blue-300 hover:text-blue-600'
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {/* Content */}
+                <div className="p-6">
+                    {isMarketLoading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-64 rounded-2xl" />)}
+                        </div>
+                    ) : marketItems.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50/50">
+                            <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
+                                <Globe className="w-6 h-6 text-neutral-300" />
+                            </div>
+                            <p className="font-black text-neutral-600 text-sm">No market data available</p>
+                            <p className="text-xs text-neutral-400 mt-1">Click "Scan Market" to discover new releases from Bandai, Moshow, Pop Mart and more.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                            <AnimatePresence mode="popLayout">
+                                {marketItems.map((item, idx) => (
+                                    <motion.div
+                                        key={item.id}
+                                        className="h-full w-full"
+                                        initial={{ opacity: 0, y: 16 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ delay: idx * 0.025, duration: 0.2 }}
+                                    >
+                                        <MarketIntelCard item={item} />
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                        </div>
+                    )}
+                </div>
+            </div>
+            </TabsContent>
+            </Tabs>
 
             <OpexSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
             <RecommendationDetailDialog open={detailOpen} onOpenChange={setDetailOpen} item={selectedItem} />
