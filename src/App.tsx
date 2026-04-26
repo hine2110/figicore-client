@@ -90,6 +90,7 @@ import SessionManager from "@/pages/pos/SessionManager";
 import CustomerDetailPage from "@/pages/pos/CustomerDetailPage";
 import CustomerLookup from "@/pages/pos/CustomerLookup";
 import MyPayrollPos from "./pages/pos/MyPayroll";
+import RemoteScanner from "@/pages/pos/RemoteScanner";
 
 // Guest Pages
 import { GuestHome } from "@/pages/guest/GuestHome";
@@ -132,6 +133,9 @@ export default function App() {
                 {/* 1.5. AUTH CALLBACK */}
                 <Route path="/auth/success" element={<AuthSuccess />} />
                 <Route path="/auth/activate" element={<ActivationPage />} />
+
+                {/* REMOTE SCANNER - NO LOGIN REQUIRED SO ANY PHONE CAN SCAN */}
+                <Route path="/remote-scanner" element={<RemoteScanner />} />
 
                 {/* 2. PROTECTED ROUTES */}
                 <Route element={<ProtectedRoute />}>

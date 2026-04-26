@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, ShoppingCart, Trash2, CreditCard, Smartphone, DollarSign, Grid, AlertCircle, Filter, UserPlus, X, RotateCcw, Gift, Wallet, Camera as LucideCamera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,8 @@ import QRPaymentModal from './components/QRPaymentModal';
 import { PosProductCard } from './components/PosProductCard';
 import { PosCartItem as CartItemComponent } from './components/PosCartItem';
 import BarcodeScannerModal from './components/BarcodeScannerModal';
+import RemoteScannerModal from './components/RemoteScannerModal';
+import { io, Socket } from 'socket.io-client';
 import type { PosOrder } from '@/types/pos.types';
 import {
     Popover,
@@ -84,10 +86,47 @@ export default function StaffPOS() {
     const [isQrModalOpen, setIsQrModalOpen] = useState(false);
     const [pendingQrOrder, setPendingQrOrder] = useState<{ orderId: number; paymentRef: string; amount: number } | null>(null);
     const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
+    const [isRemoteScannerModalOpen, setIsRemoteScannerModalOpen] = useState(false);
+    const [remoteRoomId] = useState(`pos_station_${Math.floor(Math.random() * 10000)}`);
+    const [isRemoteConnected, setIsRemoteConnected] = useState(false);
 
     const { toast } = useToast();
     const navigate = useNavigate();
     const { user } = useAuthStore();
+
+    const handleBarcodeScanRef = useRef<any>(null);
+    useEffect(() => {
+        handleBarcodeScanRef.current = handleBarcodeScan;
+    });
+
+    useEffect(() => {
+        if (!hasSession) return;
+
+        const serverUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || "http://localhost:3000";
+        const scannerSocket = io(`${serverUrl}/scanner`);
+
+        scannerSocket.on("connect", () => {
+            console.log("Connected to Remote Scanner Gateway");
+            scannerSocket.emit("join-room", remoteRoomId);
+        });
+
+        scannerSocket.on("receive-barcode", (data) => {
+            console.log("Nhận mã vạch từ điện thoại:", data.barcode);
+            if (handleBarcodeScanRef.current) {
+                handleBarcodeScanRef.current(data.barcode);
+            }
+            
+            // Optional beep
+            try {
+                const audio = new Audio('/beep.mp3');
+                audio.play().catch(() => {});
+            } catch(e) {}
+        });
+
+        return () => {
+            scannerSocket.disconnect();
+        };
+    }, [hasSession, remoteRoomId]);
 
     // Check for active session and restore order on mount
     useEffect(() => {
@@ -710,14 +749,26 @@ export default function StaffPOS() {
                                         }
                                     }}
                                 />
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={() => setIsScannerModalOpen(true)}
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-neutral-400 hover:text-cyan-500 hover:bg-cyan-50"
-                                >
-                                    <LucideCamera className="w-5 h-5" />
-                                </Button>
+                                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-neutral-50/80 rounded-md backdrop-blur-sm px-1">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => setIsRemoteScannerModalOpen(true)}
+                                        className={`h-8 w-8 ${isRemoteConnected ? 'text-green-500' : 'text-neutral-400'} hover:text-indigo-500 hover:bg-indigo-50`}
+                                        title="Ghép nối điện thoại"
+                                    >
+                                        <Smartphone className="w-4 h-4" />
+                                    </Button>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => setIsScannerModalOpen(true)}
+                                        className="h-8 w-8 text-neutral-400 hover:text-cyan-500 hover:bg-cyan-50"
+                                        title="Quét bằng Web Camera"
+                                    >
+                                        <LucideCamera className="w-4 h-4" />
+                                    </Button>
+                                </div>
                             </div>
                             <div className="flex gap-2 min-w-0 max-w-[60%]">
                                 <div className="flex gap-2 items-center">
@@ -1134,6 +1185,11 @@ export default function StaffPOS() {
                 onScanSuccess={(decodedText) => {
                     handleBarcodeScan(decodedText);
                 }}
+            />
+            <RemoteScannerModal
+                open={isRemoteScannerModalOpen}
+                onClose={() => setIsRemoteScannerModalOpen(false)}
+                roomId={remoteRoomId}
             />
         </div>
     );
