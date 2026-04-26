@@ -7,8 +7,6 @@ import {
     FileText,
     Settings,
     ShieldAlert,
-    History,
-    RotateCcw,
     Menu,
     LogOut,
     Bell,
@@ -56,9 +54,7 @@ export default function AdminLayout() {
         { name: 'Orders Oversight', path: '/admin/orders', icon: FileText },
         { name: 'Auctions', path: '/admin/auctions', icon: Gavel },
         { name: 'Livestreams', path: '/admin/livestreams', icon: Video },
-        { name: 'Manual Refunds', path: '/admin/refunds', icon: RotateCcw },
         { name: 'System Settings', path: '/admin/settings', icon: Settings },
-        { name: 'Audit Logs', path: '/admin/logs', icon: History },
     ];
 
     const isActive = (path: string) => location.pathname === path;

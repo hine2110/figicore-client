@@ -180,10 +180,25 @@ export default function Checkout() {
     useEffect(() => {
         if (!showQRModal || orders.length === 0) return;
 
-        // Use VITE_API_BASE_URL (e.g. http://localhost:3000) and append /events namespace
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-        const socketUrl = `${baseUrl}/events`;
-        const socket = io(socketUrl);
+        const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
+        
+        // Robust URL parsing for production (api.figicore.com)
+        let socketOrigin = 'https://api.figicore.com';
+        try {
+            const url = new URL(rawBaseUrl.startsWith('http') ? rawBaseUrl : `https://${rawBaseUrl}`);
+            socketOrigin = url.origin;
+        } catch (e) {
+            console.error("[Socket] URL parsing failed, using fallback:", e);
+        }
+
+        console.log(`[Socket] Connecting to origin: ${socketOrigin}, namespace: /events`);
+        const socket = io(`${socketOrigin}/events`, {
+            transports: ['websocket', 'polling'],
+            withCredentials: true,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+        });
 
         socket.on('connect', () => {
             console.log('✅ Connected to Payment Events Namespace');

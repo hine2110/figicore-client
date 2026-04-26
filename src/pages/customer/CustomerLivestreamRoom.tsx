@@ -22,6 +22,9 @@ import {
     Sparkles,
     Trophy,
     Gift,
+    ChevronRight,
+    Crown,
+    History
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { io, Socket } from "socket.io-client";
@@ -112,17 +115,6 @@ const ViewerCount = memo(() => {
     );
 });
 
-// ── Stock Urgency Bar ──
-const StockBar = memo(({ current, max = 100 }: { current: number; max?: number }) => {
-    const pct = Math.min((current / max) * 100, 100);
-    const color = pct < 20 ? 'bg-rose-500' : pct < 50 ? 'bg-amber-500' : 'bg-emerald-500';
-    return (
-        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-            <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-        </div>
-    );
-});
-
 // ── Markdown Helper ──
 const MarkdownText = memo(({ text, className }: { text: string, className?: string }) => {
     if (!text) return null;
@@ -146,7 +138,6 @@ const MarkdownText = memo(({ text, className }: { text: string, className?: stri
     );
 });
 
-
 // ── Global Flash Sale Timer ──
 const FlashSaleTimer = memo(({ endTime }: { endTime: number }) => {
     const [timeLeft, setTimeLeft] = useState(Math.max(0, endTime - Date.now()));
@@ -166,7 +157,7 @@ const FlashSaleTimer = memo(({ endTime }: { endTime: number }) => {
     const s = Math.floor((timeLeft % 60000) / 1000).toString().padStart(2, '0');
 
     return (
-        <div className="absolute top-1.5 left-1/2 -translate-x-1/2 bg-rose-600/90 backdrop-blur-md text-white text-[8px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-[0_0_10px_rgba(225,29,72,0.5)] border border-rose-500 animate-pulse">
+        <div className="absolute top-1.5 left-1/2 -translate-x-1/2 bg-rose-600/90 backdrop-blur-md text-white text-[8px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-[0_0_10px_rgba(225,29,72,0.5)] border border-rose-500 animate-pulse z-20">
             <Flame className="w-2.5 h-2.5" />
             Ends in {m}:{s}
         </div>
@@ -197,7 +188,7 @@ export default function CustomerLivestreamRoom() {
     const [reactions, setReactions] = useState<{ id: number; symbol: string }[]>([]);
     const [heartsCount, setHeartsCount] = useState(0);
     const [addedProductId, setAddedProductId] = useState<number | null>(null);
-    const [selectedProductId, setSelectedProductId] = useState<number | null>(null); // for detail sheet (reactive ID)
+    const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
     const [recentBuyer, setRecentBuyer] = useState<{ name: string, product: string } | null>(null);
     const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
     const [flashSaleEnds, setFlashSaleEnds] = useState<Record<number, number>>({});
@@ -209,30 +200,24 @@ export default function CustomerLivestreamRoom() {
     const [giveawayParticipantsList, setGiveawayParticipantsList] = useState<{userId: number, name: string}[]>([]);
     const [pendingClaims, setPendingClaims] = useState<any[]>([]);
     const [isClaiming, setIsClaiming] = useState(false);
+    const [showWinnerCelebration, setShowWinnerCelebration] = useState(false);
     const reactionIdCounter = useRef(0);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const streamRef = useRef<any>(null);
 
     const fmt = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
-    /** Live Pricing Priority: Flash Sale > Live -2% > Original */
     const computeLivePrice = (basePrice: number, flashSalePrice?: number | null): number => {
         if (flashSalePrice && flashSalePrice > 0) return Number(flashSalePrice);
         return Math.round(Number(basePrice) * 0.98);
     };
 
-    /**
-     * Returns true only when flash sale price exists AND timer hasn't expired yet.
-     * Uses variantId to look up the end time from flashSaleEnds state.
-     */
     const isFlashActive = (variantId: number, flashSalePrice?: number | null): boolean => {
         if (!flashSalePrice || flashSalePrice <= 0) return false;
         const endTime = flashSaleEnds[variantId];
-        if (!endTime) return true; // no timer tracked yet — server says it's active, trust it
+        if (!endTime) return true;
         return Date.now() < endTime;
     };
-
-
 
     const fetchLivestream = useCallback(async () => {
         try {
@@ -243,8 +228,8 @@ export default function CustomerLivestreamRoom() {
                 return null;
             }
             setStream(data);
+            streamRef.current = data;
 
-            // Set pinned or first product as featured
             if (data.pinned_product_id) {
                 const pinned = data.products?.find((p: any) => p.variant_id === data.pinned_product_id);
                 if (pinned) {
@@ -282,7 +267,7 @@ export default function CustomerLivestreamRoom() {
 
                 if (isMounted) {
                     setHeartsCount(data.hearts_count || 0);
-                    fetchPendingClaims(); // Initial check for prizes
+                    fetchPendingClaims();
                 }
 
                 const tokenRes = await api.get(`/livekit/token`, {
@@ -297,10 +282,17 @@ export default function CustomerLivestreamRoom() {
 
                 if (!isMounted) return;
 
-                const socket = io(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3000'}/livestream-live`, {
+                const isLocal = window.location.hostname === 'localhost';
+                const socketUrl = isLocal 
+                    ? 'http://localhost:3000/livestream-live' 
+                    : 'https://api.figicore.com/livestream-live';
+                
+                console.log(`[Socket] Connecting to: ${socketUrl} (isLocal: ${isLocal})`);
+                const socket = io(socketUrl, {
                     auth: {
-                        token: localStorage.getItem('token')
-                    }
+                        token: localStorage.getItem('accessToken')
+                    },
+                    transports: ['websocket', 'polling']
                 });
                 socketRef.current = socket;
 
@@ -326,17 +318,11 @@ export default function CustomerLivestreamRoom() {
                         setFeaturedProduct(null);
                         return;
                     }
-
-                    // 1. Try to find in current stream products
                     let product = streamRef.current?.products?.find((p: any) => p.variant_id === data.variant_id);
-
-                    // 2. If not found, it might be a newly added product. Sync with backend.
                     if (!product) {
                         const updatedStream = await fetchLivestream();
                         product = updatedStream?.products?.find((p: any) => p.variant_id === data.variant_id);
                     }
-
-                    // 3. Update pinned state
                     if (product) {
                         setPinnedProduct(product.product_variants);
                         setFeaturedProduct(product);
@@ -391,21 +377,18 @@ export default function CustomerLivestreamRoom() {
                 });
 
                 socket.on('room_closed', async () => {
-                    // Refresh cart so backend recalculates prices back to original
-                    try { await fetchCart(); } catch (_) { /* silent */ }
+                    try { await fetchCart(); } catch (_) { }
                     toast({
                         title: "Broadcast Ended",
-                        description: "Live pricing has expired — cart prices have reverted to standard.",
+                        description: "The room has been closed by the administrator.",
                     });
                     navigate('/customer/home');
                 });
 
-                // --- GIVEAWAY EVENTS ---
                 socket.on('giveaway_started', (data: any) => {
                     setActiveGiveaway(data);
                     setGiveawayEntries(data.current_entries || 0);
                     setWinnerResult(null);
-                    // Reset joining state if it's a new giveaway
                     setHasJoinedGiveaway(false);
                 });
 
@@ -413,20 +396,32 @@ export default function CustomerLivestreamRoom() {
                     setGiveawayEntries(data.count);
                 });
 
+                socket.on('giveaway_participant_joined', (data: any) => {
+                    if (data.userId === user?.user_id) {
+                        setHasJoinedGiveaway(true);
+                    }
+                    if (data.entryCount) {
+                        setGiveawayEntries(data.entryCount);
+                    }
+                });
+
                 socket.on('giveaway_draw_started', (data: any) => {
                     setGiveawayParticipantsList(data.participants || []);
                     setWinnerResult(null);
                     setIsGiveawayWheelVisible(true);
+                    setActiveGiveaway(null); // Ẩn widget khi bắt đầu quay
+                });
+
+                socket.on('giveaway_cancelled', () => {
+                    setActiveGiveaway(null);
+                    setGiveawayEntries(0);
+                    toast({ title: "Giveaway Cancelled", description: "The host has cancelled the giveaway event." });
                 });
 
                 socket.on('giveaway_winner_selected', (data: any) => {
                     setActiveGiveaway(null);
                     setWinnerResult(data);
-                    // If this user is the winner
-                    if (data.user_id === user?.user_id) {
-                        toast({ title: "OMG! YOU WON! 🏆", description: "Claim your prize now!" });
-                        fetchPendingClaims(); // Check if it was a claim or direct order
-                    }
+                    // Lưu ý: Không hiện toast ở đây, để PublicLuckyWheel gọi handleWheelFinish
                 });
 
                 socket.on('giveaway_claim_success', () => {
@@ -450,7 +445,6 @@ export default function CustomerLivestreamRoom() {
         };
 
         loadData();
-        fetchPendingClaims();
         return () => {
             isMounted = false;
             if (socketRef.current) {
@@ -458,7 +452,27 @@ export default function CustomerLivestreamRoom() {
                 socketRef.current.disconnect();
             }
         };
-    }, [id, user, navigate, fetchLivestream]);
+    }, [id, user, navigate, fetchLivestream, fetchPendingClaims, fetchCart]);
+
+    const handleWheelFinish = useCallback(() => {
+        setIsGiveawayWheelVisible(false);
+        setShowWinnerCelebration(true);
+        
+        if (winnerResult?.user_id === user?.user_id) {
+            toast({ 
+                title: "OMG! YOU WON! 🏆", 
+                description: "Your prize is ready, claim it now!",
+                duration: 10000 
+            });
+        } else {
+            toast({ 
+                title: "Giveaway Ended", 
+                description: `Congratulations to ${winnerResult?.name || 'the winner'}!`,
+                duration: 5000 
+            });
+        }
+        fetchPendingClaims();
+    }, [winnerResult, user, toast, fetchPendingClaims]);
 
     useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
@@ -466,10 +480,8 @@ export default function CustomerLivestreamRoom() {
         if (!chatInput.trim() || !socketRef.current) return;
         const rankCode = (user as any)?.current_rank_code ?? user?.customers?.current_rank_code ?? 'BRONZE';
         
-        // --- GIVEAWAY KEYWORD CHECK (100% exact match) ---
         if (activeGiveaway && !hasJoinedGiveaway) {
-            // Strict match: case-sensitive, exact characters
-            if (chatInput.trim() === activeGiveaway.keyword) { 
+            if (chatInput.trim().toUpperCase() === activeGiveaway.keyword.toUpperCase()) { 
                 setHasJoinedGiveaway(true);
             }
         }
@@ -514,14 +526,12 @@ export default function CustomerLivestreamRoom() {
             toast({ title: "Added to Cart!", description: `${variant.products?.name || variant.option_name} is ready.` });
             if (immediate) navigate('/customer/cart');
         } catch (error: any) {
-            toast({ title: "Failed", description: error.response?.data?.message || "Out of stock", variant: "destructive" });
+            toast({ title: "Failed", description: error.message || "Out of stock", variant: "destructive" });
         }
     }, [addToCart, id, navigate, toast]);
 
-    // ⚠️ useMemo MUST be before any early returns (Rules of Hooks)
     const products = stream?.products || [];
 
-    // Group all variants of the selected product for the Detail Sheet
     const selectedProductGroup = useMemo(() => {
         if (!selectedProductId) return null;
         const allVariants = products.filter((p: any) => p.product_variants?.products?.product_id === selectedProductId);
@@ -531,11 +541,10 @@ export default function CustomerLivestreamRoom() {
             product_id: selectedProductId,
             product_name: first.product_variants?.products?.name,
             description: first.product_variants?.description,
-            variants: allVariants, // all variants (Standard, Combo, etc.)
+            variants: allVariants,
         };
     }, [selectedProductId, products]);
 
-    // The currently selected variant within the Detail Sheet
     const currentVariant = useMemo(() => {
         if (!selectedProductGroup || !selectedVariantId) return selectedProductGroup?.variants[0] || null;
         return selectedProductGroup.variants.find((v: any) => v.variant_id === selectedVariantId) || selectedProductGroup.variants[0];
@@ -557,8 +566,6 @@ export default function CustomerLivestreamRoom() {
 
     return (
         <div className="fixed inset-0 bg-[#08090e] text-white font-sans overflow-hidden flex flex-col">
-
-            {/* ── TOP NAVIGATION BAR ── */}
             <div className="flex items-center justify-between px-6 py-3 bg-[#0c0d14]/80 backdrop-blur-sm border-b border-white/[0.04] shrink-0">
                 <button onClick={() => navigate('/customer/home')} className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors group">
                     <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -581,18 +588,12 @@ export default function CustomerLivestreamRoom() {
                 </div>
             </div>
 
-            {/* ── MAIN CONTENT ── */}
             <div className="flex flex-1 gap-0 overflow-hidden">
-
-                {/* ══ LEFT: VIDEO PLAYER (60%) ══ */}
                 <div className="flex-[6] flex flex-col p-4 gap-3 min-w-0">
-                    {/* Video Container */}
                     <div className="flex-1 rounded-2xl overflow-hidden relative bg-neutral-900 border border-white/[0.06] shadow-[0_0_60px_rgba(0,0,0,0.6)]">
                         {livekitToken && (
                             <LiveKitRoom token={livekitToken} serverUrl={livekitUrl} connect={true} video={false} audio={false} className="w-full h-full">
                                 <AdminVideoStream />
-
-                                {/* Video Overlay: Host Info */}
                                 <div className="absolute top-4 left-4 flex items-center gap-2.5 z-10">
                                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center text-white font-black text-sm shadow-lg ring-2 ring-black/30 shrink-0">
                                         {stream?.host_name?.[0] || 'H'}
@@ -606,7 +607,6 @@ export default function CustomerLivestreamRoom() {
                                     </div>
                                 </div>
 
-                                {/* Recent Buyer Notification (Social Proof) */}
                                 <AnimatePresence>
                                     {recentBuyer && (
                                         <motion.div
@@ -628,7 +628,6 @@ export default function CustomerLivestreamRoom() {
                                     )}
                                 </AnimatePresence>
 
-                                {/* Floating Reactions Layer */}
                                 <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
                                     <AnimatePresence>
                                         {reactions.map(r => (
@@ -637,9 +636,7 @@ export default function CustomerLivestreamRoom() {
                                     </AnimatePresence>
                                 </div>
 
-                                {/* Chat Overlay on Video */}
                                 <div className="absolute bottom-4 left-4 z-30 w-[320px] flex flex-col gap-2 pointer-events-none">
-                                    {/* Messages Display */}
                                     <div
                                         className="h-[260px] overflow-y-auto scrollbar-none flex flex-col justify-end pointer-events-auto pb-1"
                                         style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
@@ -665,7 +662,6 @@ export default function CustomerLivestreamRoom() {
                                         </div>
                                     </div>
 
-                                    {/* Chat Input */}
                                     <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/[0.07] rounded-2xl px-3 py-2 shrink-0 pointer-events-auto shadow-xl">
                                         <input
                                             type="text"
@@ -692,11 +688,8 @@ export default function CustomerLivestreamRoom() {
                                 </div>
                             </LiveKitRoom>
                         )}
-
-
                     </div>
 
-                    {/* Reaction Bar below video */}
                     <div className="flex items-center justify-between px-2">
                         <div className="flex items-center gap-2">
                             {['❤️', '🔥', '👏', '🚀', '🎁'].map(symbol => (
@@ -721,10 +714,7 @@ export default function CustomerLivestreamRoom() {
                     </div>
                 </div>
 
-                {/* ══ RIGHT: PRODUCT PANEL (40%) ══ */}
                 <div className="flex-[4] flex flex-col border-l border-white/[0.05] bg-[#0c0d15] overflow-hidden min-w-[340px] max-w-[460px] relative">
-
-                    {/* Featured Product Hero */}
                     <div className="px-5 pt-5 pb-4 border-b border-white/[0.05] shrink-0">
                         <div className="text-[8px] font-black uppercase text-neutral-600 tracking-[0.3em] mb-3 flex items-center gap-2">
                             {pinnedProduct ? (
@@ -738,7 +728,6 @@ export default function CustomerLivestreamRoom() {
                             {featured ? (
                                 <motion.div key={featured.variant_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                                     <div className="flex gap-4">
-                                        {/* Product Image — click to open detail sheet */}
                                         <button
                                             onClick={() => setSelectedProductId(featured.product_variants?.products?.product_id)}
                                             className="w-28 h-28 rounded-2xl bg-neutral-800 border border-white/5 overflow-hidden shrink-0 relative group cursor-pointer"
@@ -748,11 +737,9 @@ export default function CustomerLivestreamRoom() {
                                                 className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
                                                 alt=""
                                             />
-                                            {/* Timer Overlay */}
                                             {flashSaleEnds[featured.variant_id] && (
                                                 <FlashSaleTimer endTime={flashSaleEnds[featured.variant_id]} />
                                             )}
-                                            {/* Badge: FLASH SALE or LIVE -2% — only show if timer hasn't expired */}
                                             {isFlashActive(featured.variant_id, featured.flash_sale_price) ? (
                                                 <div className="absolute top-1.5 left-1.5 bg-rose-600 text-white text-[7px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
                                                     <Flame className="w-2 h-2" />SALE
@@ -762,29 +749,17 @@ export default function CustomerLivestreamRoom() {
                                                     <Zap className="w-2 h-2" />-2%
                                                 </div>
                                             )}
-                                            {/* Hover: View Detail */}
-                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center rounded-2xl">
-                                                <div className="opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 flex flex-col items-center gap-1">
-                                                    <Info className="w-5 h-5 text-white" />
-                                                    <span className="text-[7px] font-black text-white uppercase tracking-widest">Details</span>
-                                                </div>
-                                            </div>
                                         </button>
 
-                                        {/* Product Info */}
                                         <div className="flex-1 min-w-0 flex flex-col justify-between">
                                             <div>
-                                                <button
-                                                    onClick={() => setSelectedProductId(featured.product_variants?.products?.product_id)}
-                                                    className="text-left w-full group"
-                                                >
+                                                <button onClick={() => setSelectedProductId(featured.product_variants?.products?.product_id)} className="text-left w-full group">
                                                     <h2 className="text-sm font-black text-white leading-tight mb-1 line-clamp-2 uppercase tracking-tight group-hover:text-amber-400 transition-colors">
                                                         {featured.product_variants?.products?.name || featured.product_variants?.option_name || 'Product'}
                                                     </h2>
                                                 </button>
                                                 <span className="text-[9px] text-neutral-500 font-bold uppercase">{featured.product_variants?.option_name}</span>
                                             </div>
-
                                             <div>
                                                 <div className="flex items-baseline gap-2 mb-1">
                                                     <span className="text-xl font-black text-rose-500 font-mono leading-none">
@@ -797,7 +772,7 @@ export default function CustomerLivestreamRoom() {
                                                 {isFlashActive(featured.variant_id, featured.flash_sale_price) ? (
                                                     <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-rose-600/20 border border-rose-500/30 rounded-full">
                                                         <Flame className="w-2.5 h-2.5 text-rose-500" />
-                                                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-wide">Flash Sale — Limited!</span>
+                                                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-wide">Flash Sale</span>
                                                     </div>
                                                 ) : (
                                                     <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-full">
@@ -808,21 +783,11 @@ export default function CustomerLivestreamRoom() {
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* CTA Buttons */}
                                     <div className="flex gap-2 mt-4">
-                                        <Button
-                                            onClick={() => handleAddToCart(featured.product_variants)}
-                                            variant="outline"
-                                            className="flex-1 h-10 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white font-black text-[10px] uppercase tracking-wider"
-                                        >
-                                            <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
-                                            Add to Cart
+                                        <Button onClick={() => handleAddToCart(featured.product_variants)} variant="outline" className="flex-1 h-10 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white font-black text-[10px] uppercase tracking-wider">
+                                            <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />Add to Cart
                                         </Button>
-                                        <Button
-                                            onClick={() => handleAddToCart(featured.product_variants, true)}
-                                            className="flex-1 h-10 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-[10px] uppercase tracking-wider shadow-lg shadow-rose-900/30"
-                                        >
+                                        <Button onClick={() => handleAddToCart(featured.product_variants, true)} className="flex-1 h-10 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-[10px] uppercase tracking-wider shadow-lg shadow-rose-900/30">
                                             Buy Now →
                                         </Button>
                                     </div>
@@ -836,78 +801,38 @@ export default function CustomerLivestreamRoom() {
                         </AnimatePresence>
                     </div>
 
-                    {/* Other Products List — Phương án A: Grid 2 cột dọc, scroll dọc tự nhiên */}
                     {otherProducts.length > 0 && (
                         <div className="flex-1 overflow-y-auto scrollbar-none px-4 py-3 min-h-0">
                             <div className="flex items-center justify-between mb-2.5">
                                 <div className="text-[8px] font-black uppercase text-neutral-600 tracking-[0.3em]">Also Available</div>
                                 <span className="text-[8px] font-mono text-neutral-700">{otherProducts.length} items</span>
                             </div>
-                            <div className="grid grid-cols-2 gap-2.5">
+                            <div className="grid grid-cols-2 gap-2.5 pb-20">
                                 {otherProducts.map((p: any) => (
-                                    <motion.div
-                                        key={p.variant_id}
-                                        initial={{ opacity: 0, y: 8 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.2 }}
-                                        className="rounded-2xl overflow-hidden border border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04] transition-all duration-200 group"
-                                    >
-                                        {/* Tap to open detail sheet */}
-                                        <button
-                                            onClick={() => setSelectedProductId(p.product_variants?.products?.product_id)}
-                                            className="w-full text-left"
-                                        >
+                                    <motion.div key={p.variant_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl overflow-hidden border border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04] transition-all duration-200 group">
+                                        <button onClick={() => setSelectedProductId(p.product_variants?.products?.product_id)} className="w-full text-left">
                                             <div className="w-full aspect-square bg-neutral-900 relative overflow-hidden">
-                                                <img
-                                                    src={p.product_variants?.media_assets?.[0]?.url || "/placeholder.png"}
-                                                    className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-300"
-                                                    alt=""
-                                                />
+                                                <img src={p.product_variants?.media_assets?.[0]?.url || "/placeholder.png"} className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-300" alt="" />
                                                 {isFlashActive(p.variant_id, p.flash_sale_price) ? (
-                                                    <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 bg-rose-600 text-white text-[6px] font-black px-1.5 py-0.5 rounded-full">
-                                                        <Flame className="w-2 h-2" />SALE
-                                                    </div>
+                                                    <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 bg-rose-600 text-white text-[6px] font-black px-1.5 py-0.5 rounded-full"><Flame className="w-2 h-2" />SALE</div>
                                                 ) : (
-                                                    <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 bg-amber-500 text-black text-[6px] font-black px-1.5 py-0.5 rounded-full">
-                                                        <Zap className="w-2 h-2" />-2%
-                                                    </div>
+                                                    <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 bg-amber-500 text-black text-[6px] font-black px-1.5 py-0.5 rounded-full"><Zap className="w-2 h-2" />-2%</div>
                                                 )}
-                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                                                    <div className="w-7 h-7 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
-                                                        <Info className="w-3.5 h-3.5 text-white" />
-                                                    </div>
-                                                </div>
                                                 <AnimatePresence>
                                                     {addedProductId === p.variant_id && (
-                                                        <motion.div
-                                                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                                            className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center"
-                                                        >
+                                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
                                                             <span className="text-emerald-400 text-[9px] font-black">✓ Added</span>
                                                         </motion.div>
                                                     )}
                                                 </AnimatePresence>
                                             </div>
                                             <div className="px-2.5 pt-2 pb-2">
-                                                <p className="text-[9px] font-black text-white leading-tight line-clamp-2 uppercase group-hover:text-amber-400 transition-colors mb-1">
-                                                    {p.product_variants?.products?.name || p.product_variants?.option_name}
-                                                </p>
-                                                <p className="text-[9px] font-black text-rose-500 font-mono leading-none">
-                                                    {fmt(computeLivePrice(Number(p.product_variants?.price), p.flash_sale_price))}
-                                                </p>
-                                                <p className="text-[8px] text-neutral-600 line-through font-mono mt-0.5">
-                                                    {fmt(Number(p.product_variants?.price))}
-                                                </p>
+                                                <p className="text-[9px] font-black text-white leading-tight line-clamp-2 uppercase group-hover:text-amber-400 transition-colors mb-1">{p.product_variants?.products?.name || p.product_variants?.option_name}</p>
+                                                <p className="text-[9px] font-black text-rose-500 font-mono leading-none">{fmt(computeLivePrice(Number(p.product_variants?.price), p.flash_sale_price))}</p>
                                             </div>
                                         </button>
-                                        {/* Quick Add to Cart */}
                                         <div className="px-2.5 pb-2.5">
-                                            <button
-                                                onClick={() => handleAddToCart(p.product_variants)}
-                                                className="w-full h-7 rounded-xl bg-white/5 hover:bg-rose-600/80 border border-white/10 hover:border-rose-500/50 text-white text-[8px] font-black uppercase tracking-wide transition-all"
-                                            >
-                                                + Cart
-                                            </button>
+                                            <button onClick={() => handleAddToCart(p.product_variants)} className="w-full h-7 rounded-xl bg-white/5 hover:bg-rose-600/80 border border-white/10 hover:border-rose-500/50 text-white text-[8px] font-black uppercase tracking-wide transition-all">+ Cart</button>
                                         </div>
                                     </motion.div>
                                 ))}
@@ -915,7 +840,6 @@ export default function CustomerLivestreamRoom() {
                         </div>
                     )}
 
-                    {/* ── Product Detail Sheet — Multi-Variant, Reactive ── */}
                     <AnimatePresence>
                         {selectedProductId && selectedProductGroup && currentVariant && (
                             <motion.div
@@ -927,117 +851,45 @@ export default function CustomerLivestreamRoom() {
                                 className="absolute bottom-0 left-0 right-0 z-30 bg-[#10111a] border-t border-white/10 rounded-t-3xl shadow-2xl p-5"
                                 style={{ maxHeight: '75%', overflowY: 'auto' }}
                             >
-                                {/* Header */}
                                 <div className="flex items-center justify-between mb-4">
                                     <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Product Detail</span>
-                                    <button onClick={() => { setSelectedProductId(null); setSelectedVariantId(null); }} className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
-                                        <X className="w-3.5 h-3.5" />
-                                    </button>
+                                    <button onClick={() => { setSelectedProductId(null); setSelectedVariantId(null); }} className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all"><X className="w-3.5 h-3.5" /></button>
                                 </div>
-
-                                {/* Image — updates per selected variant */}
                                 <div className="w-full h-40 rounded-2xl bg-neutral-800 overflow-hidden mb-4 flex items-center justify-center relative">
-                                    <img
-                                        src={currentVariant.product_variants?.media_assets?.[0]?.url || "/placeholder.png"}
-                                        className="h-full object-contain p-3 transition-opacity duration-200"
-                                        alt=""
-                                    />
+                                    <img src={currentVariant.product_variants?.media_assets?.[0]?.url || "/placeholder.png"} className="h-full object-contain p-3 transition-opacity duration-200" alt="" />
                                     {currentVariant.flash_sale_price && flashSaleEnds[currentVariant.variant_id] && (
                                         <FlashSaleTimer endTime={flashSaleEnds[currentVariant.variant_id]} />
                                     )}
                                 </div>
-
-                                {/* Product Name */}
-                                <h3 className="text-sm font-black text-white uppercase mb-1 leading-tight">
-                                    {selectedProductGroup.product_name}
-                                </h3>
-
-                                {/* Variant Selector — shows all variants as pills */}
+                                <h3 className="text-sm font-black text-white uppercase mb-1 leading-tight">{selectedProductGroup.product_name}</h3>
                                 {selectedProductGroup.variants.length > 1 && (
                                     <div className="mb-4">
-                                        <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest mb-2">Select Option</p>
+                                        <p className="text-[8px] font-black text-neutral-600 uppercase tracking-widest mb-2">Options</p>
                                         <div className="flex flex-wrap gap-2">
                                             {selectedProductGroup.variants.map((v: any) => {
                                                 const isActive = (selectedVariantId ?? selectedProductGroup.variants[0].variant_id) === v.variant_id;
-                                                const livePrice = computeLivePrice(Number(v.product_variants?.price), v.flash_sale_price);
                                                 return (
-                                                    <button
-                                                        key={v.variant_id}
-                                                        onClick={() => setSelectedVariantId(v.variant_id)}
-                                                        className={`flex flex-col items-start px-3 py-2 rounded-xl border text-left transition-all ${isActive
-                                                                ? 'border-rose-500 bg-rose-600/10 text-white'
-                                                                : 'border-white/10 bg-white/[0.03] text-neutral-400 hover:border-white/20 hover:text-white'
-                                                            }`}
-                                                    >
-                                                        <span className="text-[9px] font-black uppercase leading-none mb-1">
-                                                            {v.product_variants?.option_name}
-                                                        </span>
-                                                        <span className={`text-[10px] font-black font-mono ${isFlashActive(v.variant_id, v.flash_sale_price) ? 'text-rose-400' : 'text-amber-400'}`}>
-                                                            {fmt(livePrice)}
-                                                        </span>
-                                                        {isFlashActive(v.variant_id, v.flash_sale_price) && (
-                                                            <span className="text-[7px] font-black text-rose-500 uppercase tracking-wide mt-0.5 flex items-center gap-0.5">
-                                                                <Flame className="w-2 h-2" />SALE
-                                                            </span>
-                                                        )}
+                                                    <button key={v.variant_id} onClick={() => setSelectedVariantId(v.variant_id)} className={`px-3 py-2 rounded-xl border text-left transition-all ${isActive ? 'border-rose-500 bg-rose-600/10 text-white' : 'border-white/10 bg-white/[0.03] text-neutral-400 hover:border-white/20'}`}>
+                                                        <span className="text-[9px] font-black uppercase block mb-1">{v.product_variants?.option_name}</span>
+                                                        <span className="text-[10px] font-black font-mono text-amber-400">{fmt(computeLivePrice(Number(v.product_variants?.price), v.flash_sale_price))}</span>
                                                     </button>
                                                 );
                                             })}
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Selected Variant Info */}
                                 <div className="mb-4">
-                                    <p className="text-[9px] text-neutral-500 font-bold uppercase mb-2">
-                                        {currentVariant.product_variants?.option_name}&nbsp;·&nbsp;SKU: {currentVariant.product_variants?.sku}
-                                    </p>
                                     <div className="flex items-baseline gap-2 mb-1.5">
-                                        <span className="text-2xl font-black text-rose-500 font-mono">
-                                            {fmt(computeLivePrice(Number(currentVariant.product_variants?.price), currentVariant.flash_sale_price))}
-                                        </span>
-                                        <span className="text-sm text-neutral-600 line-through font-mono">
-                                            {fmt(Number(currentVariant.product_variants?.price))}
-                                        </span>
+                                        <span className="text-2xl font-black text-rose-500 font-mono">{fmt(computeLivePrice(Number(currentVariant.product_variants?.price), currentVariant.flash_sale_price))}</span>
+                                        <span className="text-sm text-neutral-600 line-through font-mono">{fmt(Number(currentVariant.product_variants?.price))}</span>
                                     </div>
-                                    {isFlashActive(currentVariant.variant_id, currentVariant.flash_sale_price) ? (
-                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-600/20 border border-rose-500/30 rounded-full">
-                                            <Flame className="w-2.5 h-2.5 text-rose-500" />
-                                            <span className="text-[9px] font-black text-rose-400 uppercase tracking-wide">Flash Sale Active</span>
-                                        </div>
-                                    ) : (
-                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-full">
-                                            <Zap className="w-2.5 h-2.5 text-amber-400" />
-                                            <span className="text-[9px] font-black text-amber-400 uppercase tracking-wide">Live Exclusive -2%</span>
-                                        </div>
-                                    )}
                                 </div>
-
-                                {/* Description */}
                                 {(selectedProductGroup.description || currentVariant.product_variants?.description) && (
-                                    <MarkdownText
-                                        text={currentVariant.product_variants?.description || selectedProductGroup.description}
-                                        className="text-[11px] text-neutral-400 mb-4 leading-relaxed tracking-wide"
-                                    />
+                                    <MarkdownText text={currentVariant.product_variants?.description || selectedProductGroup.description} className="text-[11px] text-neutral-400 mb-4 leading-relaxed tracking-wide" />
                                 )}
-
-                                {/* Actions */}
                                 <div className="flex flex-col gap-2 mt-2">
-                                    <Button
-                                        onClick={() => { handleAddToCart(currentVariant.product_variants, true); setSelectedProductId(null); setSelectedVariantId(null); }}
-                                        className="w-full h-11 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-[11px] uppercase tracking-widest shadow-[0_0_20px_rgba(225,29,72,0.3)]"
-                                    >
-                                        <Zap className="w-4 h-4 mr-2 fill-current" />
-                                        Buy Now
-                                    </Button>
-                                    <Button
-                                        onClick={() => { handleAddToCart(currentVariant.product_variants); setSelectedProductId(null); setSelectedVariantId(null); }}
-                                        variant="outline"
-                                        className="w-full h-10 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black text-[10px] uppercase tracking-widest"
-                                    >
-                                        <ShoppingBag className="w-3.5 h-3.5 mr-2" />
-                                        Add to Cart
-                                    </Button>
+                                    <Button onClick={() => { handleAddToCart(currentVariant.product_variants, true); setSelectedProductId(null); }} className="w-full h-11 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-[11px] uppercase tracking-widest">Buy Now</Button>
+                                    <Button onClick={() => { handleAddToCart(currentVariant.product_variants); setSelectedProductId(null); }} variant="outline" className="w-full h-10 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black text-[10px] uppercase tracking-widest">Add to Cart</Button>
                                 </div>
                             </motion.div>
                         )}
@@ -1045,72 +897,67 @@ export default function CustomerLivestreamRoom() {
                 </div>
             </div>
 
-            {/* Giveaway UI Overlays */}
             <AnimatePresence>
-                {activeGiveaway && !isGiveawayWheelVisible && !winnerResult && (
+                {activeGiveaway && !isGiveawayWheelVisible && !winnerResult && !showWinnerCelebration && (
                     <GiveawayWidget 
                         giveaway={activeGiveaway} 
                         entries={giveawayEntries} 
                         hasJoined={hasJoinedGiveaway} 
-                    />
-                )}
-            </AnimatePresence>
-
-            {/* Lucky Wheel Overlay - synchronized drawing animation */}
-            <AnimatePresence>
-                {isGiveawayWheelVisible && (
-                    <PublicLuckyWheel 
-                        participants={giveawayParticipantsList} 
-                        winnerId={winnerResult?.user_id}
-                        onClose={() => {
-                            setIsGiveawayWheelVisible(false);
-                            setGiveawayParticipantsList([]);
+                        onExpiry={() => {
+                            setTimeout(() => setActiveGiveaway(null), 3000);
                         }}
                     />
                 )}
             </AnimatePresence>
 
-            {/* Winner Celebration - final reveal and claim prize */}
             <AnimatePresence>
-                {winnerResult && !isGiveawayWheelVisible && (
-                    <WinnerCelebration 
-                        result={winnerResult} 
-                        isMe={winnerResult?.user_id === user?.user_id}
-                        onClose={() => setWinnerResult(null)}
+                {isGiveawayWheelVisible && (
+                    <PublicLuckyWheel 
+                        participants={giveawayParticipantsList} 
+                        winnerId={winnerResult?.user_id} 
+                        onFinish={handleWheelFinish} 
                     />
                 )}
             </AnimatePresence>
 
-            {/* Pending Claims Banner - appears if user has unclaimed prizes */}
             <AnimatePresence>
-                {pendingClaims.length > 0 && !winnerResult && !isGiveawayWheelVisible && (
+                {showWinnerCelebration && winnerResult && (
+                    <WinnerCelebration 
+                        result={winnerResult} 
+                        isMe={winnerResult?.user_id === user?.user_id} 
+                        onClose={() => {
+                            setShowWinnerCelebration(false);
+                            setWinnerResult(null);
+                        }} 
+                    />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {pendingClaims.length > 0 && !winnerResult && !isGiveawayWheelVisible && !showWinnerCelebration && (
                     <GiveawayClaimBanner 
                         claims={pendingClaims} 
                         isClaiming={isClaiming}
-                        onClaim={(claimId) => {
-                            console.log("[Giveaway] Attempting to claim ID:", claimId, "Type:", typeof claimId);
+                        onClaim={async (claimId) => {
+                            try {
+                                const addrRes = await api.get('/address');
+                                if (!addrRes.data || addrRes.data.length === 0) {
+                                    toast({
+                                        variant: 'destructive',
+                                        title: 'Shipping Address Required',
+                                        description: 'Please add a shipping address in your profile to claim your prize.'
+                                    });
+                                    navigate('/customer/profile');
+                                    return;
+                                }
+                            } catch (e) {
+                            }
+
                             setIsClaiming(true);
                             socketRef.current?.emit('claim_giveaway_prize', { 
                                 claimId,
-                                userId: user?.user_id // Temporary for debugging since guard is off
+                                userId: user?.user_id 
                             });
-                            
-                            // Safety Backup: Reset if server doesn't respond in 10s
-                            setTimeout(() => {
-                                if (socketRef.current?.connected) {
-                                    setIsClaiming(prev => {
-                                        if (prev) {
-                                            toast({ 
-                                                title: "Yêu cầu hết hạn", 
-                                                description: "Server phản hồi lâu hơn dự kiến. Vui lòng kiểm tra giỏ hàng hoặc thử lại.",
-                                                variant: "destructive"
-                                            });
-                                            return false;
-                                        }
-                                        return prev;
-                                    });
-                                }
-                            }, 10000);
                         }}
                     />
                 )}
@@ -1124,64 +971,111 @@ export default function CustomerLivestreamRoom() {
     );
 }
 
-// ── NEW: Lucky Wheel Giveaway Components ──
+const SEGMENT_COLORS = [
+    '#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', 
+    '#06b6d4', '#ec4899', '#f97316', '#6366f1', '#14b8a6'
+];
 
-function GiveawayWidget({ giveaway, entries, hasJoined }: { giveaway: any, entries: number, hasJoined: boolean }) {
-    const [timeLeft, setTimeLeft] = useState(0);
+const PublicLuckyWheel = memo(({
+    participants,
+    winnerId,
+    onFinish
+}: {
+    participants: { userId: number, name: string }[],
+    winnerId?: number,
+    onFinish: () => void
+}) => {
+    const [rotation, setRotation] = useState(0);
+    const [isRevealed, setIsRevealed] = useState(false);
+    const [isSpinning, setIsSpinning] = useState(true);
 
     useEffect(() => {
-        if (!giveaway?.end_time) return;
-        const interval = setInterval(() => {
-            const end = new Date(giveaway.end_time).getTime();
-            const now = Date.now();
-            const diff = Math.max(0, Math.floor((end - now) / 1000));
-            setTimeLeft(diff);
-            if (diff <= 0) clearInterval(interval);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [giveaway?.end_time]);
+        if (!winnerId) {
+            setRotation(0);
+            setIsSpinning(true);
+            setIsRevealed(false);
+            return;
+        }
 
-    const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-    const s = (timeLeft % 60).toString().padStart(2, '0');
+        const winnerIndex = participants.findIndex(p => p.userId === winnerId);
+        if (winnerIndex === -1) {
+            onFinish();
+            return;
+        }
+
+        const segmentAngle = 360 / participants.length;
+        const extraSpins = 8 + Math.floor(Math.random() * 4); 
+        const randomOffset = (Math.random() * 0.8 + 0.1) * segmentAngle;
+        const targetRotation = (360 * extraSpins) + (360 - (winnerIndex * segmentAngle + randomOffset));
+
+        setTimeout(() => {
+            setRotation(targetRotation);
+            setIsSpinning(false);
+        }, 100);
+    }, [winnerId, participants, onFinish]);
 
     return (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.8, x: 50 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.8, x: 50 }}
-            className="absolute bottom-4 right-4 z-40 w-48 bg-black/80 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-4 shadow-2xl"
-        >
-            <div className="flex flex-col items-center text-center gap-3">
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 rounded-full border border-amber-500/20">
-                    <Star className="w-2.5 h-2.5 text-amber-500 animate-spin" />
-                    <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Lucky Wheel</span>
-                </div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 overflow-hidden">
+            <div className="relative w-full max-w-[500px] aspect-square flex items-center justify-center">
+                <div className={`absolute inset-0 rounded-full transition-all duration-1000 ${isRevealed ? 'bg-rose-500/20 blur-[120px] scale-110' : 'bg-blue-500/10 blur-[80px]'}`} />
+                
+                    <motion.div
+                        animate={{ rotate: rotation }}
+                        transition={isSpinning 
+                            ? { duration: 2, repeat: Infinity, ease: "linear" } 
+                            : { duration: 7, ease: [0.15, 0, 0.15, 1] }}
+                        onAnimationComplete={() => {
+                            if (!isSpinning && winnerId) {
+                                setIsRevealed(true);
+                                setTimeout(onFinish, 2500);
+                            }
+                        }}
+                        style={{ 
+                            background: `conic-gradient(${participants.map((_, i) => 
+                                `${SEGMENT_COLORS[i % SEGMENT_COLORS.length]} ${i * (360 / participants.length)}deg ${(i + 1) * (360 / participants.length)}deg`
+                            ).join(', ')})` 
+                        }}
+                        className="w-full h-full relative rounded-full border-[12px] border-[#1a1b23] shadow-[0_0_80px_rgba(0,0,0,0.8)]"
+                    >
+                        {participants.map((p, i) => {
+                            const angle = 360 / participants.length;
+                            return (
+                                <div
+                                    key={p.userId}
+                                    className="absolute top-0 left-1/2 h-1/2 origin-bottom -translate-x-1/2"
+                                    style={{ transform: `translateX(-50%) rotate(${i * angle + angle/2}deg)` }}
+                                >
+                                    <div 
+                                        className={`mt-10 font-black text-white uppercase transition-all duration-500 
+                                            ${isRevealed && p.userId === winnerId ? 'scale-150 drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]' : 'opacity-70'}
+                                        `}
+                                        style={{ 
+                                            writingMode: 'vertical-rl',
+                                            fontSize: participants.length > 12 ? '8px' : '11px'
+                                        }}
+                                    >
+                                        {p.name}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </motion.div>
 
-                <div className="space-y-0.5">
-                    <p className="text-[7px] font-black text-white/40 uppercase tracking-widest">Type to Join</p>
-                    <p className="text-xl font-black text-white italic tracking-tighter">#{giveaway.keyword}</p>
-                </div>
-
-                <div className="flex gap-2 w-full">
-                    <div className="flex-1 bg-white/5 rounded-lg p-1.5 border border-white/5">
-                        <span className="text-[6px] font-black text-neutral-500 uppercase block">Time</span>
-                        <span className="text-[10px] font-black text-emerald-500 font-mono">{m}:{s}</span>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-24 h-24 rounded-full bg-[#1a1b23] border-4 border-white/10 shadow-2xl z-20 flex items-center justify-center">
+                            <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-700 ${isRevealed ? 'bg-rose-500 shadow-[0_0_30px_rgba(225,29,72,0.8)] scale-110' : 'bg-neutral-800'}`}>
+                                <Trophy className="w-7 h-7 text-white" />
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex-1 bg-white/5 rounded-lg p-1.5 border border-white/5">
-                        <span className="text-[6px] font-black text-neutral-500 uppercase block">Active</span>
-                        <span className="text-[10px] font-black text-blue-400 font-mono">{entries}</span>
-                    </div>
                 </div>
 
-                <div className={`w-full py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                    hasJoined ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30' : 'bg-neutral-800 text-neutral-500'
-                }`}>
-                    {hasJoined ? 'Joined ✅' : 'Waiting...'}
+                <div className="absolute top-[-15px] left-1/2 -translate-x-1/2 z-30 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] pointer-events-none">
+                    <div className="w-12 h-14 bg-white" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 50% 100%)' }} />
                 </div>
             </div>
-        </motion.div>
     );
-}
+});
 
 function GiveawayClaimBanner({ claims, isClaiming, onClaim }: { claims: any[], isClaiming: boolean, onClaim: (id: number) => void }) {
     return (
@@ -1191,24 +1085,23 @@ function GiveawayClaimBanner({ claims, isClaiming, onClaim }: { claims: any[], i
             exit={{ opacity: 0, y: 100 }}
             className="fixed bottom-0 left-0 right-0 z-50 p-6 pointer-events-none"
         >
-            <div className="max-w-4xl mx-auto bg-gradient-to-r from-amber-600 via-rose-600 to-amber-600 rounded-[2.5rem] p-1 shadow-[0_-20px_80px_rgba(244,63,94,0.4)] relative overflow-hidden group pointer-events-auto">
-                <div className="bg-[#0c0d14]/90 backdrop-blur-2xl rounded-[2.4rem] px-8 py-6 flex items-center justify-between relative z-10">
-                    <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center border border-amber-500/30 animate-bounce">
-                            <Trophy className="w-8 h-8 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.6)]" />
+            <div className="max-w-4xl mx-auto bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600 rounded-[2.5rem] p-1 shadow-[0_-20px_80px_rgba(225,29,72,0.4)] relative overflow-hidden group pointer-events-auto">
+                <div className="bg-[#0c0d14]/90 backdrop-blur-2xl rounded-[2.4rem] px-10 py-7 flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-8">
+                        <div className="w-20 h-20 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/30 animate-bounce">
+                            <Trophy className="w-10 h-10 text-rose-500 drop-shadow-[0_0_20px_rgba(225,29,72,0.6)]" />
                         </div>
-                        <div className="space-y-1">
-                            <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">You Won {claims.length} Prize(s)! 🎉</h3>
-                            <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.3em]">Official Livestream Reward • Restricted Item</p>
+                        <div className="space-y-1.5">
+                            <h3 className="text-3xl font-black text-white italic uppercase tracking-tighter">You Won! 🎉</h3>
+                            <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em]">Official Livestream Prize • Verified</p>
                         </div>
                     </div>
-
                     <Button 
                         disabled={isClaiming}
                         onClick={() => onClaim(claims[0].claim_id || claims[0].id)}
-                        className="h-14 px-12 bg-white text-black hover:bg-amber-500 hover:text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                        className="h-16 px-14 bg-white text-black hover:bg-rose-500 hover:text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
                     >
-                        {isClaiming ? "Claiming..." : "Claim Reward Now"}
+                        {isClaiming ? "Processing..." : "Claim Now"}
                     </Button>
                 </div>
             </div>
@@ -1217,207 +1110,98 @@ function GiveawayClaimBanner({ claims, isClaiming, onClaim }: { claims: any[], i
 }
 
 function WinnerCelebration({ result, isMe, onClose }: { result: any, isMe: boolean, onClose: () => void }) {
-    const navigate = useNavigate();
-
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-md"
-        >
-            <div className="relative max-w-sm w-full bg-[#111218] border border-white/10 rounded-[2.5rem] p-8 text-center shadow-[0_0_100px_rgba(245,158,11,0.3)] overflow-hidden">
-                {/* Visual Flair */}
-                <div className="absolute -top-24 -left-24 w-48 h-48 bg-amber-500/10 blur-[60px] rounded-full" />
-                <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-rose-500/10 blur-[60px] rounded-full" />
-
-                <motion.div
-                    initial={{ scale: 0, rotate: -10 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', damping: 12 }}
-                    className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500 to-rose-500 mx-auto mb-6 flex items-center justify-center shadow-xl border border-white/20"
-                >
-                    <Sparkles className="w-10 h-10 text-white" />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-md">
+            <div className="relative max-w-sm w-full bg-[#0c0d14] border-2 border-rose-500/20 rounded-[3rem] p-10 text-center shadow-[0_0_120px_rgba(225,29,72,0.25)] overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full bg-rose-500/5 blur-[60px] rounded-full pointer-events-none" />
+                
+                <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-rose-500 to-rose-700 mx-auto mb-8 flex items-center justify-center shadow-2xl border border-white/20">
+                    <Sparkles className="w-12 h-12 text-white" />
                 </motion.div>
-
-                <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">
-                    {isMe ? "YOU ARE THE WINNER!" : "WE HAVE A WINNER!"}
-                </h2>
-                <p className="text-[10px] text-neutral-400 uppercase tracking-[0.2em] font-bold mb-8">
+                
+                <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-3">{isMe ? "CONGRATULATIONS!" : "WE HAVE A WINNER!"}</h2>
+                <p className="text-[11px] text-neutral-400 uppercase tracking-[0.2em] font-bold mb-10 leading-relaxed">
                     {isMe 
-                        ? (result.result_type === 'ORDER' ? "Your 0đ order has been created" : "You have a prize held in reserve!") 
-                        : "Stay tuned for the next round"}
+                        ? "Your prize has been recorded to your account." 
+                        : "Good luck next time!"}
                 </p>
-
+                
                 {isMe ? (
-                    <div className="space-y-3">
-                        <Button
-                            onClick={() => {
-                                // Close celebration - the Claim Banner will now appear for the user to action
-                                onClose(); 
-                            }}
-                            className="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl shadow-xl transition-all"
-                        >
-                            Ready to Claim
-                        </Button>
-                        <button onClick={onClose} className="text-[9px] text-neutral-600 uppercase font-black hover:text-white transition-colors">Dismiss</button>
-                    </div>
+                    <Button onClick={onClose} className="w-full h-16 bg-rose-600 hover:bg-rose-500 text-white font-black text-[12px] uppercase tracking-[0.3em] rounded-2xl shadow-xl transition-all shadow-rose-900/40">Confirm & Claim</Button>
                 ) : (
-                    <Button
-                        onClick={onClose}
-                        className="w-full h-12 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black text-[11px] uppercase tracking-[0.2em] rounded-2xl"
-                    >
-                        Congrats!
-                    </Button>
+                    <Button onClick={onClose} className="w-full h-14 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black text-[12px] uppercase tracking-[0.2em] rounded-2xl transition-colors">Amazing!</Button>
                 )}
             </div>
-
-            {/* Simple Confetti Effect logic would go here, can be added via lib or custom motion divs */}
         </motion.div>
     );
 }
 
-const PublicLuckyWheel = memo(({ 
-    participants, 
-    winnerId, 
-    onClose, 
-    title = "Giveaway Draw" 
-}: { 
-    participants: { userId: number, name: string }[], 
-    winnerId?: number, 
-    onClose?: () => void,
-    title?: string 
-}) => {
-    const [isSpinning, setIsSpinning] = useState(true);
-    const [rotation, setRotation] = useState(0);
+function GiveawayWidget({ giveaway, entries, hasJoined, onExpiry }: { giveaway: any, entries: number, hasJoined: boolean, onExpiry?: () => void }) {
+    const [timeLeft, setTimeLeft] = useState(0);
 
     useEffect(() => {
-        if (!winnerId) {
-            setRotation(0);
-            setIsSpinning(true);
-            return;
-        }
+        if (!giveaway?.end_time) return;
+        const interval = setInterval(() => {
+            const end = new Date(giveaway.end_time).getTime();
+            const now = Date.now();
+            const diff = Math.max(0, Math.floor((end - now) / 1000));
+            setTimeLeft(diff);
+            if (diff <= 0) {
+                clearInterval(interval);
+                if (onExpiry) onExpiry();
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [giveaway?.end_time, onExpiry]);
 
-        const winnerIndex = participants.findIndex(p => p.userId === winnerId);
-        if (winnerIndex !== -1) {
-            const segmentAngle = 360 / Math.max(1, participants.length);
-            const targetRotation = (360 * 5) + (360 - (winnerIndex * segmentAngle) - (segmentAngle / 2));
-            setRotation(targetRotation);
-            setTimeout(() => setIsSpinning(false), 4500);
-        }
-    }, [winnerId, participants]);
-
-    const winnerName = (participants || []).find(p => p.userId === winnerId)?.name || 'Winner';
+    const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+    const s = (timeLeft % 60).toString().padStart(2, '0');
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl">
-            <motion.div 
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="relative bg-[#0c0d14] border border-white/10 p-12 rounded-[4rem] shadow-[0_0_120px_rgba(245,158,11,0.2)] flex flex-col items-center max-w-lg w-full"
-            >
-                {/* Visual Flair */}
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-rose-500/10 blur-[100px] rounded-full" />
-                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/10 blur-[100px] rounded-full" />
+        <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="absolute top-6 left-6 z-40 flex items-center bg-[#0c0d14]/60 backdrop-blur-xl border border-white/10 rounded-full pl-1.5 pr-6 py-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.5)] group overflow-hidden"
+        >
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-rose-500/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+            
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-rose-700 flex items-center justify-center shadow-[0_0_20px_rgba(225,29,72,0.4)] relative z-10">
+                <Gift className="w-5 h-5 text-white" />
+            </div>
 
-                <div className="text-center mb-10">
-                    <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase mb-2">{title}</h2>
-                    <p className="text-amber-500/80 font-mono text-[9px] font-black tracking-[0.3em] uppercase animate-pulse">
-                        {isSpinning ? 'Selecting identified target...' : 'Winner Identified'}
-                    </p>
+            <div className="flex flex-col ml-3 mr-6 relative z-10">
+                <div className="flex items-center gap-2 mb-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    <span className="text-[7px] font-black text-rose-500 uppercase tracking-[0.3em]">Live Giveaway</span>
                 </div>
+                <span className="text-sm font-black text-white italic tracking-tighter drop-shadow-md">
+                    #{giveaway.keyword}
+                </span>
+            </div>
 
-                <div className="relative w-80 h-80 mb-12">
-                    {/* Indicator */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-8 z-30">
-                        <div className="w-0 h-0 border-l-[20px] border-r-[20px] border-t-[35px] border-l-transparent border-r-transparent border-t-amber-500 drop-shadow-[0_0_20px_rgba(245,158,11,1)]"></div>
-                        <div className="w-1 h-12 bg-amber-500 absolute top-0 left-1/2 -translate-x-1/2 -mt-4 blur-sm opacity-50"></div>
-                    </div>
-                    
-                    <motion.div 
-                        animate={{ rotate: rotation }}
-                        transition={winnerId ? { duration: 5, type: 'spring', bounce: 0.1, restDelta: 0.001 } : { ease: "linear", duration: 1, repeat: Infinity }}
-                        className="w-full h-full rounded-full border-8 border-white/5 relative shadow-[0_0_80px_rgba(0,0,0,0.8)] bg-[#0c0d14]"
-                    >
-                        <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
-                            {participants.length === 0 ? (
-                                <text x="50" y="50" dominantBaseline="middle" textAnchor="middle" className="fill-neutral-700 text-[4px] font-black uppercase italic">Scanning...</text>
-                            ) : (
-                                participants.map((p, i) => {
-                                    const segmentAngle = 360 / participants.length;
-                                    const startAngle = i * segmentAngle;
-                                    const endAngle = (i + 1) * segmentAngle;
-                                    
-                                    // Math to calculate SVG arc
-                                    const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
-                                        const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-                                        return {
-                                            x: centerX + (radius * Math.cos(angleInRadians)),
-                                            y: centerY + (radius * Math.sin(angleInRadians))
-                                        };
-                                    };
+            <div className="h-8 w-px bg-white/10 mx-2" />
 
-                                    const start = polarToCartesian(50, 50, 50, startAngle);
-                                    const end = polarToCartesian(50, 50, 50, endAngle);
-                                    const largeArcFlag = segmentAngle <= 180 ? "0" : "1";
-                                    
-                                    const d = participants.length === 1 
-                                        ? "M 50, 50 m -50, 0 a 50, 50 0 1,0 100,0 a 50, 50 0 1,0 -100,0" // Full circle
-                                        : [
-                                            "M", 50, 50, 
-                                            "L", start.x, start.y, 
-                                            "A", 50, 50, 0, largeArcFlag, 1, end.x, end.y,
-                                            "Z"
-                                        ].join(" ");
-
-                                    const colors = ['#f59e0b', '#10b981', '#3b82f6', '#f43f5e', '#8b5cf6', '#ec4899', '#f97316', '#06b6d4'];
-                                    const color = colors[i % colors.length];
-
-                                    // Mid-point for text
-                                    const midAngle = startAngle + (segmentAngle / 2);
-                                    const textPos = polarToCartesian(50, 50, 35, midAngle);
-
-                                    return (
-                                        <g key={p.userId}>
-                                            <path d={d} fill={color} stroke="#0c0d14" strokeWidth="0.5" />
-                                            <text 
-                                                x={textPos.x} 
-                                                y={textPos.y} 
-                                                transform={`rotate(${midAngle}, ${textPos.x}, ${textPos.y})`}
-                                                dominantBaseline="middle" 
-                                                textAnchor="middle" 
-                                                className="fill-white text-[3px] font-black uppercase tracking-tighter drop-shadow-md"
-                                            >
-                                                {p.name.length > 12 ? p.name.substring(0, 10) + '...' : p.name}
-                                            </text>
-                                        </g>
-                                    );
-                                })
-                            )}
-                        </svg>
-                        
-                        {/* Center Hub */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-16 h-16 bg-[#0c0d14] rounded-full border-4 border-white/10 shadow-2xl flex items-center justify-center">
-                                <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 animate-pulse"></div>
-                            </div>
-                        </div>
-                    </motion.div>
+            <div className="flex gap-6 ml-4 relative z-10">
+                <div className="flex flex-col">
+                    <span className="text-[7px] font-bold text-neutral-500 uppercase tracking-widest mb-0.5">Ends In</span>
+                    <span className="text-xs font-black text-rose-500 font-mono">{m}:{s}</span>
                 </div>
+                <div className="flex flex-col">
+                    <span className="text-[7px] font-bold text-neutral-500 uppercase tracking-widest mb-0.5">Participants</span>
+                    <span className="text-xs font-black text-white font-mono">{entries}</span>
+                </div>
+            </div>
 
-                {!isSpinning && winnerId && (
-                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center w-full">
-                        <div className="bg-gradient-to-r from-amber-600 to-amber-500 text-black px-8 py-4 rounded-2xl font-black text-xl uppercase italic shadow-2xl mb-6 ring-2 ring-white/20">
-                            {winnerName}
-                        </div>
-                        {onClose && (
-                            <Button onClick={onClose} variant="ghost" className="text-white/40 hover:text-white font-black text-[10px] uppercase tracking-widest">
-                                Dismiss Result
-                            </Button>
-                        )}
-                    </motion.div>
-                )}
-            </motion.div>
-        </div>
+            <div className="ml-8 relative z-10">
+                <div className={`px-4 py-2 rounded-full text-[8px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${
+                    hasJoined 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
+                        : 'bg-white/5 text-white/40 border border-white/10'
+                }`}>
+                    {hasJoined ? '✓ Joined' : 'Not Joined'}
+                </div>
+            </div>
+        </motion.div>
     );
-});
+}

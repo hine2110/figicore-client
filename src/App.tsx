@@ -21,15 +21,15 @@ import ProductManagement from "@/pages/admin/ProductManagement";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
 import OrderOversight from "@/pages/admin/OrderOversight";
 import ProfilePage from "@/pages/common/ProfilePage";
+import ShiftRegistration from "@/pages/common/ShiftRegistration";
 import AuctionManagement from "@/pages/admin/AuctionManagement";
 import AdminAuctionDetail from "@/pages/admin/AdminAuctionDetail";
 import AdminAuctionLive from "@/pages/admin/AdminAuctionLive";
-import ManualRefund from "@/pages/admin/ManualRefund";
 import SystemSettings from "@/pages/admin/SystemSettings";
-import AuditLogs from "@/pages/admin/AuditLogs";
+
+//manager
 import ManagerDashboard from "@/pages/manager/ManagerDashboard";
 import TeamManagement from "@/pages/manager/TeamManagement";
-import SalesReports from "@/pages/manager/SalesReports";
 import GlobalInventory from "@/pages/manager/GlobalInventory";
 import MarketingCampaigns from "@/pages/manager/MarketingCampaigns";
 import ReturnApprovals from "@/pages/manager/ReturnApprovals";
@@ -45,6 +45,7 @@ import FlashSaleEditPage from "@/pages/manager/promotions/FlashSaleEditPage";
 import VoucherListPage from "@/pages/manager/vouchers/VoucherListPage";
 import VoucherCreatePage from "@/pages/manager/vouchers/VoucherCreatePage";
 import VoucherEditPage from "@/pages/manager/vouchers/VoucherEditPage";
+import ManagerMyPayroll from "./pages/manager/MyPayroll";
 // import StaffDashboard from "@/pages/staff/StaffDashboard"; // Deprecated
 import Payroll from "@/pages/manager/SalaryConfiguration";
 
@@ -98,6 +99,8 @@ import { Browse } from "@/pages/guest/Browse";
 import ProductDetail from "@/pages/guest/ProductDetail";
 import { About } from "@/pages/guest/About";
 import SignIn from "@/pages/guest/SignIn";
+import Terms from "@/pages/guest/Terms";
+import Privacy from "@/pages/guest/Privacy";
 import { SignUp } from "@/pages/guest/SignUp";
 import ForgotPassword from "@/pages/guest/ForgotPassword";
 import ResetPassword from "@/pages/guest/ResetPassword";
@@ -124,6 +127,8 @@ export default function App() {
                     <Route path="browse" element={<Browse />} />
                     <Route path="product/:id" element={<ProductDetail />} />
                     <Route path="about" element={<About />} />
+                    <Route path="terms" element={<Terms />} />
+                    <Route path="privacy" element={<Privacy />} />
                     <Route path="login" element={<SignIn />} />
                     <Route path="register" element={<SignUp />} />
                     <Route path="forgot-password" element={<ForgotPassword />} />
@@ -153,9 +158,7 @@ export default function App() {
                             <Route path="auctions" element={<AuctionManagement />} />
                             <Route path="auctions/:id" element={<AdminAuctionDetail />} />
                             <Route path="auctions/:id/live" element={<AdminAuctionLive />} />
-                            <Route path="refunds" element={<ManualRefund />} />
                             <Route path="settings" element={<SystemSettings />} />
-                            <Route path="logs" element={<AuditLogs />} />
                             <Route path="accounts" element={<AccountManagement />} />
                             <Route path="livestreams" element={<LivestreamManagement />} />
                             <Route path="livestreams/:id/live" element={<AdminLivestreamLive />} />
@@ -169,7 +172,6 @@ export default function App() {
                             <Route index element={<Navigate to="/manager/dashboard" replace />} />
                             <Route path="dashboard" element={<ManagerDashboard />} />
                             <Route path="team" element={<TeamManagement />} />
-                            <Route path="reports" element={<SalesReports />} />
                             <Route path="inventory" element={<GlobalInventory />} />
                             <Route path="campaigns" element={<MarketingCampaigns />} />
                             <Route path="returns" element={<ReturnApprovals />} />
@@ -189,6 +191,7 @@ export default function App() {
                             <Route path="payroll" element={<Payroll />} />
                             <Route path="payroll-management" element={<PayrollManagement />} />
                             <Route path="vouchers/:id/edit" element={<VoucherEditPage />} />
+                            <Route path="my-payroll" element={<ManagerMyPayroll />} />
                         </Route>
                     </Route>
 
@@ -202,6 +205,7 @@ export default function App() {
                             <Route path="imports" element={<GoodsReceipt />} />
                             <Route path="returns" element={<ReturnInspection />} />
                             <Route path="profile" element={<ProfilePage />} />
+                            <Route path="shift-registration" element={<ShiftRegistration />} />
                             <Route path="schedule" element={<WarehouseSchedule />} />
                             <Route path="timesheets" element={<WarehouseTimesheets />} />
                             <Route path="my-payroll" element={<MyPayrollWarehouse />} />
@@ -215,6 +219,7 @@ export default function App() {
                             <Route path="dashboard" element={<PosDashboard />} />
                             <Route path="counter" element={<PosSystem />} />
                             <Route path="orders" element={<OrderProcessing />} />
+                            <Route path="shift-registration" element={<ShiftRegistration />} />
                             <Route path="schedule" element={<PosSchedule />} />
                             <Route path="timesheets" element={<PosTimesheets />} />
                             <Route path="sessions" element={<SessionManager />} />

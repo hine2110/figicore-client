@@ -13,6 +13,8 @@ interface PackingStationProps {
     onConfirm: (videoUrl: string) => Promise<void>;
     onUpload: (file: File) => Promise<string>;
     isUploading: boolean;
+    uploadProgress: number;
+    uploadSpeed: string | null;
     isPacking: boolean;
     videoUrl: string | null;
 }
@@ -27,7 +29,7 @@ const getMediaAssets = (assets: any): any[] => {
     }
 };
 
-export function PackingStation({ order, onConfirm, onUpload, isUploading, isPacking, videoUrl }: PackingStationProps) {
+export function PackingStation({ order, onConfirm, onUpload, isUploading, uploadProgress, uploadSpeed, isPacking, videoUrl }: PackingStationProps) {
     const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
 
     // Auto-focus Input Ref for Scanner
@@ -231,10 +233,19 @@ export function PackingStation({ order, onConfirm, onUpload, isUploading, isPack
                                         <p className="text-xs text-green-600/70 mt-1">Ready to ship</p>
                                     </motion.div>
                                 ) : isUploading ? (
-                                    <div className="flex flex-col items-center">
+                                    <div className="flex flex-col items-center w-full px-6">
                                         <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-3" />
-                                        <p className="text-sm text-blue-600 font-medium">Uploading video...</p>
-                                        <p className="text-xs text-slate-400 mt-1">Please wait</p>
+                                        <p className="text-sm text-blue-600 font-bold">Uploading: {uploadProgress}%</p>
+                                        {uploadSpeed && <p className="text-[10px] text-slate-500 font-mono mt-1">{uploadSpeed}</p>}
+                                        <div className="w-full h-2 bg-slate-100 rounded-full mt-4 overflow-hidden border border-slate-200">
+                                            <motion.div 
+                                                className="h-full bg-blue-500"
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${uploadProgress}%` }}
+                                                transition={{ duration: 0.5 }}
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-tighter">Do not close this tab</p>
                                     </div>
                                 ) : (
                                     <>

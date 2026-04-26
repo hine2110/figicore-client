@@ -9,28 +9,9 @@ import { Package, Star } from 'lucide-react';
 import FlashSaleSection from '@/components/flash-sale/FlashSaleSection';
 import { PromotionsService } from '@/services/promotions.service';
 
-// --- MOCK BANNERS (Refined Copy) ---
-const BANNERS = [
-    {
-        id: 1,
-        image: "https://imagine-public.x.ai/imagine-public/images/8a52762b-52a2-4a09-8926-0e1d791c1aac.jpg?cache=1&dl=1",
-        title: "Empire of Models",
-        subtitle: "The ultimate destination for authentic collectible figures.",
-        action: "Explore Gallery",
-        link: "/guest/browse"
-    },
-    {
-        id: 2,
-        image: "https://imagine-public.x.ai/imagine-public/images/9f3734a8-1652-48fe-8769-3d67607ee911.jpg?cache=1&dl=1",
-        title: "Next Gen Mecha",
-        subtitle: "Precision engineering meets artistic vision.",
-        action: "View New Arrivals",
-        link: "/guest/browse?category=RETAIL"
-    }
-];
-
 export function GuestHome() {
     const navigate = useNavigate();
+    const [banners, setBanners] = useState<any[]>([]);
     const [latestProducts, setLatestProducts] = useState<any[]>([]);
     const [preorderProducts, setPreorderProducts] = useState<any[]>([]);
     const [flashSaleItems, setFlashSaleItems] = useState<any[]>([]);
@@ -39,24 +20,29 @@ export function GuestHome() {
 
     // Carousel Timer
     useEffect(() => {
-        const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % BANNERS.length), 6000);
+        if (banners.length <= 1) return;
+        const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % banners.length), 6000);
         return () => clearInterval(timer);
-    }, []);
+    }, [banners.length]);
 
     // Data Fetching
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [retail, preorder, flashData] = await Promise.all([
+                const [retail, preorder, flashData, bannerRes] = await Promise.all([
                     productsService.getProducts({ limit: 8, type_code: 'RETAIL' }),
                     productsService.getProducts({ limit: 4, type_code: 'PREORDER' }),
-                    PromotionsService.getActiveFlashSales().catch(() => [])
+                    PromotionsService.getActiveFlashSales().catch(() => []),
+                    productsService.getPublicBanners().catch(() => ({ data: [] }))
                 ]);
 
                 const getList = (res: any) => Array.isArray(res) ? res : (res as any)?.data || [];
                 setLatestProducts(getList(retail).slice(0, 8));
                 setPreorderProducts(getList(preorder).slice(0, 4));
                 if (Array.isArray(flashData)) setFlashSaleItems(flashData);
+                
+                const fetchedBanners = getList(bannerRes);
+                setBanners(fetchedBanners);
             } catch (error) {
                 console.error("Failed to load home data", error);
             } finally {
@@ -90,64 +76,104 @@ export function GuestHome() {
         return safeNumber(pre.full_price);
     };
 
-
-
     // --- SUB-COMPONENTS ---
 
-    const HeroSection = () => (
-        <div className="relative h-[85vh] min-h-[600px] w-full overflow-hidden bg-neutral-900 text-white">
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={currentSlide}
-                    initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                    transition={{ duration: 1.5, ease: "easeOut" }}
-                    className="absolute inset-0"
-                >
-                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${BANNERS[currentSlide].image}')` }} />
-                    <div className="absolute inset-0 bg-black/40" /> {/* Subtle overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-transparent to-transparent opacity-90" />
-                </motion.div>
-            </AnimatePresence>
-
-            <div className="relative z-10 container mx-auto px-6 h-full flex flex-col justify-end pb-32 items-start">
-                <motion.div
-                    key={`text-${currentSlide}`}
-                    initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                    className="max-w-3xl"
-                >
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="h-px w-16 bg-white/60"></div>
-                        <span className="text-sm font-medium tracking-[0.2em] uppercase text-white/90">FigiCore Premium Experience</span>
+    const HeroSection = () => {
+        if (loading && banners.length === 0) {
+            return (
+                <div className="relative h-[85vh] min-h-[600px] w-full bg-neutral-900 overflow-hidden">
+                    <div className="absolute inset-0 bg-neutral-800 animate-pulse" />
+                    <div className="relative z-10 container mx-auto px-6 h-full flex flex-col justify-end pb-32 items-start">
+                        <div className="w-64 h-4 bg-neutral-700 mb-6 rounded-full" />
+                        <div className="w-full max-w-xl h-20 bg-neutral-700 mb-8 rounded-2xl" />
+                        <div className="w-80 h-6 bg-neutral-700 mb-12 rounded-full" />
+                        <div className="w-48 h-16 bg-neutral-700 rounded-none" />
                     </div>
-                    <h1 className="text-5xl md:text-8xl font-serif font-medium mb-8 leading-[1.1] text-white drop-shadow-md">
-                        {BANNERS[currentSlide].title}
-                    </h1>
-                    <p className="text-lg md:text-2xl text-white/80 mb-12 font-light leading-relaxed max-w-xl">
-                        {BANNERS[currentSlide].subtitle}
-                    </p>
-                    <Button
-                        size="lg"
-                        className="bg-white text-black hover:bg-neutral-200 rounded-none h-16 px-10 text-lg tracking-wide font-medium transition-all"
-                        onClick={() => navigate(BANNERS[currentSlide].link)}
-                    >
-                        {BANNERS[currentSlide].action}
-                    </Button>
-                </motion.div>
-            </div>
+                </div>
+            );
+        }
 
-            {/* Slide Indicators */}
-            <div className="absolute bottom-12 right-12 flex gap-3 z-20">
-                {BANNERS.map((_, idx) => (
-                    <button
-                        key={idx}
-                        onClick={() => setCurrentSlide(idx)}
-                        className={`h-1 transition-all duration-500 ${currentSlide === idx ? "w-16 bg-white" : "w-8 bg-white/30"}`}
-                    />
-                ))}
+        const hasBanners = banners.length > 0;
+        const currentBanner = hasBanners ? banners[currentSlide] : null;
+
+        return (
+            <div className="relative h-[85vh] min-h-[600px] w-full overflow-hidden bg-neutral-900 text-white">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={currentSlide}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1.2 }}
+                        className="absolute inset-0"
+                    >
+                        {hasBanners && currentBanner?.image_url ? (
+                            <div 
+                                className="absolute inset-0 bg-cover bg-center bg-no-repeat" 
+                                style={{ backgroundImage: `url('${currentBanner.image_url}')` }} 
+                            />
+                        ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-[#1a0b0b] via-[#0a0a0a] to-[#0d0d0d]">
+                                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-rose-900/10 via-transparent to-transparent" />
+                            </div>
+                        )}
+                        {/* Ultra subtle overlay */}
+                        <div className="absolute inset-0 bg-black/10" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/60 via-transparent to-transparent" />
+                    </motion.div>
+                </AnimatePresence>
+
+                <div className="relative z-10 container mx-auto px-6 h-full flex flex-col justify-end pb-24 items-start">
+                    <motion.div
+                        key={`text-${currentSlide}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8 }}
+                        className="max-w-2xl"
+                    >
+                        {currentBanner?.title && (
+                            <h1 className="text-3xl md:text-5xl font-serif font-medium mb-6 leading-tight text-white drop-shadow-2xl">
+                                {currentBanner.title}
+                            </h1>
+                        )}
+                        
+                        {currentBanner?.subtitle && (
+                            <p className="text-sm md:text-lg text-white/90 mb-10 font-light leading-relaxed max-w-lg">
+                                {currentBanner.subtitle}
+                            </p>
+                        )}
+
+                        <Button
+                            size="lg"
+                            className="bg-white/90 text-black hover:bg-white rounded-none h-12 px-10 text-[10px] tracking-[0.3em] font-bold transition-all shadow-2xl uppercase"
+                            onClick={() => {
+                                if (currentBanner?.target_url) {
+                                    navigate(currentBanner.target_url);
+                                } else {
+                                    navigate('/guest/browse');
+                                }
+                            }}
+                        >
+                            {currentBanner?.action || "View Detail"}
+                        </Button>
+                    </motion.div>
+                </div>
+
+                {/* Clean White Indicators */}
+                {banners.length > 1 && (
+                    <div className="absolute bottom-12 right-12 flex items-center gap-3 z-20">
+                        {banners.map((_, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => setCurrentSlide(idx)}
+                                className={`h-[2px] transition-all duration-700 ${currentSlide === idx ? "w-12 bg-white" : "w-6 bg-white/20 hover:bg-white/40"}`}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
-        </div>
-    );
+        );
+    };
 
 
 

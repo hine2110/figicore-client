@@ -817,8 +817,8 @@ export default function StaffPOS() {
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl">
                                                         <SelectItem key="cat-all" value="All">All Categories</SelectItem>
-                                                        {categories.map(cat => (
-                                                            <SelectItem key={cat.id} value={cat.name}>
+                                                        {categories.map((cat, index) => (
+                                                            <SelectItem key={cat.id || (cat as any).category_id || index} value={cat.name}>
                                                                 {cat.name}
                                                             </SelectItem>
                                                         ))}
@@ -852,8 +852,8 @@ export default function StaffPOS() {
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl">
                                                         <SelectItem key="brand-all" value="all">All Brands</SelectItem>
-                                                        {brands.map(brand => (
-                                                            <SelectItem key={brand.brand_id} value={brand.brand_id.toString()}>
+                                                        {brands.map((brand, index) => (
+                                                            <SelectItem key={brand.brand_id || index} value={brand.brand_id.toString()}>
                                                                 {brand.name}
                                                             </SelectItem>
                                                         ))}

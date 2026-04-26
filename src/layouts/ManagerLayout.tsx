@@ -44,7 +44,7 @@ export default function ManagerLayout() {
     useEffect(() => {
         if (user?.role_code !== 'MANAGER') return; // Only connect for managers if needed
 
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
         const socketUrl = `${baseUrl}/events`;
         const socket = io(socketUrl);
 
@@ -66,7 +66,6 @@ export default function ManagerLayout() {
     const navItems: NavItem[] = [
         { name: 'Dashboard', path: '/manager/dashboard', icon: LayoutDashboard },
         { name: 'Team Management', path: '/manager/team', icon: Users },
-        { name: 'Sales & Reports', path: '/manager/reports', icon: BarChart3 },
         { name: 'Inventory Overview', path: '/manager/inventory', icon: PackageSearch },
         { name: 'Promotions & Vouchers', path: '/manager/vouchers', icon: TicketPercent },
         { name: 'Return Approvals', path: '/manager/returns', icon: RotateCcw },
@@ -78,6 +77,7 @@ export default function ManagerLayout() {
                 { name: 'Timesheets', path: '/manager/timesheets' },
                 { name: 'Leave Request', path: '/manager/leave-approvals' },
                 { name: 'Correction Approvals', path: '/manager/correction-approvals' }
+                
             ],
         },
         {
@@ -86,6 +86,7 @@ export default function ManagerLayout() {
             children: [
                 { name: 'Salary Configuration', path: '/manager/payroll' },
                 { name: 'Payroll Management', path: '/manager/payroll-management' },
+                { name: 'My Payroll', path: '/manager/my-payroll' },
 
             ],
         },

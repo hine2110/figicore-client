@@ -78,7 +78,7 @@ export default function WarehouseLayout() {
 
     useEffect(() => {
         // Connect to WebSocket Namespace
-        const socket = io('http://localhost:3000/events');
+        const socket = io(import.meta.env.VITE_API_BASE_URL ? `${import.meta.env.VITE_API_BASE_URL}/events` : 'https://api.figicore.com/events');
 
         socket.on('connect', () => {
             console.log('✅ Connected to Warehouse Events');
@@ -189,6 +189,16 @@ export default function WarehouseLayout() {
                                 {isScheduleOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                             </CollapsibleTrigger>
                             <CollapsibleContent className="space-y-1 pl-10 pr-2">
+                                <Link
+                                    to="/warehouse/shift-registration"
+                                    onClick={() => setIsSidebarOpen(false)}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/warehouse/shift-registration')
+                                        ? 'bg-orange-600 text-white'
+                                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                                        }`}
+                                >
+                                    Register Shifts
+                                </Link>
                                 <Link
                                     to="/warehouse/schedule"
                                     onClick={() => setIsSidebarOpen(false)}

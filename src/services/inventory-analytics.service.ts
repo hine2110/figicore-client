@@ -13,13 +13,12 @@ export interface InventoryRecommendation {
   variant_id: number;
   type: RecommendationType;
   reason: string;
-  financial_note: string | null; // NEW: Thông tin rào cản tài chính
-  suggested_action_value: string | null; // Lưu "% giảm giá" hoặc "Priority"
+  financial_note: string | null;
+  suggested_action_value: string | null;
   status: RecommendationStatus;
   created_at: string;
   updated_at: string;
   
-  // Dữ liệu Join từ Backend
   product_variants: {
     sku: string;
     stock_available: number;
@@ -33,6 +32,8 @@ export interface InventoryRecommendation {
 export interface RecommendationQueryParams {
   status?: RecommendationStatus;
   type?: RecommendationType;
+  page?: string;
+  limit?: string;
 }
 
 /**
@@ -50,14 +51,13 @@ export const inventoryAnalyticsService = {
   /**
    * Lấy danh sách các đề xuất nhập/xả hàng từ Database
    */
-  getRecommendations: async (params?: RecommendationQueryParams): Promise<ApiResponse<InventoryRecommendation[]>> => {
+  getRecommendations: async (params?: RecommendationQueryParams): Promise<ApiResponse<{ data: InventoryRecommendation[], meta: any }>> => {
     const response = await axiosInstance.get('/analytics/recommendations', { params });
     return response.data;
   },
 
   /**
    * Phê duyệt và thực thi một đề xuất AI
-   * @param id ID của bản ghi đề xuất
    */
   applyRecommendation: async (id: number): Promise<ApiResponse<any>> => {
     const response = await axiosInstance.patch(`/analytics/recommendations/${id}/apply`);
@@ -77,6 +77,22 @@ export const inventoryAnalyticsService = {
    */
   analyzeBlindboxRisk: async (payload: { minValue: number, maxValue: number, suggestedPrice?: number }): Promise<ApiResponse<any>> => {
     const response = await axiosInstance.post('/analytics/blindbox-pricing', payload);
+    return response.data;
+  },
+
+  /**
+   * Trigger Market Intelligence Scan (Tavily + Groq)
+   */
+  triggerMarketScan: async (): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.post('/analytics/market-intel/scan');
+    return response.data;
+  },
+
+  /**
+   * Lấy danh sách Market Intelligence từ DB
+   */
+  getMarketIntel: async (params?: { brand?: string; status?: string; category?: string; page?: string; limit?: string }): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.get('/analytics/market-intel', { params });
     return response.data;
   },
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, BellRing, ArrowRight } from 'lucide-react';
+import { Bell, BellRing, ArrowRight, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -32,8 +32,11 @@ export function NotificationBell() {
 
         fetchNotifications();
 
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-        const socket = io(`${baseUrl}/events`);
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
+        const socketUrl = baseUrl.includes('localhost') ? baseUrl : 'https://api.figicore.com';
+        const socket = io(`${socketUrl}/events`, {
+            transports: ['websocket', 'polling']
+        });
 
         socket.on(`user:${user.user_id}:new_notification`, (newNotif: any) => {
             setNotifications(prev => [newNotif, ...prev]);
@@ -163,42 +166,68 @@ export function NotificationBell() {
             <Dialog open={!!selectedNotif} onOpenChange={() => setSelectedNotif(null)}>
                 <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-2xl">
                     {/* Modal Header */}
-                    <div className="relative px-6 pt-6 pb-4 border-b bg-gradient-to-b from-blue-50 to-white">
-                        <div className="flex items-center gap-3 pr-8">
-                            <div className="w-10 h-10 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center flex-shrink-0">
-                                <BellRing className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-mono text-blue-400 uppercase tracking-widest mb-0.5">Notification</p>
-                                <h3 className="text-base font-bold text-gray-900 leading-snug">
-                                    {selectedNotif?.title}
-                                </h3>
-                            </div>
-                        </div>
-                    </div>
+                    {(() => {
+                        const isUrgent = selectedNotif?.title?.toUpperCase().includes('VIOLATION') || 
+                                         selectedNotif?.title?.toUpperCase().includes('WARNING') ||
+                                         selectedNotif?.title?.toUpperCase().includes('BANNED');
+                        
+                        return (
+                            <>
+                                <div className={`relative px-6 pt-6 pb-4 border-b ${isUrgent ? 'bg-gradient-to-b from-red-50 to-white' : 'bg-gradient-to-b from-blue-50 to-white'}`}>
+                                    <div className="flex items-center gap-3 pr-8">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                            isUrgent ? 'bg-red-100 border border-red-200' : 'bg-blue-100 border border-blue-200'
+                                        }`}>
+                                            {isUrgent ? (
+                                                <AlertCircle className="w-5 h-5 text-red-600" />
+                                            ) : (
+                                                <BellRing className="w-5 h-5 text-blue-600" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className={`text-[10px] font-mono uppercase tracking-widest mb-0.5 ${
+                                                isUrgent ? 'text-red-500' : 'text-blue-400'
+                                            }`}>
+                                                {isUrgent ? 'Security Alert' : 'Notification'}
+                                            </p>
+                                            <h3 className={`text-base font-bold leading-snug ${
+                                                isUrgent ? 'text-red-900' : 'text-gray-900'
+                                            }`}>
+                                                {selectedNotif?.title}
+                                            </h3>
+                                        </div>
+                                    </div>
+                                </div>
 
-                    {/* Modal Body */}
-                    <div className="px-6 py-5">
-                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                            {selectedNotif?.content}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-4 border-t pt-3">
-                            {selectedNotif?.created_at && new Date(selectedNotif.created_at).toLocaleString('vi-VN', {
-                                weekday: 'short', month: 'short', day: 'numeric',
-                                hour: '2-digit', minute: '2-digit'
-                            })}
-                        </p>
-                    </div>
+                                {/* Modal Body */}
+                                <div className="px-6 py-5">
+                                    <p className={`text-sm leading-relaxed whitespace-pre-line ${
+                                        isUrgent ? 'text-red-800 font-medium' : 'text-gray-700'
+                                    }`}>
+                                        {selectedNotif?.content}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-4 border-t pt-3">
+                                        {selectedNotif?.created_at && new Date(selectedNotif.created_at).toLocaleString('vi-VN', {
+                                            weekday: 'short', month: 'short', day: 'numeric',
+                                            hour: '2-digit', minute: '2-digit'
+                                        })}
+                                    </p>
+                                </div>
 
-                    {/* Modal Footer */}
-                    <div className="px-6 pb-5 flex justify-end">
-                        <Button
-                            className="px-8 flex-1 sm:flex-none bg-black text-white hover:bg-gray-800 rounded-xl h-11 text-sm font-semibold"
-                            onClick={() => setSelectedNotif(null)}
-                        >
-                            Dismiss
-                        </Button>
-                    </div>
+                                {/* Modal Footer */}
+                                <div className="px-6 pb-5 flex justify-end">
+                                    <Button
+                                        className={`px-8 flex-1 sm:flex-none text-white rounded-xl h-11 text-sm font-semibold transition-all ${
+                                            isUrgent ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200' : 'bg-black hover:bg-gray-800'
+                                        }`}
+                                        onClick={() => setSelectedNotif(null)}
+                                    >
+                                        Dismiss
+                                    </Button>
+                                </div>
+                            </>
+                        );
+                    })()}
                 </DialogContent>
             </Dialog>
         </>
