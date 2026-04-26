@@ -10,8 +10,11 @@ export default function RemoteScanner() {
     const [socket, setSocket] = useState<Socket | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [lastScanned, setLastScanned] = useState<string | null>(null);
+    const lastScannedRef = useRef<string | null>(null);
+    const throttleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const scannerRef = useRef<Html5Qrcode | null>(null);
+    const socketRef = useRef<Socket | null>(null);
     const regionId = 'remote-reader';
 
     useEffect(() => {
@@ -40,6 +43,7 @@ export default function RemoteScanner() {
         });
 
         setSocket(newSocket);
+        socketRef.current = newSocket;
 
         return () => {
             newSocket.disconnect();
@@ -54,34 +58,45 @@ export default function RemoteScanner() {
             try {
                 const html5QrCode = new Html5Qrcode(regionId);
                 scannerRef.current = html5QrCode;
-                const config = { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 };
+                
+                // Mở rộng vùng quét và tăng FPS để quét siêu nhạy
+                const config = { 
+                    fps: 20, 
+                    // Bỏ qrbox để camera quét toàn bộ khung hình, hoặc dùng giá trị lớn
+                    qrbox: { width: window.innerWidth > 400 ? 300 : 250, height: 150 },
+                    aspectRatio: window.innerHeight / window.innerWidth
+                };
                 
                 await html5QrCode.start(
                     { facingMode: "environment" },
                     config,
                     (decodedText) => {
-                        // Prevent rapid firing of same barcode
-                        setLastScanned(prev => {
-                            if (prev !== decodedText) {
-                                console.log("Scanned:", decodedText);
-                                if (navigator.vibrate) navigator.vibrate(50); // Beep vibration
-                                
-                                // Emit to server
-                                setSocket(s => {
-                                    s?.emit("send-barcode", { roomId, barcode: decodedText });
-                                    return s;
-                                });
-                                
-                                // Flash UI green immediately
-                                setScanStatus('success');
-                                setTimeout(() => setScanStatus('idle'), 1500);
+                        const cleanedBarcode = decodedText.trim();
+                        
+                        // Chống quét trùng liên tục trong 2 giây
+                        if (lastScannedRef.current === cleanedBarcode) {
+                            return;
+                        }
+                        
+                        lastScannedRef.current = cleanedBarcode;
+                        setLastScanned(cleanedBarcode);
+                        console.log("Scanned:", cleanedBarcode);
+                        if (navigator.vibrate) navigator.vibrate(50); // Beep
+                        
+                        // Emit to server directly from ref to avoid closure issues
+                        if (socketRef.current) {
+                            socketRef.current.emit("send-barcode", { roomId, barcode: cleanedBarcode });
+                        }
+                        
+                        // Flash UI green
+                        setScanStatus('success');
+                        setTimeout(() => setScanStatus('idle'), 1000);
 
-                                // Clear last scanned after 3 seconds so they can scan the same item again if needed
-                                setTimeout(() => setLastScanned(null), 3000);
-                                return decodedText;
-                            }
-                            return prev;
-                        });
+                        // Clear throttle sau 2 giây để có thể quét lại MỘT SẢN PHẨM NHIỀU LẦN
+                        if (throttleTimeoutRef.current) clearTimeout(throttleTimeoutRef.current);
+                        throttleTimeoutRef.current = setTimeout(() => {
+                            lastScannedRef.current = null;
+                        }, 2000);
                     },
                     (error) => { /* ignore normal errors */ }
                 );
