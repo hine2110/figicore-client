@@ -2,7 +2,37 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Smartphone, CheckCircle, AlertCircle } from 'lucide-react';
+import { Smartphone, CheckCircle, AlertCircle, Zap, ZapOff } from 'lucide-react';
+
+// Hàm tạo tiếng bíp không cần file mp3
+const playBeep = (type: 'success' | 'error') => {
+    try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        if (type === 'success') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.1);
+        } else {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(300, ctx.currentTime);
+            gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.3);
+        }
+    } catch (e) {
+        // Trình duyệt không hỗ trợ AudioContext
+    }
+};
 
 export default function RemoteScanner() {
     const [searchParams] = useSearchParams();
@@ -13,6 +43,8 @@ export default function RemoteScanner() {
     const lastScannedRef = useRef<string | null>(null);
     const throttleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [isTorchOn, setIsTorchOn] = useState(false);
+    const [hasTorchConfig, setHasTorchConfig] = useState(false);
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const socketRef = useRef<Socket | null>(null);
     const regionId = 'remote-reader';
@@ -35,6 +67,7 @@ export default function RemoteScanner() {
         // Listen for feedback from PC
         newSocket.on("scan-feedback", (data) => {
             setScanStatus(data.success ? 'success' : 'error');
+            playBeep(data.success ? 'success' : 'error');
             setTimeout(() => setScanStatus('idle'), 2000);
             if (navigator.vibrate) {
                 if (data.success) navigator.vibrate([100, 50, 100]); 
@@ -81,7 +114,8 @@ export default function RemoteScanner() {
                         lastScannedRef.current = cleanedBarcode;
                         setLastScanned(cleanedBarcode);
                         console.log("Scanned:", cleanedBarcode);
-                        if (navigator.vibrate) navigator.vibrate(50); // Beep
+                        if (navigator.vibrate) navigator.vibrate(50); // Vibrate
+                        playBeep('success');
                         
                         // Emit to server directly from ref to avoid closure issues
                         if (socketRef.current) {
@@ -100,6 +134,17 @@ export default function RemoteScanner() {
                     },
                     (error) => { /* ignore normal errors */ }
                 );
+
+                // Kiểm tra xem camera có hỗ trợ đèn Flash không
+                setTimeout(async () => {
+                    try {
+                        const capabilities = html5QrCode.getRunningTrackCapabilities();
+                        if (capabilities && (capabilities as any).torch) {
+                            setHasTorchConfig(true);
+                        }
+                    } catch (e) {}
+                }, 1500);
+
             } catch (err) {
                 console.error("Camera start error", err);
             }
@@ -109,11 +154,25 @@ export default function RemoteScanner() {
 
         return () => {
             if (timer) clearTimeout(timer);
+            if (throttleTimeoutRef.current) clearTimeout(throttleTimeoutRef.current);
             if (scannerRef.current && scannerRef.current.isScanning) {
                 scannerRef.current.stop().catch(console.error);
             }
         };
     }, [roomId]);
+
+    const toggleTorch = async () => {
+        if (!scannerRef.current || !hasTorchConfig) return;
+        try {
+            const newTorchState = !isTorchOn;
+            await scannerRef.current.applyVideoConstraints({
+                advanced: [{ torch: newTorchState } as any]
+            });
+            setIsTorchOn(newTorchState);
+        } catch (err) {
+            console.error("Lỗi bật đèn flash:", err);
+        }
+    };
 
     if (!roomId) {
         return (
@@ -158,6 +217,16 @@ export default function RemoteScanner() {
                         <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-cyan-500 rounded-br-lg"></div>
                     </div>
                 </div>
+
+                {/* Torch Button Overlay */}
+                {hasTorchConfig && (
+                    <button 
+                        onClick={toggleTorch}
+                        className={`absolute top-6 right-6 p-4 rounded-full backdrop-blur-md transition-all ${isTorchOn ? 'bg-amber-400/90 text-neutral-900 shadow-[0_0_20px_rgba(251,191,36,0.6)]' : 'bg-neutral-900/50 text-white border border-neutral-600'}`}
+                    >
+                        {isTorchOn ? <Zap className="w-6 h-6" /> : <ZapOff className="w-6 h-6" />}
+                    </button>
+                )}
 
                 {/* Scan Result Feedback */}
                 {lastScanned && (
