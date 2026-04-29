@@ -68,10 +68,10 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ isOpen, onCl
           }
         });
       } else {
-        setError('Không tìm thấy sản phẩm nào tương ứng.');
+        setError('No matching products found.');
       }
     } catch (err: any) {
-      const message = err.response?.data?.message || err.message || 'Đã xảy ra lỗi khi phân tích hình ảnh.';
+      const message = err.response?.data?.message || err.message || 'An error occurred during image analysis.';
       setError(message);
     } finally {
       setIsAnalyzing(false);
@@ -103,8 +103,8 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ isOpen, onCl
                   <Sparkles className="w-5 h-5 text-indigo-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">Tìm kiếm bằng hình ảnh</h3>
-                  <p className="text-sm text-gray-500">Chụp hoặc tải ảnh lên để tìm sản phẩm</p>
+                  <h3 className="text-xl font-bold text-gray-900">Visual Search</h3>
+                  <p className="text-sm text-gray-500">Take a picture or upload an image to find products</p>
                 </div>
               </div>
               <Button
@@ -128,8 +128,8 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ isOpen, onCl
                     <Upload className="w-8 h-8 text-indigo-500" />
                   </div>
                   <div className="text-center">
-                    <p className="font-bold text-gray-900">Chọn ảnh</p>
-                    <p className="text-xs text-gray-500 mt-1">Hỗ trợ JPG, PNG, WEBP</p>
+                    <p className="font-bold text-gray-900">Select Image</p>
+                    <p className="text-xs text-gray-500 mt-1">Supports JPG, PNG, WEBP</p>
                   </div>
                   <input
                     type="file"
@@ -155,7 +155,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ isOpen, onCl
                       className="absolute top-4 right-4 h-9 px-3 rounded-full bg-white/90 backdrop-blur-md text-red-500 hover:bg-white transition-all shadow-lg"
                     >
                       <X className="w-4 h-4 mr-2" />
-                      Loại bỏ
+                      Remove
                     </Button>
                   </div>
 
@@ -174,12 +174,12 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ isOpen, onCl
                     {isAnalyzing ? (
                       <div className="flex items-center gap-3">
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Đang phân tích...
+                        Analyzing...
                       </div>
                     ) : (
                       <div className="flex items-center gap-3">
                         <Search className="w-5 h-5" />
-                        Bắt đầu tìm kiếm
+                        Start Search
                       </div>
                     )}
                   </Button>
@@ -198,7 +198,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({ isOpen, onCl
                 </button>
                 <div className="w-px h-8 bg-gray-100" />
                 <div className="text-[10px] text-gray-400 font-medium max-w-[150px] text-center uppercase tracking-tight">
-                  Mẹo: Sử dụng ảnh rõ nét để có kết quả chính xác nhất
+                  Tip: Use a clear image for the best results
                 </div>
               </div>
             )}

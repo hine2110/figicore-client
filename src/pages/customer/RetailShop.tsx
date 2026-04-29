@@ -34,7 +34,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BlindBoxPromoSection } from '@/components/customer/BlindBoxPromoSection';
+import { BannerCarousel } from '@/components/common/BannerCarousel';
 import { ImageUploadModal } from '@/components/customer/ImageUploadModal';
 import { PromotionsService } from '@/services/promotions.service';
 
@@ -488,8 +488,8 @@ export default function RetailShop() {
                     </div>
                 )}
 
-                {/* MYSTERY HOOK SECTION */}
-                {!isFlashSaleFilter && !isVisualSearch && <BlindBoxPromoSection />}
+                {/* DYNAMIC BANNER CAROUSEL */}
+                {!isFlashSaleFilter && !isVisualSearch && <BannerCarousel />}
 
                 {/* --- PRODUCT GRID (Glass Cards) --- */}
                 <div className="container mx-auto px-4 relative z-10 max-w-7xl pt-4">
