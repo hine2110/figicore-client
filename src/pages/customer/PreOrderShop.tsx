@@ -10,7 +10,10 @@ import {
     ArrowUpDown,
     Lock,
     X,
-    Sparkles
+    Sparkles,
+    Clock,
+    CalendarDays,
+    Flame
 } from 'lucide-react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
@@ -30,6 +33,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function PreOrderShop() {
     const navigate = useNavigate();
@@ -126,7 +130,7 @@ export default function PreOrderShop() {
                     brand_id: searchParams.get('brand_id') !== 'all' ? Number(searchParams.get('brand_id')) : undefined,
                     category_id: searchParams.get('category_id') !== 'all' ? Number(searchParams.get('category_id')) : undefined,
                     series_id: searchParams.get('series_id') !== 'all' ? Number(searchParams.get('series_id')) : undefined,
-                    type_code: selectedType, // Hardcoded
+                    type_code: selectedType,
                     min_price: searchParams.get('min_price') ? Number(searchParams.get('min_price')) : undefined,
                     max_price: searchParams.get('max_price') ? Number(searchParams.get('max_price')) : undefined,
                 };
@@ -152,19 +156,7 @@ export default function PreOrderShop() {
         }, { replace: true });
     };
 
-    const paginatedProducts = useMemo(() => {
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        return products.slice(start, start + ITEMS_PER_PAGE);
-    }, [products, currentPage]);
-
-    const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
-
-    // Scroll to top on page change
-    useEffect(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, [currentPage]);
-
-    const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
+    const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN').format(p) + '₫';
 
     const hasActiveFilters = useMemo(() => {
         return searchText ||
@@ -185,328 +177,280 @@ export default function PreOrderShop() {
         });
     };
 
+    const isSearchingOrFiltering = hasActiveFilters || isVisualSearch;
+    
+    const paginatedProducts = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return products.slice(start, start + ITEMS_PER_PAGE);
+    }, [products, currentPage]);
+
+    const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
+
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [currentPage]);
+
+    // Animation Variants
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+    };
+
+    const itemVariants: any = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0, transition: { type: "tween", duration: 0.4 } }
+    };
+
     return (
         <CustomerLayout activePage="pre-order">
-            {/* DARK BACKGROUND */}
-            <div className="min-h-screen bg-[#050505] pb-20 font-sans relative overflow-hidden transition-colors duration-500">
-
-                {/* Ambient Effects */}
-                <div className="fixed inset-0 pointer-events-none z-0">
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[500px] bg-amber-500/5 blur-[120px] rounded-full opacity-50" />
+            <div className="min-h-screen bg-[#F2F2F7] pb-20 font-sans relative overflow-hidden transition-colors duration-500">
+                {/* AMBIENT BACKGROUND (RETAIL-SYNCED) */}
+                <div className="fixed inset-0 pointer-events-none z-0 opacity-50">
+                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] ambient-glow-blue rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '8s' }} />
+                    <div className="absolute top-[10%] right-[-10%] w-[60%] h-[60%] ambient-glow-purple rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '10s' }} />
+                    <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] ambient-glow-orange rounded-full animate-breathe gpu-accelerated blob-optimized" style={{ animationDuration: '12s' }} />
                 </div>
 
-                <div className="container mx-auto px-4 relative z-10 max-w-7xl pt-12">
-
-                    {/* 1. TYPOGRAPHIC HEADER */}
-                    <div className="relative py-16 mb-12 text-center text-white">
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-amber-500/10 blur-[100px] rounded-full pointer-events-none" />
-
-                        <div className="relative z-10 space-y-6">
-                            <h1 className="text-[60px] md:text-[120px] leading-[0.85] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/20 select-none uppercase font-sans drop-shadow-2xl">
-                                THE VAULT
-                            </h1>
-                            <div className="flex items-center justify-center gap-4 opacity-80">
-                                <div className="h-px w-12 md:w-24 bg-gradient-to-r from-transparent to-amber-500/50" />
-                                <p className="font-mono text-amber-500 text-xs md:text-sm tracking-[0.3em] uppercase glow-sm">
-                                    // Secure Your Allocation
-                                </p>
-                                <div className="h-px w-12 md:w-24 bg-gradient-to-l from-transparent to-amber-500/50" />
+                <div className="container mx-auto px-4 sm:px-6 relative z-10 max-w-7xl pt-8">
+                    
+                    {/* 1. COMPACT CAMPAIGN HEADER */}
+                    <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-6 border-b border-slate-300/50 pb-6">
+                        <div>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-amber-500/10 rounded-xl text-amber-600 shadow-sm">
+                                    <Clock className="w-5 h-5" />
+                                </div>
+                                <span className="text-sm font-bold uppercase tracking-widest text-amber-600">Pre-Order Catalog</span>
                             </div>
+                            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">
+                                Secure Your Slot
+                            </h1>
+                            <p className="text-slate-500 mt-2 max-w-md text-sm">Browse all upcoming campaigns and reserve your allocation before retail drop.</p>
+                        </div>
+
+                        {/* Search & Filters */}
+                        <div className="flex items-center gap-3 w-full md:w-auto bg-white/60 backdrop-blur-xl p-2 rounded-2xl border border-white/50 shadow-sm">
+                            <div className="relative flex-1 md:w-64">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search models..."
+                                    value={searchText}
+                                    onChange={(e) => setSearchText(e.target.value)}
+                                    className="w-full h-10 pl-9 pr-10 rounded-xl bg-slate-100/50 border-0 focus:ring-2 focus:ring-amber-500/20 text-sm transition-all focus:bg-white text-slate-700"
+                                />
+                                {searchText && (
+                                    <button onClick={() => setSearchText('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className={cn(
+                                        "h-10 px-4 rounded-xl transition-all font-medium border border-transparent",
+                                        hasActiveFilters ? "bg-amber-50 text-amber-600 border-amber-200" : "hover:bg-slate-100/80 text-slate-600"
+                                    )}>
+                                        <Filter className="w-4 h-4 mr-2" />
+                                        Filters {hasActiveFilters && <span className="ml-2 w-1.5 h-1.5 rounded-full bg-amber-500" />}
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-80 p-5 backdrop-blur-3xl bg-white/90 border-white/40 rounded-[2rem] shadow-xl mt-2">
+                                    <div className="space-y-6">
+                                        <div className="space-y-3">
+                                            <h4 className="text-sm font-medium text-slate-900">Brand</h4>
+                                            <Select value={searchParams.get('brand_id') || 'all'} onValueChange={(val) => updateFilter('brand_id', val)}>
+                                                <SelectTrigger className="w-full h-10 rounded-xl bg-slate-50 border-0"><SelectValue placeholder="All Brands" /></SelectTrigger>
+                                                <SelectContent className="rounded-2xl border-white/20 bg-white"><SelectItem value="all">All Brands</SelectItem>
+                                                    {brands.map((b: any) => <SelectItem key={b.brand_id} value={String(b.brand_id)}>{b.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        {hasActiveFilters && (
+                                            <Button variant="ghost" className="w-full h-10 rounded-xl text-amber-600 hover:bg-amber-50" onClick={clearFilters}>
+                                                Clear All
+                                            </Button>
+                                        )}
+                                    </div>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-slate-100/80">
+                                        <ArrowUpDown className="w-4 h-4 text-slate-500" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56 p-2 rounded-2xl border-white/20 backdrop-blur-xl bg-white/90 shadow-xl mt-2">
+                                    <DropdownMenuItem className="rounded-xl cursor-pointer" onClick={() => setSortBy('created_at_desc')}>Newest First</DropdownMenuItem>
+                                    <DropdownMenuItem className="rounded-xl cursor-pointer" onClick={() => setSortBy('price_asc')}>Deposit: Low to High</DropdownMenuItem>
+                                    <DropdownMenuItem className="rounded-xl cursor-pointer" onClick={() => setSortBy('price_desc')}>Deposit: High to Low</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     </div>
 
-                    {/* Visual Search Banner */}
                     {isVisualSearch && (
-                        <div className="mb-8 flex items-center justify-between gap-4 px-6 py-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                        <div className="mb-8 p-5 rounded-[1.5rem] bg-white/60 backdrop-blur-xl border border-amber-200 shadow-sm flex justify-between items-center">
                             <div className="flex items-center gap-3">
-                                <Sparkles className="w-4 h-4 text-amber-400" />
-                                <span className="font-mono text-xs text-amber-400 uppercase tracking-widest">
-                                    Visual Search — {products.length} Pre-Order matched
-                                </span>
+                                <Sparkles className="w-5 h-5 text-amber-500" />
+                                <div>
+                                    <p className="font-bold text-slate-800">Visual Search Results</p>
+                                    <p className="text-sm text-slate-500">Found {products.length} pre-order matches.</p>
+                                </div>
                             </div>
-                            <button
-                                onClick={() => {
-                                    navigate(location.pathname, { replace: true, state: {} });
-                                    setIsVisualSearch(false);
-                                }}
-                                className="font-mono text-[10px] text-slate-500 hover:text-amber-400 uppercase tracking-widest transition-colors flex items-center gap-1"
-                            >
-                                <X className="w-3 h-3" /> View All
-                            </button>
+                            <Button onClick={() => { navigate(location.pathname, { replace: true, state: {} }); setIsVisualSearch(false); }} variant="outline" className="rounded-xl border-amber-200 text-amber-600 hover:bg-amber-50">
+                                Clear Search
+                            </Button>
                         </div>
                     )}
 
-                    {/* 2. MINIMALIST FILTER BAR */}
-                    <div className="sticky top-24 z-40 mb-16">
-                        <div className="bg-black/80 backdrop-blur-md border border-white/10 rounded-full p-2 pl-6 flex flex-col md:flex-row items-center justify-between gap-4 transition-all shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)]">
-                            <div className="flex items-center gap-2 text-slate-400">
-                                <Lock className="w-4 h-4" />
-                                <span className="text-sm font-mono uppercase tracking-wider">Access Granted</span>
-                            </div>
-
-                            {/* Toolbar */}
-                            <div className="flex items-center gap-2 w-full md:w-auto">
-                                <div className="relative flex-1 md:w-64 group">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-amber-500 transition-colors" />
-                                    <input
-                                        type="text"
-                                        placeholder="SEARCH_DATABASE..."
-                                        value={searchText}
-                                        onChange={(e) => setSearchText(e.target.value)}
-                                        className="w-full h-10 pl-10 pr-4 rounded-full bg-slate-900 border border-white/5 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 text-xs font-mono text-white placeholder-slate-600 transition-all outline-none uppercase"
-                                    />
-                                </div>
-
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className={`h-10 px-4 rounded-full border border-white/5 bg-slate-900 hover:bg-slate-800 transition-all ${hasActiveFilters ? 'text-amber-500 border-amber-500/30' : 'text-slate-400'}`}>
-                                            <Filter className="w-3.5 h-3.5 mr-2" />
-                                            <span className="text-xs font-mono uppercase">Filter</span>
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-80 p-5 backdrop-blur-3xl bg-black/95 border-white/10 rounded-2xl shadow-2xl mt-2 text-white">
-                                        <div className="space-y-6">
-                                            <div className="space-y-3">
-                                                <h4 className="text-xs font-mono text-amber-500 uppercase tracking-widest">Price Estimation</h4>
-                                                <div className="flex gap-3">
-                                                    <Input type="number" placeholder="MIN" className="h-9 bg-slate-900 border-white/10 text-white font-mono text-xs rounded-lg" value={priceRange[0] || ''} onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])} />
-                                                    <Input type="number" placeholder="MAX" className="h-9 bg-slate-900 border-white/10 text-white font-mono text-xs rounded-lg" value={priceRange[1] || ''} onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])} />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <h4 className="text-xs font-mono text-amber-500 uppercase tracking-widest">Manufacturer</h4>
-                                                <Select value={searchParams.get('brand_id') || 'all'} onValueChange={(val) => updateFilter('brand_id', val)}>
-                                                    <SelectTrigger className="w-full h-9 bg-slate-900 border-white/10 text-white font-mono text-xs rounded-lg"><SelectValue placeholder="ALL" /></SelectTrigger>
-                                                    <SelectContent className="bg-black border-white/10 text-white">
-                                                        <SelectItem value="all">ALL</SelectItem>
-                                                        {brands.map((b: any) => <SelectItem key={b.brand_id} value={String(b.brand_id)}>{b.name}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <h4 className="text-xs font-mono text-amber-500 uppercase tracking-widest">Category</h4>
-                                                <Select value={searchParams.get('category_id') || 'all'} onValueChange={(val) => updateFilter('category_id', val)}>
-                                                    <SelectTrigger className="w-full h-9 bg-slate-900 border-white/10 text-white font-mono text-xs rounded-lg"><SelectValue placeholder="ALL" /></SelectTrigger>
-                                                    <SelectContent className="bg-black border-white/10 text-white">
-                                                        <SelectItem value="all">ALL</SelectItem>
-                                                        {categories.map((c: any) => <SelectItem key={c.category_id} value={String(c.category_id)}>{c.name}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            {hasActiveFilters && <Button variant="destructive" className="w-full h-9 text-xs font-mono rounded-lg" onClick={clearFilters}>RESET PARAMETERS</Button>}
-                                        </div>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-white/5 bg-slate-900 hover:bg-slate-800 text-slate-400">
-                                            <ArrowUpDown className="w-3.5 h-3.5" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48 bg-black/90 border-white/10 text-white backdrop-blur-xl rounded-xl">
-                                        <DropdownMenuItem className="text-xs font-mono uppercase hover:bg-white/10 cursor-pointer" onClick={() => setSortBy('created_at_desc')}>Newest Entry</DropdownMenuItem>
-                                        <DropdownMenuItem className="text-xs font-mono uppercase hover:bg-white/10 cursor-pointer" onClick={() => setSortBy('price_asc')}>Cost: Low - High</DropdownMenuItem>
-                                        <DropdownMenuItem className="text-xs font-mono uppercase hover:bg-white/10 cursor-pointer" onClick={() => setSortBy('price_desc')}>Cost: High - Low</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3. CONTAINMENT UNIT GRID */}
+                    {/* 2. TICKET-STYLE GRID FOR 20+ PRODUCTS */}
                     {loading ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                                <div key={i} className="aspect-[4/5] bg-slate-900/50 rounded-none border border-white/5 animate-pulse" />
-                            ))}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <div key={i} className="h-80 bg-white/40 rounded-[2rem] animate-pulse" />)}
                         </div>
                     ) : products.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-32 text-center text-slate-500 font-mono">
-                            <Lock className="w-12 h-12 mb-4 opacity-50" />
-                            <h3 className="text-lg text-white mb-2 uppercase tracking-widest">Vault Empty</h3>
-                            <p className="text-xs">No matching artifacts found.</p>
-                            <Button onClick={clearFilters} variant="link" className="text-amber-500 mt-4 text-xs tracking-widest uppercase">Clear Protocol</Button>
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <Package className="w-16 h-16 text-slate-300 mb-4" />
+                            <h3 className="font-semibold text-2xl text-slate-800">No campaigns active</h3>
+                            <p className="text-slate-500 mt-2">Adjust your filters or check back later.</p>
+                            <Button onClick={clearFilters} variant="outline" className="mt-6 rounded-full px-8 h-12">
+                                Clear Filters
+                            </Button>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                            {paginatedProducts.map(product => {
-                                // Logic for price/display
-                                const variants = product.product_variants || [];
-                                // Find variant with lowest positive deposit, or fallback to first
-                                // Find variant with lowest positive deposit, or fallback to first
-                                const bestVariant = variants.reduce((prev: any, curr: any) => {
-                                    const prevDep = Number(prev?.product_preorder_configs?.deposit_amount || 0);
-                                    const currDep = Number(curr?.product_preorder_configs?.deposit_amount || 0);
-                                    // If current has valid deposit and (prev is invalid OR current is cheaper), pick current
-                                    return (currDep > 0 && (prevDep === 0 || currDep < prevDep)) ? curr : prev;
-                                }, variants[0]);
-
-                                const minDep = Number(bestVariant?.product_preorder_configs?.deposit_amount || 0);
-                                const fullPrice = Number(bestVariant?.product_preorder_configs?.full_price || 0);
-                                const mainImage = product.media_urls?.[0];
-                                const hoverImage = product.media_urls?.[1] || product.product_variants?.[0]?.media_assets?.[0]?.url;
-
+                        <motion.div 
+                            variants={containerVariants}
+                            initial="hidden" animate="show"
+                            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+                        >
+                            {paginatedProducts.map(p => {
+                                const v = (p.product_variants || []).reduce((prev: any, curr: any) => {
+                                    const pd = Number(prev?.product_preorder_configs?.deposit_amount || 0);
+                                    const cd = Number(curr?.product_preorder_configs?.deposit_amount || 0);
+                                    return (cd > 0 && (pd === 0 || cd < pd)) ? curr : prev;
+                                }, (p.product_variants || [])[0]);
+                                
+                                const dep = Number(v?.product_preorder_configs?.deposit_amount || 0);
+                                const full = Number(v?.product_preorder_configs?.full_price || 0);
+                                const total = v?.product_preorder_configs?.total_slots || 0;
+                                const sold = v?.product_preorder_configs?.sold_slots || 0;
+                                const rem = total - sold;
+                                const pct = total > 0 ? Math.min(100, Math.round((sold / total) * 100)) : 0;
+                                const isLow = pct >= 80;
+                                
                                 return (
-                                    <div
-                                        key={product.product_id}
-                                        onClick={() => navigate(`/customer/product/${product.product_id}`)}
-                                        className="group relative flex flex-col bg-zinc-900/40 backdrop-blur-md rounded-[2rem] border border-white/5 p-4 transition-all duration-500 hover:bg-zinc-900/60 hover:shadow-[0_0_50px_-10px_rgba(245,158,11,0.15)] cursor-pointer"
+                                    <motion.div
+                                        variants={itemVariants}
+                                        key={p.product_id}
+                                        onClick={() => navigate(`/customer/product/${p.product_id}`)}
+                                        className="group relative flex flex-col gap-3 cursor-pointer gpu-layer"
                                     >
-                                        {/* Image Container */}
-                                        <div className="aspect-[3/4] relative overflow-hidden bg-black/50 mb-4 rounded-xl border border-white/5 group-hover:border-white/10 transition-colors">
-                                            {/* Top Indicators */}
-                                            <div className="absolute top-2 left-2 flex gap-1 z-10">
-                                                <Badge className="bg-amber-500/90 backdrop-blur-md text-black border-0 rounded-full text-[9px] font-mono font-bold px-2 py-0.5 uppercase tracking-wide">Pre-Order</Badge>
+                                        {/* Image Container with Hover Effect */}
+                                        <div className="aspect-[4/5] relative overflow-hidden rounded-3xl bg-white/40 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-white/30 transition-all duration-500 group-hover:shadow-[0_20px_50px_rgba(217,119,6,0.15)] group-hover:-translate-y-2 group-hover:border-amber-400/50">
+                                            
+                                            {/* Pre-Order Highlight Badge */}
+                                            <div className="absolute top-3 left-3 z-20">
+                                                <div className="bg-amber-500/90 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg border border-amber-400/20 uppercase tracking-widest flex items-center gap-1.5">
+                                                    <Clock className="w-3 h-3" /> Pre-Order
+                                                </div>
                                             </div>
 
-                                            {mainImage ? (
+                                            {/* Sold Out Overlay */}
+                                            {rem <= 0 && (
+                                                <div className="absolute inset-0 z-30 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
+                                                    <span className="bg-black/80 text-white text-xs font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-xl">
+                                                        SOLD OUT
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {p.media_urls?.[0] ? (
                                                 <img
-                                                    src={mainImage}
-                                                    alt={product.name}
+                                                    src={p.media_urls[0]}
+                                                    alt={p.name}
                                                     className={cn( // @ts-ignore
-                                                        "w-full h-full object-cover transition-all duration-700 ease-out brightness-[0.75] grayscale-[20%] group-hover:grayscale-0 group-hover:brightness-100",
-                                                        hoverImage ? "group-hover:opacity-0" : "group-hover:scale-105"
+                                                        "w-full h-full object-cover transition-all duration-700 ease-out",
+                                                        p.media_urls?.[1] || p.product_variants?.[0]?.media_assets?.[0]?.url ? "group-hover:opacity-0" : "group-hover:scale-105"
                                                     )}
                                                     loading="lazy"
                                                 />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-slate-800 bg-black"><Package className="w-8 h-8" /></div>
+                                                <div className="w-full h-full flex items-center justify-center text-slate-300"><Package className="w-10 h-10" /></div>
                                             )}
 
                                             {/* Hover Image */}
-                                            {hoverImage && (
+                                            {(p.media_urls?.[1] || p.product_variants?.[0]?.media_assets?.[0]?.url) && (
                                                 <img
-                                                    src={hoverImage}
-                                                    alt={product.name + " hover"}
-                                                    className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out scale-105"
+                                                    src={p.media_urls?.[1] || p.product_variants?.[0]?.media_assets?.[0]?.url}
+                                                    alt={p.name + " hover"}
+                                                    className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out scale-105 group-hover:scale-110"
                                                     loading="lazy"
                                                 />
                                             )}
                                         </div>
 
-                                        {/* Content */}
-                                        <div className="flex-1 flex flex-col space-y-3">
-                                            <div className="space-y-1">
-                                                <div className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">
-                                                    {product.brands?.name || 'Unknown Manufacturer'}
-                                                </div>
-                                                <h3 className="text-white font-bold text-sm md:text-base leading-tight line-clamp-2 uppercase tracking-tight group-hover:text-amber-500 transition-colors">
-                                                    {product.name}
-                                                </h3>
+                                        {/* Minimal Content Container synced with Retail but tinted Amber */}
+                                        <div className="px-2 space-y-2">
+                                            <div className="text-[11px] font-bold tracking-wider uppercase text-slate-400 flex justify-between items-center">
+                                                <span>{p.brands?.name || 'Unknown'}</span>
                                             </div>
+                                            
+                                            <h3 className="text-base font-medium leading-tight text-slate-800 line-clamp-2 min-h-[2.5rem] group-hover:text-amber-700 transition-colors">
+                                                {p.name}
+                                            </h3>
 
-                                            <div className="flex-1" /> {/* Spacer */}
-
-                                            {/* Pricing Grid */}
-                                            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/5 font-mono">
-                                                <div>
-                                                    <span className="block text-[8px] text-slate-500 uppercase tracking-wider mb-0.5">Deposit</span>
-                                                    <span className="text-lg text-white font-bold tracking-tight">{formatPrice(minDep)}</span>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="block text-[8px] text-slate-500 uppercase tracking-wider mb-0.5">Full Price</span>
-                                                    <span className="text-xs text-slate-400 font-mono">{formatPrice(fullPrice)}</span>
-                                                </div>
-                                            </div>
-
-                                            {/* SLOT PROGRESS BAR */}
-                                            {(() => {
-                                                const cfg = bestVariant?.product_preorder_configs;
-                                                if (!cfg) return null;
-                                                const total = cfg.total_slots ?? 0;
-                                                const sold  = cfg.sold_slots  ?? 0;
-                                                const rem   = total - sold;
-                                                const pct   = total > 0 ? Math.min(100, Math.round((sold / total) * 100)) : 0;
-                                                const barC  = pct >= 80 ? 'bg-red-500' : pct >= 50 ? 'bg-orange-400' : 'bg-amber-500';
-
-                                                // booking deadline
-                                                const deadline = cfg.booking_end_date;
-                                                let deadlineLabel = '';
-                                                let isExpired = false;
-                                                if (deadline) {
-                                                    const diff = new Date(deadline).getTime() - Date.now();
-                                                    if (diff <= 0) {
-                                                        isExpired = true;
-                                                        deadlineLabel = 'CLOSED';
-                                                    } else {
-                                                        const d = Math.floor(diff / 86400000);
-                                                        const h = Math.floor((diff % 86400000) / 3600000);
-                                                        deadlineLabel = d > 0 ? `${d}d ${h}h left` : `${h}h left`;
-                                                    }
-                                                }
-
-                                                return (
-                                                    <div className="space-y-1.5 pt-2">
-                                                        {/* Progress row */}
-                                                        <div className="flex items-center justify-between text-[9px] font-mono">
-                                                            <span className="text-slate-600 uppercase tracking-wider">Slots</span>
-                                                            <span className={cn(
-                                                                "font-bold",
-                                                                rem <= 0 ? 'text-red-500' : pct >= 80 ? 'text-red-400' : 'text-amber-500'
-                                                            )}>
-                                                                {rem <= 0 ? 'SOLD OUT' : `${rem}/${total}`}
-                                                            </span>
-                                                        </div>
-                                                        <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
-                                                            <div
-                                                                className={cn("h-full rounded-full", barC, "transition-all duration-500")}
-                                                                style={{ width: `${pct}%` }}
-                                                            />
-                                                        </div>
-                                                        {/* Deadline */}
-                                                        {deadlineLabel && (
-                                                            <div className="flex items-center justify-end">
-                                                                <span className={cn(
-                                                                    "text-[8px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded border",
-                                                                    isExpired
-                                                                        ? 'text-red-500 border-red-500/30 bg-red-500/10'
-                                                                        : (new Date(deadline!).getTime() - Date.now()) < 2 * 86400000
-                                                                            ? 'text-red-400 border-red-400/20 bg-red-400/10 animate-pulse'
-                                                                            : 'text-slate-500 border-white/10'
-                                                                )}>
-                                                                    {deadlineLabel}
-                                                                </span>
-                                                            </div>
-                                                        )}
+                                            {/* Pricing layout adapted for Pre-Order */}
+                                            <div className="pt-2">
+                                                <div className="flex justify-between items-end mb-2">
+                                                    <div>
+                                                        <span className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Deposit</span>
+                                                        <span className="text-lg font-bold text-slate-900 tracking-tight">{formatPrice(dep)}</span>
                                                     </div>
-                                                );
-                                            })()}
+                                                    <div className="text-right">
+                                                        <span className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Full Price</span>
+                                                        <span className="text-xs font-medium text-slate-500">{formatPrice(full)}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* SLOT PROGRESS BAR - Elegant Gold */}
+                                                <div className="space-y-1.5 bg-amber-50/50 p-2 rounded-xl border border-amber-100/50">
+                                                    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider">
+                                                        <span className="text-slate-500">Slots</span>
+                                                        <span className={cn(
+                                                            rem <= 0 ? 'text-red-500' : isLow ? 'text-orange-500' : 'text-amber-600'
+                                                        )}>
+                                                            {rem <= 0 ? 'SOLD OUT' : `${rem}/${total}`}
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={cn("h-full rounded-full transition-all duration-1000 ease-out", isLow ? "bg-orange-500" : "bg-amber-500")}
+                                                            style={{ width: `${pct}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-
-
-                                    </div>
-                                )
+                                    </motion.div>
+                                );
                             })}
-                        </div>
-
+                        </motion.div>
                     )}
 
-                    {/* 4. PAGINATION (Industrial Style) */}
+                    {/* Pagination */}
                     {totalPages > 1 && (
-                        <div className="my-20 flex justify-center items-center gap-4">
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                className="w-12 h-12 rounded-none border border-white/10 bg-black text-white hover:bg-amber-500 hover:text-black hover:border-amber-500 transition-all disabled:opacity-20"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
+                        <div className="mt-12 mb-8 flex justify-center items-center gap-4">
+                            <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="rounded-full w-12 h-12 bg-white/50 backdrop-blur-md">
+                                <ChevronLeft className="w-5 h-5" />
                             </Button>
-
-                            <div className="px-6 py-3 bg-black border border-white/10 text-xs font-mono text-amber-500 tracking-[0.2em]">
-                                PAGE {currentPage.toString().padStart(2, '0')} / {totalPages.toString().padStart(2, '0')}
-                            </div>
-
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
-                                className="w-12 h-12 rounded-none border border-white/10 bg-black text-white hover:bg-amber-500 hover:text-black hover:border-amber-500 transition-all disabled:opacity-20"
-                            >
-                                <ChevronRight className="w-4 h-4" />
+                            <span className="text-sm font-semibold text-slate-500 bg-white/30 px-4 py-2 rounded-lg">
+                                Page {currentPage} / {totalPages}
+                            </span>
+                            <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="rounded-full w-12 h-12 bg-white/50 backdrop-blur-md">
+                                <ChevronRight className="w-5 h-5" />
                             </Button>
                         </div>
                     )}

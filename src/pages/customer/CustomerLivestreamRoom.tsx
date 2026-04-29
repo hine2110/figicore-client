@@ -185,6 +185,9 @@ export default function CustomerLivestreamRoom() {
     const [featuredProduct, setFeaturedProduct] = useState<any>(null);
     const [chatMessages, setChatMessages] = useState<any[]>([]);
     const [chatInput, setChatInput] = useState('');
+    const [isMuted, setIsMuted] = useState(false);
+    const [muteExpiry, setMuteExpiry] = useState<number | null>(null);
+    const [muteTimeRemaining, setMuteTimeRemaining] = useState<string>('');
     const [reactions, setReactions] = useState<{ id: number; symbol: string }[]>([]);
     const [heartsCount, setHeartsCount] = useState(0);
     const [addedProductId, setAddedProductId] = useState<number | null>(null);
@@ -218,6 +221,28 @@ export default function CustomerLivestreamRoom() {
         if (!endTime) return true;
         return Date.now() < endTime;
     };
+
+    useEffect(() => {
+        if (!isMuted || !muteExpiry) return;
+
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const diff = muteExpiry - now;
+            
+            if (diff <= 0) {
+                setIsMuted(false);
+                setMuteExpiry(null);
+                setMuteTimeRemaining('');
+                clearInterval(interval);
+            } else {
+                const minutes = Math.floor(diff / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                setMuteTimeRemaining(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [isMuted, muteExpiry]);
 
     const fetchLivestream = useCallback(async () => {
         try {
@@ -310,6 +335,30 @@ export default function CustomerLivestreamRoom() {
 
                 socket.on('chat_message', (msg: any) => {
                     setChatMessages(prev => [...prev, { ...msg, isSelf: user != null && msg.userId === user.user_id, isAdmin: msg.name === 'Admin' }]);
+                });
+
+                socket.on('chat_rejected', (data: any) => {
+                    toast({ title: "Message Rejected", description: data.message, variant: "destructive" });
+                });
+
+                socket.on('delete_message', (data: { messageId: string }) => {
+                    setChatMessages(prev => prev.filter(m => m.id !== data.messageId));
+                });
+
+                socket.on('user_muted', (data: any) => {
+                    if (user?.user_id === data.userId) {
+                        setIsMuted(true);
+                        if (data.muteExpiry) {
+                            setMuteExpiry(data.muteExpiry);
+                        }
+                        if (data.reason) { // Only toast if there's a reason (usually new ban or room join)
+                            toast({ 
+                                title: "Muted", 
+                                description: `You have been muted. Reason: ${data.reason}.`, 
+                                variant: "destructive" 
+                            });
+                        }
+                    }
                 });
 
                 const handleProductHighlight = async (data: { variant_id: number }) => {
@@ -668,12 +717,13 @@ export default function CustomerLivestreamRoom() {
                                             value={chatInput}
                                             onChange={e => setChatInput(e.target.value)}
                                             onKeyDown={e => e.key === 'Enter' && handleSendChat()}
-                                            placeholder="Live chat..."
-                                            className="flex-1 bg-transparent text-xs text-white placeholder:text-neutral-400 outline-none"
+                                            placeholder={isMuted ? `Muted. Unlocks in ${muteTimeRemaining}` : "Live chat..."}
+                                            disabled={isMuted}
+                                            className="flex-1 bg-transparent text-xs text-white placeholder:text-neutral-400 outline-none disabled:opacity-50"
                                         />
                                         <Popover>
                                             <PopoverTrigger asChild>
-                                                <button className="text-neutral-400 hover:text-white transition-colors">
+                                                <button disabled={isMuted} className="text-neutral-400 hover:text-white transition-colors disabled:opacity-50">
                                                     <Smile className="w-4 h-4" />
                                                 </button>
                                             </PopoverTrigger>
@@ -681,7 +731,7 @@ export default function CustomerLivestreamRoom() {
                                                 <EmojiPicker theme={Theme.DARK} onEmojiClick={d => setChatInput(p => p + d.emoji)} height={320} width={280} />
                                             </PopoverContent>
                                         </Popover>
-                                        <button onClick={handleSendChat} className="w-8 h-8 rounded-xl bg-rose-600 hover:bg-rose-500 flex items-center justify-center transition-all shrink-0">
+                                        <button disabled={isMuted} onClick={handleSendChat} className="w-8 h-8 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:bg-neutral-600 disabled:opacity-50 flex items-center justify-center transition-all shrink-0">
                                             <Zap className="w-3.5 h-3.5 fill-current text-white" />
                                         </button>
                                     </div>
