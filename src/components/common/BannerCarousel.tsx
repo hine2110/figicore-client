@@ -65,9 +65,6 @@ export function BannerCarousel() {
                         ) : (
                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-slate-900 to-black" />
                         )}
-                        {/* Subtle overlay to make text readable */}
-                        <div className="absolute inset-0 bg-black/30" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     </motion.div>
                 </AnimatePresence>
 
