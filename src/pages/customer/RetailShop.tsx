@@ -327,7 +327,7 @@ export default function RetailShop() {
                                         className="h-11 px-5 rounded-2xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 transition-all font-medium"
                                     >
                                         <X className="w-4 h-4 mr-2" />
-                                        Xem tất cả sản phẩm
+                                        View All Products
                                     </Button>
                                 ) : (
                                     <>
@@ -344,7 +344,7 @@ export default function RetailShop() {
                                             <button
                                                 onClick={() => setIsImageModalOpen(true)}
                                                 className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-200/50 text-slate-400 hover:text-indigo-500 transition-all"
-                                                title="Tìm kiếm bằng hình ảnh"
+                                                title="Search by image"
                                             >
                                                 <Camera className="w-4 h-4" />
                                             </button>
@@ -506,12 +506,12 @@ export default function RetailShop() {
                   </div>
                   <div className="text-white">
                     <h3 className="text-lg font-bold leading-tight">
-                      {isExactMatch ? 'Kết quả tìm kiếm bằng hình ảnh' : 'Gợi ý sản phẩm tương tự'}
+                      {isExactMatch ? 'Visual Search Results' : 'Similar Products'}
                     </h3>
                     <p className="text-sm text-indigo-100 opacity-90">
                       {isExactMatch 
-                        ? 'Dựa trên hình ảnh bạn đã tải lên hệ thống'
-                        : 'Chúng tôi không tìm thấy mẫu chính xác, nhưng đây là những sản phẩm cùng dòng/hãng'
+                        ? 'Based on the image you uploaded'
+                        : 'Exact match not found - showing similar products from the same line / brand'
                       }
                     </p>
                   </div>
@@ -526,7 +526,7 @@ export default function RetailShop() {
                                 className="h-11 px-6 rounded-xl bg-white/10 hover:bg-white/20 text-white border-0 transition-all font-medium"
                             >
                                 <X className="w-4 h-4 mr-2" />
-                                Thoát chế độ tìm kiếm
+                                Exit Search
                             </Button>
                         </motion.div>
                     )}
