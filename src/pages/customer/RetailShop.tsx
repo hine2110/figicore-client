@@ -241,19 +241,19 @@ export default function RetailShop() {
         if (isOnSale && finalPrice < basePrice) {
             return (
                 <div className="flex flex-col items-start leading-none gap-1">
-                     <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                         <span className="text-red-600 font-bold text-lg">
                             {formatPrice(finalPrice)}
-                         </span>
-                         {discountPercentage > 0 && (
+                        </span>
+                        {discountPercentage > 0 && (
                             <span className="bg-red-100/80 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
                                 -{discountPercentage}%
                             </span>
-                         )}
-                     </div>
-                     <span className="text-slate-400 text-xs line-through font-medium">
+                        )}
+                    </div>
+                    <span className="text-slate-400 text-xs line-through font-medium">
                         {hasMultiplePrices && "From "}{formatPrice(basePrice)}
-                     </span>
+                    </span>
                 </div>
             );
         }
@@ -349,106 +349,106 @@ export default function RetailShop() {
                                                 <Camera className="w-4 h-4" />
                                             </button>
                                         </div>
-                                {/* Filters Trigger */}
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className={`h-11 px-5 rounded-2xl border-0 bg-slate-100/50 hover:bg-white/80 transition-all ${hasActiveFilters ? 'text-blue-600 bg-blue-50/50' : 'text-slate-600'}`}>
-                                            <Filter className="w-4 h-4 mr-2" />
-                                            Filters
-                                            {hasActiveFilters && <span className="ml-2 w-1.5 h-1.5 rounded-full bg-blue-500" />}
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-80 p-5 backdrop-blur-3xl bg-white/80 border-white/40 rounded-[2rem] shadow-[0_24px_64px_rgba(0,0,0,0.08)] mt-2">
-                                        <div className="space-y-6">
-                                            {/* Price Range */}
-                                            <div className="space-y-3">
-                                                <h4 className="text-sm font-medium text-slate-900">Price Range</h4>
-                                                <div className="flex gap-3">
-                                                    <div className="relative flex-1">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">₫</span>
-                                                        <Input
-                                                            type="number"
-                                                            placeholder="Min"
-                                                            className="h-10 pl-7 rounded-xl bg-slate-50 border-0 focus:bg-white transition-colors"
-                                                            value={priceRange[0] || ''}
-                                                            onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-                                                        />
-                                                    </div>
-                                                    <div className="relative flex-1">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">₫</span>
-                                                        <Input
-                                                            type="number"
-                                                            placeholder="Max"
-                                                            className="h-10 pl-7 rounded-xl bg-slate-50 border-0 focus:bg-white transition-colors"
-                                                            value={priceRange[1] || ''}
-                                                            onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Brand Filter */}
-                                            <div className="space-y-3">
-                                                <h4 className="text-sm font-medium text-slate-900">Brand</h4>
-                                                <Select
-                                                    value={searchParams.get('brand_id') || 'all'}
-                                                    onValueChange={(val) => updateFilter('brand_id', val)}
-                                                >
-                                                    <SelectTrigger className="w-full h-10 rounded-xl bg-slate-50 border-0 focus:bg-white transition-colors">
-                                                        <SelectValue placeholder="All Brands" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-2xl border-white/20 backdrop-blur-xl bg-white/90 max-h-60">
-                                                        <SelectItem value="all">All Brands</SelectItem>
-                                                        {brands.map((b: any) => <SelectItem key={b.brand_id} value={String(b.brand_id)}>{b.name}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            {/* Category Filter */}
-                                            <div className="space-y-3">
-                                                <h4 className="text-sm font-medium text-slate-900">Category</h4>
-                                                <Select
-                                                    value={searchParams.get('category_id') || 'all'}
-                                                    onValueChange={(val) => updateFilter('category_id', val)}
-                                                >
-                                                    <SelectTrigger className="w-full h-10 rounded-xl bg-slate-50 border-0 focus:bg-white transition-colors">
-                                                        <SelectValue placeholder="All Categories" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-2xl border-white/20 backdrop-blur-xl bg-white/90 max-h-60">
-                                                        <SelectItem value="all">All Categories</SelectItem>
-                                                        {categories.map((c: any) => <SelectItem key={c.category_id} value={String(c.category_id)}>{c.name}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            {/* Clear Filters */}
-                                            {hasActiveFilters && (
-                                                <Button
-                                                    variant="ghost"
-                                                    className="w-full h-10 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                    onClick={clearFilters}
-                                                >
-                                                    Reset Filters
+                                        {/* Filters Trigger */}
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline" className={`h-11 px-5 rounded-2xl border-0 bg-slate-100/50 hover:bg-white/80 transition-all ${hasActiveFilters ? 'text-blue-600 bg-blue-50/50' : 'text-slate-600'}`}>
+                                                    <Filter className="w-4 h-4 mr-2" />
+                                                    Filters
+                                                    {hasActiveFilters && <span className="ml-2 w-1.5 h-1.5 rounded-full bg-blue-500" />}
                                                 </Button>
-                                            )}
-                                        </div>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-80 p-5 backdrop-blur-3xl bg-white/80 border-white/40 rounded-[2rem] shadow-[0_24px_64px_rgba(0,0,0,0.08)] mt-2">
+                                                <div className="space-y-6">
+                                                    {/* Price Range */}
+                                                    <div className="space-y-3">
+                                                        <h4 className="text-sm font-medium text-slate-900">Price Range</h4>
+                                                        <div className="flex gap-3">
+                                                            <div className="relative flex-1">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">₫</span>
+                                                                <Input
+                                                                    type="number"
+                                                                    placeholder="Min"
+                                                                    className="h-10 pl-7 rounded-xl bg-slate-50 border-0 focus:bg-white transition-colors"
+                                                                    value={priceRange[0] || ''}
+                                                                    onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                                                                />
+                                                            </div>
+                                                            <div className="relative flex-1">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">₫</span>
+                                                                <Input
+                                                                    type="number"
+                                                                    placeholder="Max"
+                                                                    className="h-10 pl-7 rounded-xl bg-slate-50 border-0 focus:bg-white transition-colors"
+                                                                    value={priceRange[1] || ''}
+                                                                    onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
 
-                                {/* Sort */}
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-11 w-11 rounded-2xl hover:bg-slate-100/50">
-                                            <ArrowUpDown className="w-5 h-5 text-slate-500" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-56 p-2 rounded-2xl border-white/20 backdrop-blur-xl bg-white/90 shadow-xl mt-2">
-                                        <DropdownMenuItem className="rounded-xl cursor-pointer" onClick={() => setSortBy('created_at_desc')}>Newest First</DropdownMenuItem>
-                                        <DropdownMenuItem className="rounded-xl cursor-pointer" onClick={() => setSortBy('price_asc')}>Price: Low to High</DropdownMenuItem>
-                                        <DropdownMenuItem className="rounded-xl cursor-pointer" onClick={() => setSortBy('price_desc')}>Price: High to Low</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                                </>
+                                                    {/* Brand Filter */}
+                                                    <div className="space-y-3">
+                                                        <h4 className="text-sm font-medium text-slate-900">Brand</h4>
+                                                        <Select
+                                                            value={searchParams.get('brand_id') || 'all'}
+                                                            onValueChange={(val) => updateFilter('brand_id', val)}
+                                                        >
+                                                            <SelectTrigger className="w-full h-10 rounded-xl bg-slate-50 border-0 focus:bg-white transition-colors">
+                                                                <SelectValue placeholder="All Brands" />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-2xl border-white/20 backdrop-blur-xl bg-white/90 max-h-60">
+                                                                <SelectItem value="all">All Brands</SelectItem>
+                                                                {brands.map((b: any) => <SelectItem key={b.brand_id} value={String(b.brand_id)}>{b.name}</SelectItem>)}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* Category Filter */}
+                                                    <div className="space-y-3">
+                                                        <h4 className="text-sm font-medium text-slate-900">Category</h4>
+                                                        <Select
+                                                            value={searchParams.get('category_id') || 'all'}
+                                                            onValueChange={(val) => updateFilter('category_id', val)}
+                                                        >
+                                                            <SelectTrigger className="w-full h-10 rounded-xl bg-slate-50 border-0 focus:bg-white transition-colors">
+                                                                <SelectValue placeholder="All Categories" />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-2xl border-white/20 backdrop-blur-xl bg-white/90 max-h-60">
+                                                                <SelectItem value="all">All Categories</SelectItem>
+                                                                {categories.map((c: any) => <SelectItem key={c.category_id} value={String(c.category_id)}>{c.name}</SelectItem>)}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* Clear Filters */}
+                                                    {hasActiveFilters && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="w-full h-10 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                            onClick={clearFilters}
+                                                        >
+                                                            Reset Filters
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+
+                                        {/* Sort */}
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-2xl hover:bg-slate-100/50">
+                                                    <ArrowUpDown className="w-5 h-5 text-slate-500" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-56 p-2 rounded-2xl border-white/20 backdrop-blur-xl bg-white/90 shadow-xl mt-2">
+                                                <DropdownMenuItem className="rounded-xl cursor-pointer" onClick={() => setSortBy('created_at_desc')}>Newest First</DropdownMenuItem>
+                                                <DropdownMenuItem className="rounded-xl cursor-pointer" onClick={() => setSortBy('price_asc')}>Price: Low to High</DropdownMenuItem>
+                                                <DropdownMenuItem className="rounded-xl cursor-pointer" onClick={() => setSortBy('price_desc')}>Price: High to Low</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -494,35 +494,35 @@ export default function RetailShop() {
                 {/* --- PRODUCT GRID (Glass Cards) --- */}
                 <div className="container mx-auto px-4 relative z-10 max-w-7xl pt-4">
                     {isVisualSearch && (
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             className="mb-8 p-6 rounded-[2rem] bg-indigo-600 shadow-[0_20px_40px_rgba(79,70,229,0.15)] flex flex-col md:flex-row items-center justify-between gap-4 border border-indigo-400/20"
                         >
                             <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="text-white">
-                    <h3 className="text-lg font-bold leading-tight">
-                      {isExactMatch ? 'Visual Search Results' : 'Similar Products'}
-                    </h3>
-                    <p className="text-sm text-indigo-100 opacity-90">
-                      {isExactMatch 
-                        ? 'Based on the image you uploaded'
-                        : 'Exact match not found - showing similar products from the same line / brand'
-                      }
-                    </p>
-                  </div>
-                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                                        <Sparkles className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div className="text-white">
+                                        <h3 className="text-lg font-bold leading-tight">
+                                            {isExactMatch ? 'Visual Search Results' : 'Similar Products'}
+                                        </h3>
+                                        <p className="text-sm text-indigo-100 opacity-90">
+                                            {isExactMatch
+                                                ? 'Based on the image you uploaded'
+                                                : 'Exact match not found - showing similar products from the same line / brand'
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
-                            <Button 
+                            <Button
                                 onClick={() => {
                                     navigate(location.pathname, { replace: true, state: {} });
                                     setIsVisualSearch(false);
                                 }}
-                                variant="ghost" 
+                                variant="ghost"
                                 className="h-11 px-6 rounded-xl bg-white/10 hover:bg-white/20 text-white border-0 transition-all font-medium"
                             >
                                 <X className="w-4 h-4 mr-2" />
@@ -693,9 +693,9 @@ export default function RetailShop() {
                     )}
                 </div>
             </div>
-            <ImageUploadModal 
-                isOpen={isImageModalOpen} 
-                onClose={() => setIsImageModalOpen(false)} 
+            <ImageUploadModal
+                isOpen={isImageModalOpen}
+                onClose={() => setIsImageModalOpen(false)}
             />
         </CustomerLayout>
     );
