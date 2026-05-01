@@ -45,6 +45,25 @@ export default function ActivationPage() {
                 variant: "destructive"
             });
             navigate("/guest/home");
+            return;
+        }
+
+        // Parse token to check expiration immediately before user fills form
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            // Decode payload (handling standard base64 padding issues roughly)
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            
+            const payload = JSON.parse(jsonPayload);
+            
+            if (payload && payload.exp && payload.exp * 1000 < Date.now()) {
+                setIsExpired(true);
+            }
+        } catch (e) {
+            console.error("Could not parse token expiration:", e);
         }
     }, [token, navigate, toast]);
 
