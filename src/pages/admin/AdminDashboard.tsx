@@ -102,7 +102,7 @@ export default function AdminDashboard() {
                         </Badge>
                     </div>
                     <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Admin Dashboard</h1>
-                    <p className="text-neutral-500 font-medium">Toàn cảnh vận hành và hiệu suất hệ thống</p>
+                    <p className="text-neutral-500 font-medium">System operations and performance overview</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -138,28 +138,28 @@ export default function AdminDashboard() {
                         label="Total System Revenue"
                         value={formatVND(globalRevenue)}
                         icon={DollarSign}
-                        trend={prevGlobalRevenue > 0 ? `${((globalRevenue - prevGlobalRevenue)/prevGlobalRevenue * 100).toFixed(1)}% vs prev` : "Tích lũy"}
+                        trend={prevGlobalRevenue > 0 ? `${((globalRevenue - prevGlobalRevenue)/prevGlobalRevenue * 100).toFixed(1)}% vs prev` : "Accumulated"}
                         color="text-emerald-600" bg="bg-emerald-50" border="border-emerald-100"
                     />
                     <KpiCard
                         label="Total System Orders"
                         value={globalOrders.toLocaleString()}
                         icon={PackageOpen}
-                        trend={prevGlobalOrders > 0 ? `${((globalOrders - prevGlobalOrders)/prevGlobalOrders * 100).toFixed(1)}% vs prev` : "Đã xử lý"}
+                        trend={prevGlobalOrders > 0 ? `${((globalOrders - prevGlobalOrders)/prevGlobalOrders * 100).toFixed(1)}% vs prev` : "Processed"}
                         color="text-blue-600" bg="bg-blue-50" border="border-blue-100"
                     />
                     <KpiCard
                         label="Active Staff / POS"
                         value={stats?.system?.activeStaff || 0}
                         icon={Users}
-                        trend="Nhân sự đang hoạt động"
+                        trend="Active personnel"
                         color="text-indigo-600" bg="bg-indigo-50" border="border-indigo-100"
                     />
                     <KpiCard
                         label="Low Stock Alerts"
                         value={stats?.system?.lowStockAlerts || 0}
                         icon={AlertCircle}
-                        trend="Cần nhập hàng ngay"
+                        trend="Restock needed immediately"
                         color="text-rose-600" bg="bg-rose-50" border="border-rose-100" active={stats?.system?.lowStockAlerts > 0}
                     />
                 </div>
@@ -176,7 +176,7 @@ export default function AdminDashboard() {
                                     <CardTitle className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
                                         <Store className="w-6 h-6 text-amber-500" /> POS Operations
                                     </CardTitle>
-                                    <CardDescription className="text-neutral-500 font-medium mt-1">Doanh thu bán hàng trực tiếp tại quầy</CardDescription>
+                                    <CardDescription className="text-neutral-500 font-medium mt-1">Direct in-store sales revenue</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
@@ -211,7 +211,7 @@ export default function AdminDashboard() {
                                     <CardTitle className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
                                         <ShoppingBag className="w-6 h-6 text-indigo-500" /> Online Operations
                                     </CardTitle>
-                                    <CardDescription className="text-neutral-500 font-medium mt-1">Doanh thu bán hàng đa nền tảng</CardDescription>
+                                    <CardDescription className="text-neutral-500 font-medium mt-1">Multi-platform online sales revenue</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
@@ -260,7 +260,7 @@ export default function AdminDashboard() {
                             <TrendingUp className="w-5 h-5 text-emerald-500" />
                             Revenue Trajectory (Online vs Offline)
                         </CardTitle>
-                        <CardDescription className="text-neutral-500 font-medium">So sánh doanh thu giữa các kênh bán hàng</CardDescription>
+                        <CardDescription className="text-neutral-500 font-medium">Revenue comparison across sales channels</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[360px] p-8 pt-4">
                         <ResponsiveContainer width="100%" height="100%">

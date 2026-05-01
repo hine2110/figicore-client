@@ -942,6 +942,9 @@ export default function AdminLivestreamLive() {
 
                 socket.on('chat_history', (history: any[]) => setChatMessages(history));
                 socket.on('chat_message', (msg: any) => setChatMessages(prev => [...prev, msg]));
+                socket.on('delete_message', (data: { messageId: string }) => {
+                    setChatMessages(prev => prev.filter(m => m.id !== data.messageId));
+                });
                 socket.on('new_order', (data: any) => {
                     setOrders(prev => {
                         const exists = prev.find(o => o.order_id === data.order_id);
