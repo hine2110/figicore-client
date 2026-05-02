@@ -63,7 +63,6 @@ export default function PosSchedule() {
     const [loading, setLoading] = useState(false);
 
     // Check-in State
-    const [isStation, setIsStation] = useState(false);
     const [currentTime, setCurrentTime] = useState<Date | null>(null);
     const [timeOffset, setTimeOffset] = useState<number>(0);
     const [checkInModalOpen, setCheckInModalOpen] = useState(false);
@@ -71,8 +70,6 @@ export default function PosSchedule() {
     const [leaveModalOpen, setLeaveModalOpen] = useState(false);
     // Timer for finding 5-minute window & Sync Server Time
     useEffect(() => {
-        const token = localStorage.getItem('FIGICORE_STATION_TOKEN');
-        setIsStation(!!token);
 
         // 1. Fetch Server Time
         axiosInstance.get('/system/time').then(res => {
@@ -317,7 +314,7 @@ export default function PosSchedule() {
                 {/* Global Quick Action & Stats */}
                 <div className="flex flex-col gap-4">
                     {/* Global Check-in Button */}
-                    {isStation && activeShift && (
+                    {activeShift && (
                         <div className="flex justify-start">
                             <Button
                                 className="bg-blue-600 hover:bg-blue-700 text-white shadow-md animate-pulse"
@@ -433,42 +430,42 @@ export default function PosSchedule() {
                                                     </div>
 
                                                     {/* Right: Check-in Actions */}
-                                                    {isStation && (
-                                                        <div className="flex items-center">
-                                                            {checkInState === 'in' && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    className={canCheckIn ? "bg-blue-600 hover:bg-blue-700" : "bg-neutral-300 text-neutral-500 cursor-not-allowed"}
-                                                                    disabled={!canCheckIn}
-                                                                    onClick={() => handleCheckInClick('in')}
-                                                                >
-                                                                    <ScanFace className="w-4 h-4 mr-2" /> Check In
-                                                                </Button>
-                                                            )}
 
-                                                            {checkInState === 'out' && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="destructive"
-                                                                    onClick={() => handleCheckInClick('out')}
-                                                                >
-                                                                    <LogOut className="w-4 h-4 mr-2" /> Check Out
-                                                                </Button>
-                                                            )}
+                                                    <div className="flex items-center">
+                                                        {checkInState === 'in' && (
+                                                            <Button
+                                                                size="sm"
+                                                                className={canCheckIn ? "bg-blue-600 hover:bg-blue-700" : "bg-neutral-300 text-neutral-500 cursor-not-allowed"}
+                                                                disabled={!canCheckIn}
+                                                                onClick={() => handleCheckInClick('in')}
+                                                            >
+                                                                <ScanFace className="w-4 h-4 mr-2" /> Check In
+                                                            </Button>
+                                                        )}
 
-                                                            {checkInState === 'completed' && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    className="text-green-600 border-green-200 bg-green-50"
-                                                                    disabled
-                                                                >
-                                                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                                                    Completed {timesheet?.real_work_hours ? `(${timesheet.real_work_hours}h)` : ''}
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                        {checkInState === 'out' && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                onClick={() => handleCheckInClick('out')}
+                                                            >
+                                                                <LogOut className="w-4 h-4 mr-2" /> Check Out
+                                                            </Button>
+                                                        )}
+
+                                                        {checkInState === 'completed' && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="text-green-600 border-green-200 bg-green-50"
+                                                                disabled
+                                                            >
+                                                                <CheckCircle className="w-4 h-4 mr-2" />
+                                                                Completed {timesheet?.real_work_hours ? `(${timesheet.real_work_hours}h)` : ''}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+
                                                 </div>
                                             );
                                         })}
