@@ -71,16 +71,8 @@ export default function ShiftManagement() {
     // Modal State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
-    const [isStationListOpen, setIsStationListOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentId, setCurrentId] = useState<number | null>(null);
-
-    // Station State
-    const [stationToken, setStationToken] = useState<string | null>(localStorage.getItem('FIGICORE_STATION_TOKEN'));
-
-    const finalizeStationSetup = () => {
-        setStationToken(localStorage.getItem('FIGICORE_STATION_TOKEN'));
-    };
 
     // Form State (Time inputs allow typing HH:mm, but we convert to ISO on submit)
     const [formData, setFormData] = useState<{
@@ -109,7 +101,7 @@ export default function ShiftManagement() {
         const today = new Date();
         const currentMonday = startOfWeek(today, { weekStartsOn: 1 });
         const currentVnDay = today.getDay(); // 0-Sun, 1-Mon, ... 5-Fri, 6-Sat
-        
+
         // If the week we are viewing is mathematically strictly strictly after this week's start
         if (currentWeekStart.getTime() > currentMonday.getTime()) {
             // Manager cannot edit it unless today is Sat(6) or Sun(0)
@@ -120,9 +112,12 @@ export default function ShiftManagement() {
         return false;
     }, [currentWeekStart]);
 
-    // FILTER: Only show supported roles in dropdown
+    // FILTER: Only show supported roles and non-deleted staff in dropdown
     const filteredUsers = useMemo(() => {
-        return users.filter(user => ALLOWED_ROLES.includes(user.role_code));
+        return users.filter(user => 
+            ALLOWED_ROLES.includes(user.role_code) && 
+            user.full_name !== 'Deleted Staff'
+        );
     }, [users]);
 
     // --- Helpers ---
@@ -458,62 +453,63 @@ export default function ShiftManagement() {
                             {/* Action Buttons Overlay */}
                             {!isLocked && (
                                 <div className={`flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity absolute top-1 right-1 p-1 rounded border shadow-sm ${styles.hoverActions}`}>
-                                {schedule.status_code === 'PENDING' ? (
-                                    <>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-6 w-6 hover:bg-green-100"
-                                            onClick={() => handleUpdateStatus(schedule.schedule_id, 'PUBLISHED')}
-                                            title="Accept"
-                                        >
-                                            <CheckCircle className="w-4 h-4 text-green-600" />
-                                        </Button>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-6 w-6 hover:bg-red-100"
-                                            onClick={() => handleUpdateStatus(schedule.schedule_id, 'REJECTED')}
-                                            title="Reject"
-                                        >
-                                            <XCircle className="w-4 h-4 text-red-600" />
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-6 w-6 hover:bg-neutral-50"
-                                            onClick={() => openEditModal(schedule)}
-                                            title="Edit"
-                                        >
-                                            <Edit2 className="w-3 h-3 text-blue-600" />
-                                        </Button>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-6 w-6 hover:bg-neutral-50"
-                                            onClick={() => openCloneModal(schedule)}
-                                            title="Clone"
-                                        >
-                                            <Copy className="w-3 h-3 text-green-600" />
-                                        </Button>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-6 w-6 hover:bg-neutral-50"
-                                            onClick={() => handleDelete(schedule.schedule_id)}
-                                            title="Delete"
-                                        >
-                                            <Trash2 className="w-3 h-3 text-red-600" />
-                                        </Button>
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )})}
+                                    {schedule.status_code === 'PENDING' ? (
+                                        <>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-6 w-6 hover:bg-green-100"
+                                                onClick={() => handleUpdateStatus(schedule.schedule_id, 'PUBLISHED')}
+                                                title="Accept"
+                                            >
+                                                <CheckCircle className="w-4 h-4 text-green-600" />
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-6 w-6 hover:bg-red-100"
+                                                onClick={() => handleUpdateStatus(schedule.schedule_id, 'REJECTED')}
+                                                title="Reject"
+                                            >
+                                                <XCircle className="w-4 h-4 text-red-600" />
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-6 w-6 hover:bg-neutral-50"
+                                                onClick={() => openEditModal(schedule)}
+                                                title="Edit"
+                                            >
+                                                <Edit2 className="w-3 h-3 text-blue-600" />
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-6 w-6 hover:bg-neutral-50"
+                                                onClick={() => openCloneModal(schedule)}
+                                                title="Clone"
+                                            >
+                                                <Copy className="w-3 h-3 text-green-600" />
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-6 w-6 hover:bg-neutral-50"
+                                                onClick={() => handleDelete(schedule.schedule_id)}
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="w-3 h-3 text-red-600" />
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )
+                })}
 
                 <div className="mt-auto flex flex-col gap-1">
                     {!isLocked && (
@@ -559,12 +555,6 @@ export default function ShiftManagement() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    {!stationToken && (
-                        <Button variant="outline" onClick={() => setIsStationListOpen(true)} className="text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100/50">
-                            <Power className="w-4 h-4 mr-2" />
-                            Finalize Setup
-                        </Button>
-                    )}
                     <Button onClick={() => openCreateModal()} disabled={isLocked}>
                         <Plus className="w-4 h-4 mr-2" />
                         New Assignment
