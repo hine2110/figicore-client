@@ -271,7 +271,6 @@ export default function ManagerTimesheets() {
                                         </Avatar>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-semibold text-neutral-900 truncate">{person.full_name}</p>
-                                            <p className="text-xs text-neutral-500 truncate">{person.email}</p>
                                         </div>
                                     </div>
 
@@ -376,7 +375,6 @@ export default function ManagerTimesheets() {
                                                         <p className="text-sm font-medium text-neutral-900 leading-tight">
                                                             {person.full_name}
                                                         </p>
-                                                        <p className="text-xs text-neutral-400">{person.email}</p>
                                                     </div>
                                                 </div>
                                             </TableCell>

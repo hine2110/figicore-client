@@ -699,9 +699,9 @@ export default function SessionManager() {
 
             {/* Advanced Close Session Dialog */}
             <Dialog open={closeDialogVisible} onOpenChange={setCloseDialogVisible}>
-                <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-[2rem] border border-neutral-200 shadow-2xl">
+                <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-[2rem] border border-neutral-200 shadow-2xl bg-white max-h-[95vh] flex flex-col">
                     <DialogTitle className="sr-only">End Shift & Reconcile</DialogTitle>
-                    <div className="bg-neutral-50/50 px-8 py-6 border-b border-neutral-100 flex justify-between items-center">
+                    <div className="bg-neutral-50/50 px-8 py-6 border-b border-neutral-100 flex justify-between items-center shrink-0">
                         <div>
                             <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2 text-neutral-900">
                                 <History className="w-5 h-5 text-indigo-400" />
@@ -717,9 +717,9 @@ export default function SessionManager() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 bg-neutral-50/30 overflow-hidden">
+                    <div className="grid grid-cols-1 md:grid-cols-2 bg-neutral-50/30 flex-1 min-h-0 overflow-hidden">
                         {/* Left Side: Cash Counting */}
-                        <div className="p-8 border-r border-neutral-100 bg-white">
+                        <div className="p-8 border-r border-neutral-100 bg-white overflow-y-auto [ms-overflow-style:'none'] [scrollbar-width:'none'] [&::-webkit-scrollbar]:hidden">
                             <h3 className="font-bold text-neutral-900 uppercase text-xs tracking-wider mb-6 flex items-center gap-2">
                                 <Banknote className="w-4 h-4 text-indigo-500" /> 1. Actual Cash Count
                             </h3>
@@ -737,7 +737,7 @@ export default function SessionManager() {
                         </div>
 
                         {/* Right Side: Reconciliation & Final Form */}
-                        <div className="p-8 space-y-6">
+                        <div className="p-8 space-y-6 overflow-y-auto [ms-overflow-style:'none'] [scrollbar-width:'none'] [&::-webkit-scrollbar]:hidden">
                             <h3 className="font-bold text-neutral-900 uppercase text-xs tracking-wider mb-6 flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4 text-amber-500" /> 2. Reconciliation & Reporting
                             </h3>
@@ -794,7 +794,7 @@ export default function SessionManager() {
                         </div>
                     </div>
 
-                    <DialogFooter className="p-6 bg-neutral-50 border-t border-neutral-100 flex sm:justify-between items-center">
+                    <DialogFooter className="p-6 bg-neutral-50 border-t border-neutral-100 flex sm:justify-between items-center shrink-0">
                         <Button
                             variant="ghost"
                             className="text-neutral-500 font-bold hover:text-neutral-700 transition-colors"

@@ -112,7 +112,7 @@ export default function PosLayout() {
 
             {/* 2. User Info */}
             {!isSidebarCollapsed ? (
-                <Link to="/pos/profile" className="p-4 border-b border-neutral-800 flex items-center justify-between hover:bg-neutral-900 transition-colors group cursor-pointer block">
+                <Link to="/pos/profile" className="p-4 border-b border-neutral-800 flex items-center justify-between hover:bg-neutral-900 transition-colors group cursor-pointer">
                     <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9 border border-neutral-700">
                             <AvatarImage src={user?.avatar_url || undefined} />
@@ -139,7 +139,7 @@ export default function PosLayout() {
             )}
 
             {/* 3. Navigation Links */}
-            <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 [ms-overflow-style:'none'] [scrollbar-width:'none'] [&::-webkit-scrollbar]:hidden">
                 {navItems.map((item) => {
                     const Icon = item.icon;
                     return (
