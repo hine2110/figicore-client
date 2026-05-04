@@ -464,10 +464,9 @@ export const AIChatBox: React.FC = () => {
                             `}</style>
                             {[
                                 { icon: '🎁', text: 'Blindbox là gì?' },
-                                { icon: '🔥', text: 'Sản phẩm mới' },
-                                { icon: '🔍', text: 'Sản phẩm giá rẻ' },
-                                { icon: '📦', text: 'Cách đặt hàng' },
-                                // { icon: '💎', text: 'Ưu đãi thành viên' }
+                                { icon: '🔥', text: 'Cho mình xem sản phẩm mới nhất' },
+                                { icon: '💰', text: 'Sản phẩm giá rẻ nhất có gì?' },
+                                { icon: '📦', text: 'Cách đặt hàng như thế nào?' },
                             ].map((action, idx) => (
                                 <button
                                     key={idx}
