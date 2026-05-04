@@ -73,4 +73,9 @@ export const employeesService = {
     const response = await api.get(`/employees/${id}`);
     return response.data;
   },
+
+  deleteEmployee: async (id: number) => {
+    const response = await api.delete(`/employees/${id}`);
+    return response.data;
+  },
 };

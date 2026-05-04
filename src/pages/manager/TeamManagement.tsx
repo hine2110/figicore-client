@@ -146,10 +146,6 @@ export default function TeamManagement() {
                                         <div className="flex items-center gap-3">
                                             <div>
                                                 <p className="font-semibold text-neutral-900 leading-tight">{employee.users.full_name}</p>
-                                                <div className="flex items-center gap-1.5 mt-0.5 text-xs text-neutral-500">
-                                                    <Mail className="w-3 h-3" />
-                                                    {employee.users.email}
-                                                </div>
                                             </div>
                                         </div>
                                     </td>

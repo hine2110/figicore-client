@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Upload, Camera, RefreshCw } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface AvatarUploaderProps {
   onFileSelect: (file: File, faceDescriptor?: string) => void;
@@ -337,56 +338,60 @@ export const AvatarUploader: React.FC<AvatarUploaderProps> = ({
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
-      {mode === 'camera' ? (
-        <div className="relative w-full max-w-[280px] aspect-square rounded-full border-4 border-white overflow-hidden shadow-xl shadow-neutral-200 bg-white">
-          <Webcam
-            audio={false}
-            ref={webcamRef}
-            screenshotFormat="image/jpeg"
-            className="w-full h-full object-cover transform scale-x-[-1]"
-            videoConstraints={{ facingMode: "user" }}
-          />
+      <Dialog open={mode === 'camera'} onOpenChange={(open) => { if (!open && !isProcessing) setMode('upload'); }}>
+        <DialogContent className="sm:max-w-md border-none bg-transparent shadow-none p-0 flex justify-center [&>button]:hidden outline-none mt-[-10vh]">
+          <div className="relative w-full max-w-[320px] aspect-square rounded-[32px] border-4 border-white overflow-hidden shadow-2xl bg-white mx-auto">
+            <Webcam
+              audio={false}
+              ref={webcamRef}
+              screenshotFormat="image/jpeg"
+              className="w-full h-full object-cover transform scale-x-[-1]"
+              videoConstraints={{ facingMode: "user" }}
+            />
 
-          {/* DYNAMIC DASHED OVAL & VIGNETTE MASK */}
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-             {/* Vignette ring */}
-             <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(ellipse at center, transparent 45%, rgba(255,255,255,0.85) 68%)' }}></div>
-             
-             {/* SVG Dashed Frame */}
-             <svg viewBox="0 0 200 200" className="absolute inset-0 w-full h-full p-2 transform scale-[0.85]">
-                <ellipse
-                  cx="100" cy="100"
-                  rx="75" ry="98"
-                  fill="none"
-                  stroke={alignmentStatus === 'aligned' ? '#10b981' : alignmentStatus === 'misaligned' ? '#ef4444' : '#3b82f6'}
-                  strokeWidth="3.5"
-                  strokeDasharray="6 6"
-                  className="transition-colors duration-300"
-                />
-             </svg>
-          </div>
-          {isProcessing && (
-            <div className="absolute inset-0 bg-white/70 flex flex-col items-center justify-center backdrop-blur-sm z-20">
-              <Loader2 className="w-8 h-8 animate-spin mb-2 text-neutral-800" />
-              <span className="text-sm font-medium text-neutral-800">Analyzing...</span>
+            {/* DYNAMIC DASHED OVAL & VIGNETTE MASK */}
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+               {/* Vignette ring */}
+               <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 45%, rgba(255,255,255,0.85) 68%)' }}></div>
+               
+               {/* SVG Dashed Frame */}
+               <svg viewBox="0 0 200 200" className="absolute inset-0 w-full h-full p-2 transform scale-[0.85]">
+                  <ellipse
+                    cx="100" cy="100"
+                    rx="75" ry="98"
+                    fill="none"
+                    stroke={alignmentStatus === 'aligned' ? '#10b981' : alignmentStatus === 'misaligned' ? '#ef4444' : '#3b82f6'}
+                    strokeWidth="3.5"
+                    strokeDasharray="6 6"
+                    className="transition-colors duration-300"
+                  />
+               </svg>
             </div>
-          )}
-          <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 z-30 opacity-90 transition-opacity hover:opacity-100">
-             <Button type="button" size="sm" variant="secondary" className="shadow-lg rounded-full" onClick={() => setMode('upload')} disabled={isProcessing}>
-               Cancel
-             </Button>
-             <Button 
-               type="button" 
-               size="sm" 
-               className="bg-blue-600 hover:bg-blue-700 shadow-lg rounded-full transition-all" 
-               onClick={capturePhoto} 
-               disabled={isProcessing || !isModelLoaded || alignmentStatus !== 'aligned'}
-             >
-               <Camera className="w-4 h-4 mr-2" /> Capture
-             </Button>
+            {isProcessing && (
+              <div className="absolute inset-0 bg-white/70 flex flex-col items-center justify-center backdrop-blur-sm z-20">
+                <Loader2 className="w-8 h-8 animate-spin mb-2 text-neutral-800" />
+                <span className="text-sm font-medium text-neutral-800">Analyzing...</span>
+              </div>
+            )}
+            <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 z-30 opacity-90 transition-opacity hover:opacity-100">
+               <Button type="button" size="sm" variant="secondary" className="shadow-lg rounded-full" onClick={() => setMode('upload')} disabled={isProcessing}>
+                 Cancel
+               </Button>
+               <Button 
+                 type="button" 
+                 size="sm" 
+                 className="bg-blue-600 hover:bg-blue-700 shadow-lg rounded-full transition-all" 
+                 onClick={capturePhoto} 
+                 disabled={isProcessing || !isModelLoaded || alignmentStatus !== 'aligned'}
+               >
+                 <Camera className="w-4 h-4 mr-2" /> Capture
+               </Button>
+            </div>
           </div>
-        </div>
-      ) : (
+        </DialogContent>
+      </Dialog>
+
+      {mode === 'upload' && (
         <>
           <Avatar className="w-24 h-24 shadow-sm border border-neutral-200">
             <AvatarImage src={previewUrl || undefined} alt="Avatar Preview" className="object-cover" />

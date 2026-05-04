@@ -30,6 +30,17 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 import ConfirmStatusDialog from "@/features/admin/components/ConfirmStatusDialog";
 import EmployeeDetailSheet from "@/features/admin/components/EmployeeDetailSheet";
@@ -51,6 +62,9 @@ export default function EmployeeTab() {
     const [banDialog, setBanDialog] = useState<{id: number, name: string} | null>(null);
     const [isBulkOpen, setIsBulkOpen] = useState(false);
     const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState<{id: number, name: string} | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
 
     const fetchEmployees = async () => {
         setIsLoading(true);
@@ -217,8 +231,20 @@ export default function EmployeeTab() {
                                                                 Unban User
                                                             </DropdownMenuItem>
                                                         )}
+
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem 
+                                                            className="text-red-600 font-bold"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setDeleteConfirm({ id: employee.user_id, name: employee.users.full_name });
+                                                            }}
+                                                        >
+                                                            Delete Permanently
+                                                        </DropdownMenuItem>
                                                     </>
                                                 )}
+
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -306,6 +332,51 @@ export default function EmployeeTab() {
                 onOpenChange={setIsImportSheetOpen}
                 onSuccess={fetchEmployees}
             />
+
+            <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-red-600">Permanently delete account?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            You are about to permanently delete the account for <strong>{deleteConfirm?.name}</strong>. 
+                            This action will remove data from the database and cannot be undone.
+                            <br /><br />
+                            <span className="text-amber-600 font-medium">Note:</span> Deletion is only possible if the employee has no transaction history (orders, POS sessions, etc.).
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={isDeleting}
+                            onClick={async (e) => {
+                                e.preventDefault();
+                                if (!deleteConfirm) return;
+                                setIsDeleting(true);
+                                try {
+                                    await employeesService.deleteEmployee(deleteConfirm.id);
+                                    toast({
+                                        title: "Success",
+                                        description: "Employee has been deleted permanently.",
+                                    });
+                                    fetchEmployees();
+                                    setDeleteConfirm(null);
+                                } catch (error: any) {
+                                    toast({
+                                        title: "Cannot delete",
+                                        description: error.response?.data?.message || "System error while deleting employee.",
+                                        variant: "destructive"
+                                    });
+                                } finally {
+                                    setIsDeleting(false);
+                                }
+                            }}
+                        >
+                            {isDeleting ? "Deleting..." : "Confirm Delete"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

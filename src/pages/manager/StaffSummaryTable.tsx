@@ -56,8 +56,7 @@ export default function StaffSummaryTable({ fromDate, toDate }: StaffSummaryTabl
 
     // Local filter
     const filteredData = summary.filter((item) =>
-        item.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.email.toLowerCase().includes(searchTerm.toLowerCase())
+        item.full_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleExportExcel = () => {
@@ -69,7 +68,6 @@ export default function StaffSummaryTable({ fromDate, toDate }: StaffSummaryTabl
         // Prepare data for Excel
         const exportData = filteredData.map(item => ({
             'Full Name': item.full_name,
-            'Email': item.email,
             'Total Shifts': item.total_shifts,
             'Total Hours': item.total_hours,
         }));
@@ -127,7 +125,6 @@ export default function StaffSummaryTable({ fromDate, toDate }: StaffSummaryTabl
                         <TableHeader>
                             <TableRow className="bg-muted/50">
                                 <TableHead className="w-[200px]">Full Name</TableHead>
-                                <TableHead className="w-[200px]">Email</TableHead>
                                 <TableHead className="text-center">Total Shifts</TableHead>
                                 <TableHead className="text-center">Total Hours</TableHead>
                             </TableRow>
@@ -135,7 +132,7 @@ export default function StaffSummaryTable({ fromDate, toDate }: StaffSummaryTabl
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">
+                                    <TableCell colSpan={3} className="h-24 text-center">
                                         <div className="flex justify-center items-center gap-2 text-muted-foreground">
                                             <Loader2 className="h-5 w-5 animate-spin" />
                                             Loading data...
@@ -144,7 +141,7 @@ export default function StaffSummaryTable({ fromDate, toDate }: StaffSummaryTabl
                                 </TableRow>
                             ) : filteredData.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
                                         No data found for the selected period.
                                     </TableCell>
                                 </TableRow>
@@ -153,9 +150,6 @@ export default function StaffSummaryTable({ fromDate, toDate }: StaffSummaryTabl
                                     <TableRow key={employee.user_id}>
                                         <TableCell className="font-medium">
                                             {employee.full_name}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {employee.email}
                                         </TableCell>
                                         <TableCell className="text-center">
                                             {employee.total_shifts}
