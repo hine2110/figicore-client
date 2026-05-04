@@ -33,6 +33,8 @@ export interface ProductPreorderConfig {
     sold_slots: number;
     max_qty_per_user: number;
     release_date?: string;
+    booking_end_date?: string;
+    extension_count?: number;
     // stock_held?
 }
 
