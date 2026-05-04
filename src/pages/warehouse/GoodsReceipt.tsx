@@ -254,7 +254,8 @@ export default function GoodsReceipt() {
             setNote("");
         } catch (error: any) {
             console.error(error);
-            toast({ title: "Import Failed", description: error.message || "Something went wrong.", variant: "destructive" });
+            const errorMsg = error.response?.data?.message || error.message || "Something went wrong.";
+            toast({ title: "Import Failed", description: errorMsg, variant: "destructive" });
         } finally {
             setLoading(false);
         }

@@ -312,9 +312,16 @@ export default function ProductDetail() {
     };
 
     // Determine Max Stock
-    const maxStock = product.type_code === 'RETAIL'
-        ? (selectedVariant?.stock_available || 0)
-        : (product.type_code === 'PREORDER' ? (product.product_variants?.[0]?.stock_available || 0) : 999);
+    const maxStock = (() => {
+        if (product.type_code === 'RETAIL') return selectedVariant?.stock_available || 0;
+        if (product.type_code === 'PREORDER') {
+            const config = selectedVariant?.product_preorder_configs || product.product_variants?.[0]?.product_preorder_configs;
+            const slots = Math.max(0, (config?.total_slots || 0) - (config?.sold_slots || 0));
+            const limit = config?.max_qty_per_user || 999;
+            return Math.min(slots, limit);
+        }
+        return 999; // BLINDBOX or others
+    })();
 
     // Handlers
     const handleQuantityChange = (delta: number) => {
