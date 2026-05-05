@@ -3,7 +3,7 @@ import {
     LayoutDashboard, DollarSign, ShoppingCart, Users, AlertTriangle,
     ArrowUpRight, ArrowDownRight, RefreshCcw, Search, Calendar,
     Globe, Store, PieChart, TrendingUp, Package, Zap, Gavel, Gift, Layout, 
-    ShoppingBag, ChevronRight, Activity, Wallet, Award, CreditCard
+    ShoppingBag, ChevronRight, Activity, Wallet, Award, CreditCard, RotateCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
@@ -91,9 +91,15 @@ function ChannelSummary({ title, data, isOffline = false }: { title: string, dat
             </div>
 
             <div className="space-y-4">
-                <div className="flex flex-col">
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Total Cash Flow</span>
-                    <span className="text-3xl font-black text-slate-900">{formatVND(data.totalRevenue)}</span>
+                <div className="flex items-end justify-between">
+                    <div className="flex flex-col">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Total Cash Flow</span>
+                        <span className="text-3xl font-black text-slate-900">{formatVND(data.totalRevenue)}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                        <span className="text-xs text-rose-400 font-bold uppercase tracking-tighter">Total Refunds</span>
+                        <span className="text-lg font-bold text-rose-500">-{formatVND(data.totalRefunds || 0)}</span>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -222,8 +228,9 @@ export default function ManagerDashboard() {
             </div>
 
             {/* Main KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 px-4">
                 <MainKpiCard title="Total Cash Flow" value={formatVND(stats?.totalRevenue || 0)} growth={growth} icon={Wallet} gradient="bg-gradient-to-br from-indigo-500 to-blue-600" />
+                <MainKpiCard title="Total Refunds" value={formatVND(stats?.totalRefunds || 0)} icon={RotateCcw} gradient="bg-gradient-to-br from-rose-500 to-red-600" />
                 <MainKpiCard title="Delivered Volume" value={stats?.totalOrders} icon={ShoppingBag} gradient="bg-gradient-to-br from-emerald-500 to-teal-600" />
                 <MainKpiCard title="Staff On-Shift" value={stats?.activeStaff} icon={Users} gradient="bg-gradient-to-br from-violet-500 to-purple-600" />
                 <MainKpiCard title="Inventory Alerts" value={stats?.lowStockAlerts} icon={AlertTriangle} gradient="bg-gradient-to-br from-orange-500 to-rose-600" />
