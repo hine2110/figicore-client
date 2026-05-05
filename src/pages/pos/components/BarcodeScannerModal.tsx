@@ -48,7 +48,7 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ open, onClose
                         }
                     }
                 } catch (err) {
-                    console.error("Lỗi lấy danh sách Camera", err);
+                    console.error("Error getting Camera list", err);
                 }
 
                 timer = setTimeout(() => {
@@ -88,8 +88,8 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ open, onClose
                 (decodedText) => {
                     console.log("Decoded:", decodedText);
                     toast({
-                        title: "Đã đọc được mã",
-                        description: `Mã: ${decodedText}`,
+                        title: "Code read",
+                        description: `Code: ${decodedText}`,
                         duration: 2000,
                     });
                     // Try to vibrate if available
@@ -125,10 +125,10 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ open, onClose
                     <div>
                         <DialogTitle className="text-white flex items-center gap-2">
                             <LucideCamera className="w-5 h-5 text-cyan-500" />
-                            Quét mã vạch
+                            Scan barcode
                         </DialogTitle>
                         <DialogDescription className="text-neutral-500 text-xs mt-1">
-                            Di chuyển Camera vào vùng mã vạch sản phẩm
+                            Move Camera to product barcode area
                         </DialogDescription>
                     </div>
                     <Button variant="ghost" size="icon" onClick={onClose} className="text-neutral-400 hover:text-white hover:bg-neutral-800">
@@ -158,7 +158,7 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ open, onClose
                     {cameras.length > 0 ? (
                         <Select value={selectedCameraId} onValueChange={setSelectedCameraId}>
                             <SelectTrigger className="w-[180px] bg-neutral-800 border-neutral-700 text-white">
-                                <SelectValue placeholder="Chọn Camera" />
+                                <SelectValue placeholder="Select Camera" />
                             </SelectTrigger>
                             <SelectContent className="bg-neutral-800 border-neutral-700 text-white">
                                 {cameras.map((cam, idx) => (
@@ -169,10 +169,10 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ open, onClose
                             </SelectContent>
                         </Select>
                     ) : (
-                        <div className="text-sm text-neutral-500 italic">Đang tìm Camera...</div>
+                        <div className="text-sm text-neutral-500 italic">Finding Camera...</div>
                     )}
                     <Button variant="outline" className="bg-transparent border-neutral-800 text-neutral-400 hover:bg-neutral-800 hover:text-white" onClick={onClose}>
-                        Hủy bỏ
+                        Cancel
                     </Button>
                 </div>
             </DialogContent>

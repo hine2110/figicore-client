@@ -37,24 +37,24 @@ const playNotificationSound = (orderCode: string) => {
         // 2. Voice Notification
         setTimeout(() => {
             if ('speechSynthesis' in window) {
-                const text = `Bạn có đơn hàng mới`;
+                const text = `You have a new order`;
                 const utterance = new SpeechSynthesisUtterance(text);
 
                 // --- VOICE SELECTION LOGIC ---
                 const voices = window.speechSynthesis.getVoices();
 
-                // Try to find a specific Vietnamese Female voice
-                const vnVoice = voices.find(v =>
-                    v.lang.includes('vi') &&
-                    (v.name.includes('Google') || v.name.includes('HoaiMy') || v.name.includes('Female'))
+                // Try to find a specific English Female voice
+                const enVoice = voices.find(v =>
+                    v.lang.includes('en') &&
+                    (v.name.includes('Google') || v.name.includes('Female'))
                 );
 
-                // Fallback to any Vietnamese voice if specific one not found
-                if (vnVoice) {
-                    utterance.voice = vnVoice;
+                // Fallback to any English voice if specific one not found
+                if (enVoice) {
+                    utterance.voice = enVoice;
                 } else {
-                    const anyVnVoice = voices.find(v => v.lang.includes('vi'));
-                    if (anyVnVoice) utterance.voice = anyVnVoice;
+                    const anyEnVoice = voices.find(v => v.lang.includes('en'));
+                    if (anyEnVoice) utterance.voice = anyEnVoice;
                 }
 
                 utterance.rate = 1.0; // Normal speed

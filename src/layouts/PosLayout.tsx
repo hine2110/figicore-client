@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-// Tách ra ngoài PosLayout để tránh re-render toàn bộ layout mỗi giây
+// Separated from PosLayout to prevent re-rendering the entire layout every second
 function LiveClock() {
     const [now, setNow] = useState(new Date());
     useEffect(() => {
@@ -50,12 +50,12 @@ export default function PosLayout() {
     const location = useLocation();
     const { user, logout } = useAuthStore();
 
-    // State cho Mobile Menu, Sub-menu Schedule và Collapsed Sidebar
+    // State for Mobile Menu, Schedule Sub-menu and Collapsed Sidebar
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isScheduleOpen, setIsScheduleOpen] = useState(true);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-    // Danh sách menu chính (Đã tách Work Schedule ra để xử lý riêng)
+    // Main menu list (Work Schedule is handled separately)
     const navItems = [
         {
             name: 'Dashboard',
@@ -87,7 +87,7 @@ export default function PosLayout() {
             icon: Banknote,
             description: 'Open/Close Shift'
         },
-        // Work Schedule được xử lý riêng bên dưới
+        // Work Schedule is handled separately below
         {
             name: 'My Profile',
             path: '/pos/profile',
@@ -99,7 +99,7 @@ export default function PosLayout() {
 
     const isActive = (path: string) => location.pathname === path;
 
-    // --- PHẦN NỘI DUNG SIDEBAR (Dùng chung cho Mobile & Desktop) ---
+    // --- SIDEBAR CONTENT (Shared for Mobile & Desktop) ---
     const NavContent = () => (
         <div className="h-full flex flex-col bg-neutral-950 text-neutral-300">
             {/* 1. Brand Logo */}
@@ -246,12 +246,12 @@ export default function PosLayout() {
 
     return (
         <div className="flex h-screen overflow-hidden bg-neutral-50">
-            {/* Desktop Sidebar (Hiện trên màn hình lớn) */}
+            {/* Desktop Sidebar (Shows on large screens) */}
             <aside className={`hidden md:flex md:flex-col border-r border-neutral-200 bg-neutral-950 shrink-0 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'md:w-20' : 'md:w-64'}`}>
                 <NavContent />
             </aside>
 
-            {/* Mobile Sidebar (Nút Menu + Sheet) */}
+            {/* Mobile Sidebar (Menu Button + Sheet) */}
             <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
                 <SheetTrigger asChild>
                     <Button
@@ -272,7 +272,7 @@ export default function PosLayout() {
                 {/* POS Header */}
                 <header className="h-14 bg-white border-b border-neutral-200 flex items-center px-4 justify-between shrink-0">
                     <div className="flex items-center gap-3">
-                        {/* Toggle Button - chỉ hiện trên desktop */}
+                        {/* Toggle Button - only shows on desktop */}
                         <Button
                             variant="ghost"
                             size="icon"

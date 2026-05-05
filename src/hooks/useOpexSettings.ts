@@ -23,13 +23,13 @@ export const useUpdateOpexConfig = () => {
       return response.data;
     },
     onSuccess: () => {
-      toast.success('Cấu hình OPEX đã được cập nhật thành công!');
+      toast.success('OPEX config successfully updated!');
       queryClient.invalidateQueries({ queryKey: ['system-opex'] });
-      // Cũng cần invalidate analytics recommendations vì logic tính toán đã thay đổi
+      // Also invalidate analytics recommendations since calculation logic changed
       queryClient.invalidateQueries({ queryKey: ['inventory-recommendations'] });
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Lỗi khi cập nhật cấu hình');
+      toast.error(error.message || 'Error updating config');
     },
   });
 };

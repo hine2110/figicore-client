@@ -111,7 +111,7 @@ export default function StaffPOS() {
         });
 
         scannerSocket.on("receive-barcode", (data) => {
-            console.log("Nhận mã vạch từ điện thoại:", data.barcode);
+            console.log("Received barcode from phone:", data.barcode);
             if (handleBarcodeScanRef.current) {
                 handleBarcodeScanRef.current(data.barcode);
             }
@@ -755,7 +755,7 @@ export default function StaffPOS() {
                                         size="icon" 
                                         onClick={() => setIsRemoteScannerModalOpen(true)}
                                         className={`h-8 w-8 ${isRemoteConnected ? 'text-green-500' : 'text-neutral-400'} hover:text-indigo-500 hover:bg-indigo-50`}
-                                        title="Ghép nối điện thoại"
+                                        title="Pair Phone"
                                     >
                                         <Smartphone className="w-4 h-4" />
                                     </Button>
@@ -764,7 +764,7 @@ export default function StaffPOS() {
                                         size="icon" 
                                         onClick={() => setIsScannerModalOpen(true)}
                                         className="h-8 w-8 text-neutral-400 hover:text-cyan-500 hover:bg-cyan-50"
-                                        title="Quét bằng Web Camera"
+                                        title="Scan with Web Camera"
                                     >
                                         <LucideCamera className="w-4 h-4" />
                                     </Button>
@@ -1165,7 +1165,7 @@ export default function StaffPOS() {
                                     setIsReceiptModalOpen(true);
                                 }
                             } catch (error) {
-                                console.error("Lỗi khi tải order để in hóa đơn", error);
+                                console.error("Error loading order to print receipt", error);
                             }
                         }
 
@@ -1175,7 +1175,7 @@ export default function StaffPOS() {
                         localStorage.removeItem('pos_cart');
                         localStorage.removeItem('pos_selected_customer');
                         loadProducts();
-                        toast({ title: '🎉 Thanh toán QR thành công!', description: 'Đơn hàng đã hoàn tất.' });
+                        toast({ title: '🎉 QR payment successful!', description: 'Order completed.' });
                     }}
                 />
             )}

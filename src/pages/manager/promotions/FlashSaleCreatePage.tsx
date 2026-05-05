@@ -432,8 +432,8 @@ export default function FlashSaleCreatePage() {
                                                     <div className="text-xs text-slate-500 mt-1 space-x-3">
                                                         <span className="font-mono text-slate-400">{variant.sku}</span>
                                                         <span className={variant.stock_available > 0 ? "text-green-600" : "text-red-500 font-medium"}>Stock: {variant.stock_available}</span>
-                                                        <span className="text-slate-500">Cost: {Number(variant.cost_price || 0).toLocaleString()}đ</span>
-                                                        <span>Original Price: {Number(variant.price).toLocaleString()}đ</span>
+                                                        <span className="text-slate-500">Cost: {Number(variant.cost_price || 0).toLocaleString()} VND</span>
+                                                        <span>Original Price: {Number(variant.price).toLocaleString()} VND</span>
                                                     </div>
                                                 </div>
                                                 <Button 

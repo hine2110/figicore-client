@@ -6,8 +6,8 @@ import {
 import { toast } from 'sonner';
 
 /**
- * Hook lấy danh sách đề xuất nhập/xả hàng từ Database
- * @param params Bộ lọc theo Trạng thái (status) hoặc Loại (type)
+ * Hook to get list of restock/clearance suggestions from Database
+ * @param params Filter by Status (status) or Type (type)
  */
 export const useGetRecommendations = (params?: RecommendationQueryParams) => {
   return useQuery({
@@ -15,7 +15,7 @@ export const useGetRecommendations = (params?: RecommendationQueryParams) => {
     queryFn: async () => {
       const response = await inventoryAnalyticsService.getRecommendations(params);
       if (!response.success) {
-        throw new Error(response.message || 'Lỗi khi lấy dữ liệu đề xuất');
+        throw new Error(response.message || 'Error fetching recommendation data');
       }
       // API trả về { success, data: { data: [...], meta } }
       // Chúng ta trả về mảng data bên trong để các component dễ xử lý
@@ -38,9 +38,9 @@ export const useTriggerAI = () => {
       const promise = inventoryAnalyticsService.triggerAIAnalysis();
 
       toast.promise(promise, {
-        loading: 'AI đang phân tích kho hàng...',
-        success: 'Phân tích hoàn tất!',
-        error: 'Lỗi khi kích hoạt AI phân tích',
+        loading: 'AI is analyzing inventory...',
+        success: 'Analysis complete!',
+        error: 'Error triggering AI analysis',
       });
 
       const response = await promise;
@@ -69,13 +69,13 @@ export const useApplyRecommendation = () => {
     mutationFn: async (id: number) => {
       const response = await inventoryAnalyticsService.applyRecommendation(id);
       if (!response.success) {
-        throw new Error(response.message || 'Phê duyệt thất bại');
+        throw new Error(response.message || 'Approval failed');
       }
       return response.data;
     },
     onSuccess: (_, id) => {
-      toast.success(`Đề xuất #${id} đã được thực thi thành công!`);
-      // Xóa khỏi danh sách PENDING
+      toast.success(`Recommendation #${id} successfully applied!`);
+      // Remove from PENDING list
       queryClient.invalidateQueries({
         queryKey: ['inventory-recommendations'],
       });
@@ -85,7 +85,7 @@ export const useApplyRecommendation = () => {
       });
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Lỗi khi phê duyệt đề xuất');
+      toast.error(error.message || 'Error applying recommendation');
     }
   });
 };
@@ -99,7 +99,7 @@ export const useGetGlobalInventory = () => {
     queryFn: async () => {
       const response = await inventoryAnalyticsService.getGlobalInventory();
       if (!response.success) {
-        throw new Error(response.message || 'Lỗi khi lấy dữ liệu tồn kho');
+        throw new Error(response.message || 'Error fetching inventory data');
       }
       return response.data;
     }
@@ -107,7 +107,7 @@ export const useGetGlobalInventory = () => {
 };
 
 /**
- * Hook lấy danh sách Market Intelligence từ DB
+ * Hook to get Market Intelligence list from DB
  */
 export const useGetMarketIntel = (params?: { brand?: string; status?: string; category?: string }) => {
   return useQuery({
@@ -117,7 +117,7 @@ export const useGetMarketIntel = (params?: { brand?: string; status?: string; ca
       if (!response.success) throw new Error('Failed to fetch market intel');
       return response.data;
     },
-    staleTime: 1000 * 60 * 5, // 5 phút cache
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
   });
 };
 
@@ -131,9 +131,9 @@ export const useTriggerMarketScan = () => {
     mutationFn: async () => {
       const promise = inventoryAnalyticsService.triggerMarketScan();
       toast.promise(promise, {
-        loading: '🌐 AI đang quét thị trường... (có thể mất 15-30 giây)',
-        success: (res: any) => `✅ Quét xong! Tìm thấy ${res?.data?.saved || 0} sản phẩm mới`,
-        error: 'Lỗi khi quét thị trường. Kiểm tra TAVILY_API_KEY.',
+        loading: '🌐 AI is scanning market... (may take 15-30 seconds)',
+        success: (res: any) => `✅ Scan complete! Found ${res?.data?.saved || 0} new products`,
+        error: 'Error scanning market. Check TAVILY_API_KEY.',
       });
       const response = await promise;
       if (!response.success) throw new Error('Market scan failed');
@@ -143,7 +143,7 @@ export const useTriggerMarketScan = () => {
       queryClient.invalidateQueries({ queryKey: ['market-intel'] });
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Lỗi khi quét thị trường');
+      toast.error(error.message || 'Error scanning market');
     },
   });
 };

@@ -109,53 +109,53 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                 <div className="thermal-receipt-container text-black bg-white w-[80mm] p-4 text-[13px] leading-tight font-mono">
                     <div className="text-center mb-4">
                         <h2 className="text-lg font-bold uppercase">FIGI CORE POS</h2>
-                        <p className="text-[11px]">76 Huỳnh Văn Nghệ, Ngũ Hành Sơn, ĐN</p>
-                        <p className="text-[11px]">SĐT: 0868884343</p>
+                        <p className="text-[11px]">76 Huynh Van Nghe, Ngu Hanh Son, DN</p>
+                        <p className="text-[11px]">Phone: 0868884343</p>
                         <div className="border-b border-dashed border-black my-2"></div>
-                        <h3 className="text-md font-bold uppercase">HOÁ ĐƠN THANH TOÁN</h3>
-                        <p className="text-[11px]">Số: {order.order_code}</p>
+                        <h3 className="text-md font-bold uppercase">PAYMENT RECEIPT</h3>
+                        <p className="text-[11px]">No: {order.order_code}</p>
                     </div>
 
 
 
                     <div className="space-y-1 mb-3 text-[11px]">
                         <div className="flex justify-between">
-                            <span>Giờ vào: {format(new Date(order.created_at), "HH:mm dd/MM/yyyy")}</span>
-                            <span>Giờ in: {format(new Date(), "HH:mm")}</span>
+                            <span>In Time: {format(new Date(order.created_at), "HH:mm dd/MM/yyyy")}</span>
+                            <span>Print Time: {format(new Date(), "HH:mm")}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>Thu ngân:</span>
+                            <span>Cashier:</span>
                             <span className="font-bold">{order.employees?.users?.full_name || 'Staff'}</span>
                         </div>
                         <div className="border-b border-dotted border-black/30 my-1"></div>
                         <div className="flex justify-between">
-                            <span>Khách hàng:</span>
-                            <span className="font-bold">{order.users?.full_name || 'Khách lẻ'}</span>
+                            <span>Customer:</span>
+                            <span className="font-bold">{order.users?.full_name || 'Retail Customer'}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>Điện thoại:</span>
+                            <span>Phone:</span>
                             <span>{order.users?.phone || 'N/A'}</span>
                         </div>
                         {order.users?.customers && (
                             <>
                                 <div className="flex justify-between">
-                                    <span>Hạng thẻ:</span>
+                                    <span>Tier:</span>
                                     <span className="font-bold uppercase">{order.users?.customers?.current_rank_code}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span>Điểm tích lũy:</span>
+                                    <span>Accumulated points:</span>
                                     <span className="font-bold">
                                         +{(() => {
                                             const oldSpent = Number(order.users?.customers?.total_spent || 0) - Number(order.total_amount);
                                             const oldPoints = Math.floor(oldSpent / 10000);
                                             const newPoints = Math.floor(Number(order.users?.customers?.total_spent || 0) / 10000);
                                             return Math.max(0, newPoints - oldPoints);
-                                        })()} điểm
+                                        })()} points
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span>Tổng điểm hiện tại:</span>
-                                    <span>{(order.users?.customers?.loyalty_points || 0).toLocaleString('vi-VN')} điểm</span>
+                                    <span>Total current points:</span>
+                                    <span>{(order.users?.customers?.loyalty_points || 0).toLocaleString('vi-VN')} points</span>
                                 </div>
                             </>
                         )}
@@ -163,13 +163,13 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
 
                     <div className="mb-2">
                         <div className="flex font-bold border-b border-dashed border-black pb-1 mb-1 text-[11px]">
-                            <span className="flex-1">Mặt hàng</span>
+                            <span className="flex-1">Item</span>
                             <span className="w-12 text-center">SL</span>
-                            <span className="w-20 text-right">Tổng</span>
+                            <span className="w-20 text-right">Total</span>
                         </div>
                         {order.order_items?.map((item: any, idx: number) => (
                             <div key={idx} className="flex py-0.5 text-[11px]">
-                                <span className="flex-1 leading-none">{(item.product_variants?.products?.name || 'Món').toUpperCase()}</span>
+                                <span className="flex-1 leading-none">{(item.product_variants?.products?.name || 'Item').toUpperCase()}</span>
                                 <span className="w-12 text-center">{item.quantity}</span>
                                 <span className="w-20 text-right">{Number(item.total_price).toLocaleString('vi-VN')}</span>
                             </div>
@@ -178,17 +178,17 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
 
                     <div className="border-t border-dashed border-black pt-2 space-y-1 text-[11px]">
                         <div className="flex justify-between text-sm">
-                            <span>Tạm tính ({order.order_items?.length || 0})</span>
+                            <span>Subtotal ({order.order_items?.length || 0})</span>
                             <span>{(Number(order.total_amount) + Number(order.discount_amount || 0)).toLocaleString('vi-VN')}</span>
                         </div>
                         {Number(order.discount_amount) > 0 && (
                             <div className="flex justify-between">
-                                <span>Chiết khấu</span>
+                                <span>Discount</span>
                                 <span>-{Number(order.discount_amount).toLocaleString('vi-VN')}</span>
                             </div>
                         )}
                         <div className="flex justify-between text-[14px] font-bold border-t border-dotted border-black pt-1">
-                            <span>TỔNG THANH TOÁN</span>
+                            <span>TOTAL PAYMENT</span>
                             <span>{Number(order.total_amount).toLocaleString('vi-VN')}₫</span>
                         </div>
                         <div className="flex justify-between">
@@ -198,11 +198,11 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                         {order.payment_method_code === 'CASH' && order.cash_received && (
                             <>
                                 <div className="flex justify-between">
-                                    <span>Khách đưa</span>
+                                    <span>Customer gave</span>
                                     <span>{Number(order.cash_received).toLocaleString('vi-VN')}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span>Trả lại</span>
+                                    <span>Return</span>
                                     <span>{Number(order.cash_change || 0).toLocaleString('vi-VN')}</span>
                                 </div>
                             </>
@@ -210,9 +210,9 @@ export default function OrderDetailsModal({ order, open, onClose, onOrderCancell
                     </div>
 
                     <div className="text-center mt-6 space-y-1 text-[11px] font-bold">
-                        <p className="border-t border-dashed border-black pt-3">Bạn sẽ được MIỄN PHÍ đơn này nếu thông tin tích điểm không phải của bạn.</p>
-                        <p className="font-normal italic text-[10px]">Hóa đơn có sai sót gì cảm phiền bạn gọi 1900 998808 để được hỗ trợ nha.</p>
-                        <p className="text-md mt-2">Figi Core cảm ơn bạn nhé ~</p>
+                        <p className="border-t border-dashed border-black pt-3">You will get this order for FREE if the points information is not yours.</p>
+                        <p className="font-normal italic text-[10px]">If there are any errors in the receipt, please call 1900 998808 for support.</p>
+                        <p className="text-md mt-2">Figi Core thanks you ~</p>
                         <p className="text-[10px]">Wifi: Figi Core Guest</p>
                         <p className="text-[10px]">Pass: figicore2026</p>
                     </div>

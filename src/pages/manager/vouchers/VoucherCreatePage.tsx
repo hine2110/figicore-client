@@ -390,17 +390,17 @@ export default function VoucherCreatePage() {
                                                 </FormDescription>
                                                 {/* TECHNICAL NOTE: For FREE_SHIP vouchers, the cap must be a round
                                                     thousand (e.g. 30,000 / 50,000) to stay in sync with the GHN fee
-                                                    rounding logic on the backend (ceil to nearest 1,000đ).
+                                                    rounding logic on the backend (ceil to nearest 1,000 VND).
                                                     A non-round cap (e.g. 30,200) can still produce fractional
                                                     amounts on the Checkout summary. */}
                                                 {isFreeShip && (
                                                     <div className="flex items-start gap-2 text-xs bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-1">
                                                         <span className="text-amber-500 mt-0.5 shrink-0">⚠️</span>
                                                         <span className="text-amber-800">
-                                                            <strong>Lưu ý kỹ thuật:</strong> Mức giảm tối đa nên là{' '}
-                                                            <strong>số tròn hàng nghìn</strong> (30,000 · 50,000 · 70,000…).
-                                                            Phí ship GHN được làm tròn lên hàng nghìn trên backend; nếu cap lẻ
-                                                            sẽ khiến số tiền giảm hiển thị bị lẻ trên trang Checkout.
+                                                            <strong>Technical Note:</strong> Max discount should be{' '}
+                                                            <strong>rounded to thousands</strong> (30,000 · 50,000 · 70,000…).
+                                                            GHN shipping fee is rounded up to thousands on backend; if odd cap
+                                                            it will cause odd discount amount displayed on Checkout page.
                                                         </span>
                                                     </div>
                                                 )}

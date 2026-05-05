@@ -42,8 +42,8 @@ export default function FlashSaleProgress({ sold, quota }: FlashSaleProgressProp
                     {isSoldOut
                         ? 'Sold Out'
                         : isCritical
-                        ? '🔥 Sắp cháy hàng!'
-                        : `Đã bán ${sold}/${quota}`}
+                        ? '🔥 Almost sold out!'
+                        : `Sold ${sold}/${quota}`}
                 </span>
                 <span className="text-[10px] text-white/60 font-semibold">
                     {Math.round(pct)}%

@@ -326,7 +326,7 @@ export default function Checkout() {
             await Promise.all(orders.map(o => api.post(`/orders/${o.order_id}/cancel`)));
             toast({
                 title: isAuctionOrder ? "Auction Forfeited" : "Order Cancelled",
-                description: isAuctionOrder ? "Tiền cọc của bạn đã bị tịch thu theo quy định" : "Items returned to cart/stock."
+                description: isAuctionOrder ? "Your deposit has been forfeited per policy." : "Items returned to cart/stock."
             });
             // Navigate to auctions list if this was an auction order, else go to retail
             navigate(isAuctionOrder ? '/customer/auctions' : '/customer/retail');
@@ -625,7 +625,7 @@ export default function Checkout() {
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex flex-col">
                                                             <span className="text-violet-600 font-medium flex items-center gap-1.5">
-                                                                <TicketPercent className="w-4 h-4" /> Voucher áp dụng
+                                                                <TicketPercent className="w-4 h-4" /> Applied Voucher
                                                             </span>
                                                             <span className="text-xs text-slate-500 font-mono mt-0.5 ml-5">
                                                                 {selectedVoucher.promotions?.code}
@@ -781,7 +781,7 @@ export default function Checkout() {
                             <div className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full mx-4">
                                 <h3 className="text-lg font-bold">Cancel Checkout?</h3>
                                 <p className="text-slate-500 text-sm mb-6">
-                                    {isAuctionOrder ? "Tiền cọc của bạn đã bị tịch thu theo quy định" : "This will cancel all created orders and release stock."}
+                                    {isAuctionOrder ? "Your deposit will be forfeited per policy." : "This will cancel all created orders and release stock."}
                                 </p>
                                 <div className="flex gap-3 justify-end">
                                     <Button variant="outline" onClick={() => setShowCancelDialog(false)}>No</Button>
@@ -802,7 +802,7 @@ export default function Checkout() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <TicketPercent className="w-5 h-5 text-violet-600" />
-                            Chọn Voucher
+                            Select Voucher
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 mt-2">
@@ -831,23 +831,23 @@ export default function Checkout() {
                                             <div className="space-y-0.5">
                                                 <h4 className={`font-bold text-base md:text-lg leading-tight ${isFreeShip ? 'text-emerald-800' : 'text-violet-800'}`}>
                                                     {isFreeShip 
-                                                        ? 'MIỄN PHÍ VẬN CHUYỂN'
+                                                        ? 'FREE SHIPPING'
                                                         : promo?.discount_type === 'PERCENTAGE' 
-                                                            ? `Giảm ${promo.discount_value}%` 
-                                                            : `Giảm ${formatPrice(Number(promo?.discount_value))}`
+                                                            ? `${promo.discount_value}% OFF` 
+                                                            : `${formatPrice(Number(promo?.discount_value))} OFF`
                                                     }
                                                 </h4>
                                                 <div className="flex flex-col gap-0.5">
                                                     {!isFreeShip && Number(promo?.max_discount_amount || 0) > 0 && (
                                                         <p className="text-[11px] text-orange-600 font-bold">
-                                                            Giảm tối đa {formatPrice(Number(promo?.max_discount_amount))}
+                                                            Max discount {formatPrice(Number(promo?.max_discount_amount))}
                                                         </p>
                                                     )}
                                                     <p className={`text-xs ${meetsMinOrder ? 'text-slate-500' : 'text-red-500 font-bold'}`}>
                                                         {promo?.min_order_value 
-                                                            ? `Đơn tối thiểu ${formatPrice(Number(promo.min_order_value))}`
-                                                            : 'Không giới hạn đơn tối thiểu'}
-                                                        {!meetsMinOrder && ' (Chưa đủ điều kiện)'}
+                                                            ? `Min order ${formatPrice(Number(promo.min_order_value))}`
+                                                            : 'No minimum order'}
+                                                        {!meetsMinOrder && ' (Not eligible)'}
                                                     </p>
                                                 </div>
                                             </div>
@@ -873,7 +873,7 @@ export default function Checkout() {
                     </div>
                     {selectedVoucher && (
                         <Button variant="ghost" className="w-full mt-2 text-slate-500 text-sm" onClick={() => { setSelectedVoucher(null); setShowVoucherDialog(false); }}>
-                            Bỏ chọn voucher
+                            Deselect voucher
                         </Button>
                     )}
                 </DialogContent>

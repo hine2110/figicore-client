@@ -272,7 +272,7 @@ export default function PromotionCreatePage() {
             <Form {...form}>
                         <form onSubmit={form.handleSubmit(handlePreSubmit)} className="space-y-5">
 
-                            {/* Tên */}
+                            {/* Name */}
                             <FormField
                                 control={form.control}
                                 name="name"

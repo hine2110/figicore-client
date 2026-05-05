@@ -113,7 +113,7 @@ export default function ActivationPage() {
         }
 
         if (!avatarFile || !faceDescriptor) {
-            toast({ title: "Avatar Required", description: "Vui lòng chụp ảnh hoặc chọn ảnh rõ mặt.", variant: "destructive" });
+            toast({ title: "Avatar Required", description: "Please take a photo or select a clear facial photo.", variant: "destructive" });
             return;
         }
 
@@ -190,7 +190,7 @@ export default function ActivationPage() {
                 ) : isExpired ? (
                     <div className="p-6 space-y-4 pt-0">
                         <div className="bg-red-50 text-red-600 p-4 rounded-md text-sm border border-red-200">
-                            Your activation link has expired for security purposes. (Đường dẫn kích hoạt của bạn đã hết hạn để đảm bảo an toàn).
+                            Your activation link has expired for security purposes.
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="resend-email">Confirm your email address</Label>
@@ -327,5 +327,5 @@ export default function ActivationPage() {
         </div>
     );
 
-    // push code lai nghe
+    // Remember to push code
 }

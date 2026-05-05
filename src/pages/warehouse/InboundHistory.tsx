@@ -147,10 +147,10 @@ export function InboundHistory() {
     const handleApproveBlindbox = async (id: number) => {
         try {
             await productsService.approveBlindbox(id);
-            toast({ title: "Đã duyệt", description: "Blind Box đã được chuyển sang trạng thái ACTIVE." });
+            toast({ title: "Approved", description: "Blind Box has been moved to ACTIVE status." });
             fetchDraftBlindboxes();
         } catch (error: any) {
-            toast({ title: "Lỗi duyệt", description: error.response?.data?.message || error.message, variant: "destructive" });
+            toast({ title: "Approval Error", description: error.response?.data?.message || error.message, variant: "destructive" });
         }
     };
 
@@ -739,11 +739,11 @@ export function InboundHistory() {
                                         <div className="space-y-3 bg-neutral-50 p-3 rounded-xl mb-4 border border-neutral-100">
                                             <div className="flex justify-between items-center">
                                                 <span className="text-xs text-neutral-500">Ticket Price:</span>
-                                                <span className="text-sm font-bold text-purple-700">{bb.product_blindboxes?.[0]?.price?.toLocaleString()}đ</span>
+                                                <span className="text-sm font-bold text-purple-700">{bb.product_blindboxes?.[0]?.price?.toLocaleString()} VND</span>
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-xs text-neutral-500">Value Range:</span>
-                                                <span className="text-xs font-semibold">{bb.product_blindboxes?.[0]?.min_value?.toLocaleString()}đ - {bb.product_blindboxes?.[0]?.max_value?.toLocaleString()}đ</span>
+                                                <span className="text-xs font-semibold">{bb.product_blindboxes?.[0]?.min_value?.toLocaleString()} VND - {bb.product_blindboxes?.[0]?.max_value?.toLocaleString()} VND</span>
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-xs text-neutral-500">Total Variants:</span>

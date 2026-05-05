@@ -871,8 +871,8 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
 
         if (!minValue || !maxValue || Number(minValue) >= Number(maxValue)) {
             return toast({
-                title: "Lỗi Nhập liệu",
-                description: "Vui lòng nhập Min/Max hợp lệ (Min phải nhỏ hơn Max).",
+                title: "Input Error",
+                description: "Please enter valid Min/Max (Min must be less than Max).",
                 variant: "destructive"
             });
         }
@@ -887,13 +887,13 @@ export function CreateProductModal({ open, onOpenChange, onSuccess, productToEdi
             });
             if (res.success && res.data) {
                 setPricingSuggestion(res.data);
-                // Cập nhật giá vé theo đề xuất AI
+                // Update ticket price based on AI suggestion
                 form.setValue('price', res.data.recommendedTicketPrice);
-                toast({ title: "Phân tích Rủi ro Xong", description: "Đã cập nhật giá bán vé theo chuyên gia AI!" });
+                toast({ title: "Risk Analysis Complete", description: "Ticket price updated based on AI expert!" });
             }
         } catch (error) {
             console.error(error);
-            toast({ title: "Lỗi Phân tích", description: "Hệ thống AI đang quá tải, vui lòng thử lại sau.", variant: "destructive" });
+            toast({ title: "Analysis Error", description: "AI system overloaded, please try again later.", variant: "destructive" });
         } finally {
             setIsAnalyzingPrice(false);
         }

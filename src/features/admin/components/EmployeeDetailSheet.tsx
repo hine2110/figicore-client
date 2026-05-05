@@ -24,7 +24,7 @@ export default function EmployeeDetailSheet({ employeeId, open, onOpenChange }: 
 
     useEffect(() => {
         if (open && employeeId) {
-            setViewPage(0); // Reset lật trang về Thông tin chung
+            setViewPage(0); // Reset page to General Info
             fetchEmployeeDetails(employeeId);
         } else {
             setEmployee(null);
@@ -89,7 +89,7 @@ export default function EmployeeDetailSheet({ employeeId, open, onOpenChange }: 
                             </div>
                         </div>
 
-                        {/* THANH ĐIỀU HƯỚNG LẬT TRANG (LEFT / RIGHT) */}
+                        {/* PAGINATION NAVIGATION (LEFT / RIGHT) */}
                         <div className="flex items-center justify-between bg-slate-100/70 border border-slate-200 p-1.5 rounded-xl mb-4">
                             <Button
                                 variant="ghost"
@@ -102,7 +102,7 @@ export default function EmployeeDetailSheet({ employeeId, open, onOpenChange }: 
                             </Button>
 
                             <span className="font-semibold text-sm text-slate-700 flex items-center gap-2 transition-all">
-                                {viewPage === 0 ? "Thông tin chung" : <><Wallet className="w-4 h-4 text-indigo-600" /> Tài khoản nhận lương</>}
+                                {viewPage === 0 ? "General Info" : <><Wallet className="w-4 h-4 text-indigo-600" /> Salary Account</>}
                             </span>
 
                             <Button
@@ -207,22 +207,22 @@ export default function EmployeeDetailSheet({ employeeId, open, onOpenChange }: 
                                         ) : (
                                             <div className="mb-6 w-44 h-44 bg-slate-100 flex flex-col items-center justify-center text-slate-400 border border-dashed border-slate-300 rounded-lg">
                                                 <QrCode className="w-10 h-10 mb-2 opacity-50" />
-                                                <span className="text-sm">Chưa có mã QR</span>
+                                                <span className="text-sm">No QR Code</span>
                                             </div>
                                         )}
 
                                         <div className="w-full space-y-3 text-sm">
                                             <div className="flex justify-between border-b border-slate-200 pb-3">
-                                                <span className="text-slate-500">Ngân hàng:</span>
-                                                <span className="font-semibold text-slate-900">{(employee as any).bank_name || <span className="text-red-500 italic font-normal">Chưa cập nhật</span>}</span>
+                                                <span className="text-slate-500">Bank:</span>
+                                                <span className="font-semibold text-slate-900">{(employee as any).bank_name || <span className="text-red-500 italic font-normal">Not updated</span>}</span>
                                             </div>
                                             <div className="flex justify-between border-b border-slate-200 pb-3">
-                                                <span className="text-slate-500">Chủ tài khoản:</span>
-                                                <span className="font-semibold text-slate-900 uppercase">{(employee as any).bank_account_name || <span className="text-red-500 italic font-normal">Chưa cập nhật</span>}</span>
+                                                <span className="text-slate-500">Account Holder:</span>
+                                                <span className="font-semibold text-slate-900 uppercase">{(employee as any).bank_account_name || <span className="text-red-500 italic font-normal">Not updated</span>}</span>
                                             </div>
                                             <div className="flex justify-between items-center">
-                                                <span className="text-slate-500">Số tài khoản:</span>
-                                                <span className="font-semibold font-mono text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md text-base">{(employee as any).bank_account_no || <span className="text-red-500 italic font-normal text-sm">Chưa cập nhật</span>}</span>
+                                                <span className="text-slate-500">Account Number:</span>
+                                                <span className="font-semibold font-mono text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md text-base">{(employee as any).bank_account_no || <span className="text-red-500 italic font-normal text-sm">Not updated</span>}</span>
                                             </div>
                                         </div>
                                     </div>

@@ -336,7 +336,7 @@ export default function GuestProductDetail() {
 
                                                 return isOutOfStock && (
                                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                                                        <span className="text-yellow-400 font-black uppercase tracking-widest text-xs border-2 border-yellow-400 px-3 py-1.5 transform -rotate-12">HẾT HÀNG</span>
+                                                        <span className="text-yellow-400 font-black uppercase tracking-widest text-xs border-2 border-yellow-400 px-3 py-1.5 transform -rotate-12">OUT OF STOCK</span>
                                                     </div>
                                                 );
                                             })()}

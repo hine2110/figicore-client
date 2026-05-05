@@ -92,7 +92,7 @@ export const AIChatBox: React.FC = () => {
             activeMsgs = [
                 {
                     role: 'model',
-                    parts: 'Xin chào! Mình là FigiCore Specialist ✨. Mình có thể giúp gì cho bạn về mô hình và đồ chơi sưu tầm hôm nay?',
+                    parts: 'Hello! I am the FigiCore Specialist ✨. How can I help you with models and collectible toys today?',
                     timestamp: new Date().toISOString(),
                 },
             ];
@@ -247,10 +247,10 @@ export const AIChatBox: React.FC = () => {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => {
-                                        if (confirm('Bạn có muốn xóa toàn bộ lịch sử trò chuyện không?')) {
+                                        if (confirm('Do you want to clear the entire chat history?')) {
                                             const initialMsg: Message = {
                                                 role: 'model',
-                                                parts: 'Xin chào! Mình là FigiCore Specialist ✨. Mình có thể giúp gì cho bạn về mô hình và đồ chơi sưu tầm hôm nay?',
+                                                parts: 'Hello! I am the FigiCore Specialist ✨. How can I help you with models and collectible toys today?',
                                                 timestamp: new Date().toISOString(),
                                             };
                                             setChatHistory([initialMsg]);
@@ -259,7 +259,7 @@ export const AIChatBox: React.FC = () => {
                                         }
                                     }}
                                     className="w-8 h-8 rounded-full hover:bg-red-100/50 group"
-                                    title="Xóa tất cả dữ liệu"
+                                    title="Clear all data"
                                 >
                                     <Trash2 className="w-4 h-4 text-gray-500 group-hover:text-red-500 transition-colors" />
                                 </Button>
@@ -275,7 +275,7 @@ export const AIChatBox: React.FC = () => {
                                         }
                                     }}
                                     className={`w-8 h-8 rounded-full ${view === 'history' ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-indigo-100/50'}`}
-                                    title="Lịch sử chat"
+                                    title="Chat history"
                                 >
                                     <Bot className="w-4 h-4" />
                                 </Button>
@@ -289,10 +289,10 @@ export const AIChatBox: React.FC = () => {
                         <ScrollArea ref={scrollRef} className="flex-1 p-4">
                             {view === 'history' && !selectedArchive ? (
                                 <div className="space-y-3">
-                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Lịch sử trò chuyện cũ</h4>
+                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Past chat history</h4>
                                     {archives.length === 0 ? (
                                         <div className="text-center py-10 text-gray-400 text-sm">
-                                            Chưa có phiên hội thoại cũ nào được lưu. ✨
+                                            No previous chat sessions saved. ✨
                                         </div>
                                     ) : (
                                         archives.map((session) => (
@@ -302,11 +302,11 @@ export const AIChatBox: React.FC = () => {
                                                 className="w-full p-4 rounded-3xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all text-left group"
                                             >
                                                 <div className="flex justify-between items-center mb-1">
-                                                    <span className="text-xs font-bold text-indigo-600">Phiên {session.date}</span>
-                                                    <span className="text-[10px] text-gray-400">{session.messages.length} tin nhắn</span>
+                                                    <span className="text-xs font-bold text-indigo-600">Session {session.date}</span>
+                                                    <span className="text-[10px] text-gray-400">{session.messages.length} messages</span>
                                                 </div>
                                                 <p className="text-sm text-gray-600 line-clamp-1 italic">
-                                                    "{session.messages.find(m => m.role === 'user')?.parts || 'Không có tin nhắn người dùng'}"
+                                                    "{session.messages.find(m => m.role === 'user')?.parts || 'No user messages'}"
                                                 </p>
                                             </button>
                                         ))
@@ -322,9 +322,9 @@ export const AIChatBox: React.FC = () => {
                                                 className="h-7 px-2 text-[10px] font-bold"
                                                 onClick={() => setSelectedArchive(null)}
                                             >
-                                                ← QUAY LẠI
+                                                ← BACK
                                             </Button>
-                                            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">Đang xem lại ngày {selectedArchive.date}</span>
+                                            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">Reviewing date {selectedArchive.date}</span>
                                         </div>
                                     )}
                                     {(selectedArchive ? selectedArchive.messages : chatHistory).map((msg, idx) => (
@@ -463,12 +463,12 @@ export const AIChatBox: React.FC = () => {
                                 }
                             `}</style>
                             {[
-                                { icon: '🎁', text: 'Blindbox là gì?' },
-                                { icon: '🔥', text: 'Sản phẩm mới' },
-                                { icon: '🔍', text: 'Sản phẩm giá rẻ' },
-                                { icon: '📦', text: 'Cách đặt hàng' },
-                                // { icon: '💎', text: 'Ưu đãi thành viên' }
-                            ].map((action, idx) => (
+                                        { icon: '🎁', text: 'Blindbox?' },
+                                        { icon: '🔥', text: 'New Products' },
+                                        { icon: '🔍', text: 'Cheap Products' },
+                                        { icon: '📦', text: 'How to order' },
+                                        // { icon: '💎', text: 'Member offers' }
+                                    ].map((action, idx) => (
                                 <button
                                     key={idx}
                                     onClick={() => {
@@ -501,13 +501,13 @@ export const AIChatBox: React.FC = () => {
                                             value={message}
                                             onChange={(e) => setMessage(e.target.value)}
                                             onKeyDown={handleKeyPress}
-                                            placeholder="Nhập câu hỏi của bạn..."
+                                            placeholder="Type your question..."
                                             className="pl-12 pr-12 h-12 bg-white/50 border-white/40 rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-inner"
                                         />
                                         <Button
                                             onClick={() => setIsImageModalOpen(true)}
                                             className="absolute left-1.5 top-1.5 w-9 h-9 p-0 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 shadow-sm transition-all active:scale-95"
-                                            title="Tìm kiếm bằng hình ảnh"
+                                            title="Search by image"
                                         >
                                             <Camera className="w-4 h-4" />
                                         </Button>

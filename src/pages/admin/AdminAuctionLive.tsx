@@ -85,10 +85,10 @@ const StatusBadge = ({ isLive }: { isLive: boolean }) => (
 const PriceCard = ({ amount }: { amount: number }) => {
     const formatPrice = (p: number | string | undefined | null) => {
         const value = Number(p);
-        if (isNaN(value)) return { amount: '0', currency: 'đ' };
+        if (isNaN(value)) return { amount: '0', currency: 'VND' };
         const parts = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).formatToParts(value);
         const amountStr = parts.filter(p => p.type !== 'currency').map(p => p.value).join('').trim();
-        return { amount: amountStr, currency: 'đ' };
+        return { amount: amountStr, currency: 'VND' };
     };
     const { amount: price, currency } = formatPrice(amount);
 
@@ -301,7 +301,7 @@ export default function AdminAuctionLive() {
 
     const formatPrice = (p: number | string | undefined | null) => {
         const value = Number(p);
-        if (isNaN(value)) return '0 đ';
+        if (isNaN(value)) return '0 VND';
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
     };
 

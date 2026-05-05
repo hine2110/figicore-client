@@ -458,7 +458,7 @@ export default function CustomerLivestreamRoom() {
                     setGiveawayParticipantsList(data.participants || []);
                     setWinnerResult(null);
                     setIsGiveawayWheelVisible(true);
-                    setActiveGiveaway(null); // Ẩn widget khi bắt đầu quay
+                    setActiveGiveaway(null); // Hide widget when spinning starts
                 });
 
                 socket.on('giveaway_cancelled', () => {
@@ -470,11 +470,11 @@ export default function CustomerLivestreamRoom() {
                 socket.on('giveaway_winner_selected', (data: any) => {
                     setActiveGiveaway(null);
                     setWinnerResult(data);
-                    // Lưu ý: Không hiện toast ở đây, để PublicLuckyWheel gọi handleWheelFinish
+                    // Note: Do not show toast here, let PublicLuckyWheel call handleWheelFinish
                 });
 
                 socket.on('giveaway_claim_success', () => {
-                    toast({ title: "Prize Claimed!", description: "Check your cart for your 0đ order." });
+                    toast({ title: "Prize Claimed!", description: "Check your cart for your 0 VND order." });
                     setIsClaiming(false);
                     fetchPendingClaims();
                     fetchCart();

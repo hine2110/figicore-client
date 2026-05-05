@@ -305,7 +305,7 @@ export default function PromotionEditPage() {
                                 </div>
                             )}
 
-                            {/* Tên */}
+                            {/* Name */}
                             <FormField
                                 control={form.control}
                                 name="name"

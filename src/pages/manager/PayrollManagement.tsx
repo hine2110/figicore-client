@@ -188,14 +188,14 @@ export default function PayrollManagement() {
             setViewPayroll(null);
             setPaymentTarget(null);
 
-            // LOGIC MỚI: Bắt đầu Animation nếu filter đang bật và sếp vừa bấm Đã Chuyển Khoản (APPROVED)
+            // NEW LOGIC: Start Animation if filter is on and manager just clicked Transferred (APPROVED)
             if (hideCompleted && newStatus === 'APPROVED' && userId) {
-                // 1. Đứng im 0.5s cho mắt nhìn kịp sự thay đổi trạng thái
+                // 1. Wait 0.5s for eyes to catch status change
                 setTimeout(() => {
-                    // 2. Gắn class CSS để trượt thẻ sang phải và mờ dần
+                    // 2. Add CSS class to slide card right and fade out
                     setSlideOutId(userId);
 
-                    // 3. Đợi trượt xong (0.5s) mới fetch data để xóa hẳn khỏi DOM
+                    // 3. Wait for slide animation (0.5s) before fetching data to remove from DOM
                     setTimeout(() => {
                         setSlideOutId(null);
                         fetchData();
@@ -235,7 +235,7 @@ export default function PayrollManagement() {
         const isActionLoading = actionLoading === user_id || actionLoading === payroll?.payroll_id;
 
         if (isActionLoading) {
-            return <Button disabled size="sm" variant="outline"><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang xử lý</Button>;
+            return <Button disabled size="sm" variant="outline"><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing</Button>;
         }
 
         if (!payroll) {
@@ -505,13 +505,13 @@ export default function PayrollManagement() {
 
             {/* Payroll History & Dispute Details Modal */}
             <Dialog open={!!viewPayroll} onOpenChange={(open) => !open && setViewPayroll(null)}>
-                {/* THÊM flex flex-col max-h-[90vh] để giới hạn chiều cao Modal */}
+                {/* ADD flex flex-col max-h-[90vh] to limit Modal height */}
                 <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden bg-slate-50 flex flex-col max-h-[90vh]">
                     <DialogTitle className="sr-only">Payroll Details</DialogTitle>
 
                     {viewPayroll && (
                         <>
-                            {/* HEADER - Giữ cố định, không cuộn */}
+                            {/* HEADER - Fixed, non-scrollable */}
                             <div className="p-6 text-white bg-slate-800 shrink-0">
                                 <div className="flex justify-between items-start">
                                     <div>
@@ -525,7 +525,7 @@ export default function PayrollManagement() {
                             {/* BODY - Scrollable area for info and forms */}
                             <div className="flex-1 overflow-y-auto flex flex-col">
                                 <div className="p-6 shrink-0">
-                                    {/* Khối cảnh báo nếu có khiếu nại */}
+                                    {/* Alert block if there are disputes */}
                                     {viewPayroll.status_code === 'DISPUTED' && viewPayroll.payroll_disputes?.[0] && (
                                         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                                             <div className="flex items-center gap-2 text-red-700 font-bold mb-2">
@@ -598,7 +598,7 @@ export default function PayrollManagement() {
                                     </div>
                                 </div>
 
-                                {/* Khu vực hiển thị chữ ký (Nếu đã ký) */}
+                                {/* Signature display area (If signed) */}
                                 {viewPayroll.signature_data && (
                                     <div className="mb-6 mx-6 p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex flex-col items-center justify-center gap-2 shrink-0">
                                         <span className="text-sm font-semibold text-emerald-900"><CheckCircle className="w-4 h-4 inline mr-1" /> Employee has signed</span>
@@ -611,7 +611,7 @@ export default function PayrollManagement() {
                                     </div>
                                 )}
 
-                                {/* Form Thêm khoản điều chỉnh */}
+                                {/* Add Adjustment Form */}
                                 {(viewPayroll.status_code === 'DISPUTED' || viewPayroll.status_code === 'DRAFT') && (
                                     <div className="p-6 bg-indigo-50/50 border-t border-indigo-100 flex flex-col gap-3 shrink-0">
                                         <span className="text-sm font-semibold text-indigo-900 flex items-center gap-2">
@@ -666,7 +666,7 @@ export default function PayrollManagement() {
                                     </div>
                                 ) : (
                                     <>
-                                        {/* Lấy từ paymentEmployeeInfo thay vì paymentTarget.employeeInfo */}
+                                        {/* Get from paymentEmployeeInfo instead of paymentTarget.employeeInfo */}
                                         {(paymentEmployeeInfo as any)?.bank_qr_code_url ? (
                                             <div className="mb-4 p-2 bg-white border border-slate-200 rounded-lg shadow-sm">
                                                 <img src={(paymentEmployeeInfo as any).bank_qr_code_url} alt="QR Code" className="w-48 h-48 object-contain" />

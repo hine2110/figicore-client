@@ -66,13 +66,13 @@ const FaceCheckInModal: React.FC<FaceCheckInModalProps> = ({ open, onOpenChange,
             const confidence = response.data.confidence;
             setResult({
                 success: true,
-                message: `Chấm công thành công! (Độ chính xác: ${typeof confidence === 'number' ? confidence.toFixed(1) : confidence}%)`,
+                message: `Check-in successful! (Confidence: ${typeof confidence === 'number' ? confidence.toFixed(1) : confidence}%)`,
                 confidence
             });
 
             toast({
-                title: "Thành công",
-                description: response.data.message || "Chấm công thành công!",
+                title: "Success",
+                description: response.data.message || "Check-in successful!",
                 className: "bg-green-600 text-white border-none",
             });
 
@@ -88,14 +88,14 @@ const FaceCheckInModal: React.FC<FaceCheckInModalProps> = ({ open, onOpenChange,
         } catch (error: any) {
             console.error("Check-in failed", error);
 
-            const errorMessage = error.response?.data?.message || "Khuôn mặt không khớp hoặc lỗi hệ thống.";
+            const errorMessage = error.response?.data?.message || "Face does not match or system error.";
 
             setResult({
                 success: false,
                 message: errorMessage
             });
             toast({
-                title: "Thất bại",
+                title: "Failed",
                 description: errorMessage,
                 variant: "destructive",
             });
@@ -112,7 +112,7 @@ const FaceCheckInModal: React.FC<FaceCheckInModalProps> = ({ open, onOpenChange,
                         {checkInType === 'in' ? 'Face Check-In' : 'Face Check-Out'}
                     </DialogTitle>
                     <DialogDescription className="text-center">
-                        Di chuyển khuôn mặt vào khung hình để xác thực.
+                        Move your face into the frame to authenticate.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -140,7 +140,7 @@ const FaceCheckInModal: React.FC<FaceCheckInModalProps> = ({ open, onOpenChange,
                         {loading && (
                             <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white backdrop-blur-sm">
                                 <Loader2 className="w-10 h-10 animate-spin mb-2" />
-                                <span className="font-medium">Đang xử lý...</span>
+                                <span className="font-medium">Processing...</span>
                             </div>
                         )}
                     </div>
@@ -160,7 +160,7 @@ const FaceCheckInModal: React.FC<FaceCheckInModalProps> = ({ open, onOpenChange,
                                 onClick={capture}
                             >
                                 <Camera className="w-5 h-5 mr-2" />
-                                Chụp ảnh
+                                Capture
                             </Button>
                         ) : (
                             <>
@@ -171,14 +171,14 @@ const FaceCheckInModal: React.FC<FaceCheckInModalProps> = ({ open, onOpenChange,
                                     disabled={loading || (result?.success)}
                                 >
                                     <RefreshCw className="w-4 h-4 mr-2" />
-                                    Chụp lại
+                                    Retake
                                 </Button>
                                 <Button
                                     className="flex-1 h-12 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200"
                                     onClick={handleConfirm}
                                     disabled={loading || (result?.success)}
                                 >
-                                    {loading ? 'Đang gửi...' : 'Xác nhận'}
+                                    {loading ? 'Submitting...' : 'Confirm'}
                                 </Button>
                             </>
                         )}

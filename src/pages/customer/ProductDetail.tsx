@@ -307,7 +307,7 @@ export default function ProductDetail() {
             );
         }
 
-        // Blindbox - "không cần các logic này"
+        // Blindbox - "no need for this logic"
         return null;
     };
 

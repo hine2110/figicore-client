@@ -288,7 +288,7 @@ export default function Cart() {
                 await fetchCart();
                 toast({
                     variant: "destructive",
-                    title: "Giỏ hàng đã cập nhật giá",
+                    title: "Cart Price Updated",
                     description: errorMsg,
                     duration: 6000,
                 });
@@ -479,7 +479,7 @@ export default function Cart() {
                         if (item.giveaway_claim_id) {
                             toast({
                                 title: "Prize Ownership Notice",
-                                description: "Giveaway prizes cannot be removed from your cart. Please complete the 0đ checkout to receive your reward!",
+                                description: "Giveaway prizes cannot be removed from your cart. Please complete the 0 VND checkout to receive your reward!",
                                 variant: "default"
                             });
                             return;

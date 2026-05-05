@@ -98,15 +98,15 @@ const getUserColor = (name: string) => {
 
 const formatPriceShort = (p: number | string | undefined | null) => {
     const value = Number(p);
-    if (isNaN(value)) return { amount: '0', currency: 'đ' };
+    if (isNaN(value)) return { amount: '0', currency: 'VND' };
     const parts = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).formatToParts(value);
     const amountStr = parts.filter(p => p.type !== 'currency').map(p => p.value).join('').trim();
-    return { amount: amountStr, currency: 'đ' };
+    return { amount: amountStr, currency: 'VND' };
 };
 
 const formatPrice = (p: number | string | undefined | null) => {
     const value = Number(p);
-    if (isNaN(value)) return '0 đ';
+    if (isNaN(value)) return '0 VND';
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 };
 
@@ -1477,10 +1477,10 @@ function AdminStudioContent(props: any) {
                                 </div>
                                 <div className="relative flex flex-col justify-center">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-amber-100 drop-shadow-md">
-                                        {latestOrder.type === 'GIVEAWAY' ? '🎊 CHÚC MỪNG QUÀ TẶNG!' : '🎉 ĐƠN HÀNG MỚI!'}
+                                        {latestOrder.type === 'GIVEAWAY' ? '🎊 GIVEAWAY WINNER!' : '🎉 NEW ORDER!'}
                                     </span>
                                     <span className="text-sm font-black text-white italic drop-shadow-lg truncate max-w-[300px]">
-                                        {latestOrder.customer_name} {latestOrder.type === 'GIVEAWAY' ? `vừa thắng: ${latestOrder.product_name}` : `vừa chốt ${latestOrder.quantity}x ${latestOrder.product_name}`}
+                                        {latestOrder.customer_name} {latestOrder.type === 'GIVEAWAY' ? `just won: ${latestOrder.product_name}` : `just ordered ${latestOrder.quantity}x ${latestOrder.product_name}`}
                                     </span>
                                 </div>
                             </motion.div>
@@ -1651,8 +1651,8 @@ function AdminStudioContent(props: any) {
                         onFinish={() => {
                             setIsGiveawayWheelVisible(false);
                             setGiveawayParticipantsList([]);
-                            // Admin không cần hiện WinnerCelebration riêng như customer
-                            // vì đã có giveawayWinner state để hiển thị ở các chỗ khác nếu cần.
+                            // Admin does not need a separate WinnerCelebration like customer
+                            // because there is already giveawayWinner state to show elsewhere if needed.
                         }}
                     />
                 )}
@@ -1799,7 +1799,7 @@ function FlashSaleTrigger({ variant, onTrigger }: { variant: any, onTrigger: (pr
             setAiInfo({ reason, strategy });
         } catch (err) {
             setPrice(Math.round(Math.max(variant.price * 0.8, costPrice * 1.1)));
-            setAiInfo({ reason: "Sử dụng quy tắc giá an toàn mặc định.", strategy: "FALLBACK" });
+            setAiInfo({ reason: "Using default safe price rules.", strategy: "FALLBACK" });
         } finally {
             setIsSuggesting(false);
         }

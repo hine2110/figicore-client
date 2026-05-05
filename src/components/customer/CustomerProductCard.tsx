@@ -166,7 +166,7 @@ export default function CustomerProductCard({ product }: ProductCardProps) {
 
                             if (deposits.length > 0) {
                                 displayPrice = Math.min(...deposits);
-                                priceLabel = "Cọc: ";
+                                priceLabel = "Deposit: ";
                             } else {
                                 // Fallback to full price
                                 const prices = product.product_variants.map((v: any) => Number(v.product_preorder_configs?.full_price || 0));

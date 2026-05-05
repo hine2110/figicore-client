@@ -33,7 +33,7 @@ export default function SalaryConfiguration() {
     const [configLoading, setConfigLoading] = useState(false);
 
     // Config Form State
-    const [configName, setConfigName] = useState('Phụ cấp chuyên cần');
+    const [configName, setConfigName] = useState('Attendance Allowance');
     const [configAmount, setConfigAmount] = useState('1000000');
     const [configType, setConfigType] = useState('ALLOWANCE');
 
@@ -53,7 +53,7 @@ export default function SalaryConfiguration() {
     const fetchEmployees = async () => {
         setLoading(true);
         try {
-            // Tạm thời gọi API lấy danh sách nhân viên (có chứa base_salary hiện tại)
+            // Temporarily call API to get employee list (containing current base_salary)
             const res = await axiosInstance.get('/employees', {
                 params: { limit: 100, search: searchTerm }
             });
@@ -138,7 +138,7 @@ export default function SalaryConfiguration() {
             toast({ title: "Success", description: "Salary configuration added." });
             setConfigName('');
             setConfigAmount('');
-            fetchConfigs(selectedEmp.user_id); // Tải lại danh sách
+            fetchConfigs(selectedEmp.user_id); // Reload list
         } catch (error) {
             toast({ title: "Error", description: "Could not add configuration", variant: "destructive" });
         }
@@ -187,9 +187,9 @@ export default function SalaryConfiguration() {
         setSavingRule(true);
         try {
             await Promise.all([
-                axiosInstance.post('/payroll/penalty-rules', { code: 'LATE_PENALTY', value: 'Phạt đi trễ', meta_data: { amount: Number(ruleLate) } }),
-                axiosInstance.post('/payroll/penalty-rules', { code: 'EARLY_LEAVE_PENALTY', value: 'Phạt về sớm', meta_data: { amount: Number(ruleEarlyLeave) } }),
-                axiosInstance.post('/payroll/penalty-rules', { code: 'CORRECTION_PENALTY', value: 'Phạt spam khiếu nại', meta_data: { amount: Number(ruleSpam), free_limit: Number(ruleLimit) } })
+                axiosInstance.post('/payroll/penalty-rules', { code: 'LATE_PENALTY', value: 'Late Penalty', meta_data: { amount: Number(ruleLate) } }),
+                axiosInstance.post('/payroll/penalty-rules', { code: 'EARLY_LEAVE_PENALTY', value: 'Early Leave Penalty', meta_data: { amount: Number(ruleEarlyLeave) } }),
+                axiosInstance.post('/payroll/penalty-rules', { code: 'CORRECTION_PENALTY', value: 'Spam Dispute Penalty', meta_data: { amount: Number(ruleSpam), free_limit: Number(ruleLimit) } })
             ]);
             toast({ title: "Success", description: "Penalty rules saved." });
             setIsRuleModalOpen(false);
@@ -270,7 +270,7 @@ export default function SalaryConfiguration() {
                                                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openUpdateModal(emp)}>
                                                     <Edit3 className="w-3.5 h-3.5 mr-1" /> Update Salary
                                                 </Button>
-                                                {/* Nút này sẽ làm ở bước sau để gán Phụ cấp chuyên cần */}
+                                                {/* This button will be implemented later to assign Attendance Allowance */}
                                                 <Button size="sm" variant="ghost" className="h-8 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" onClick={() => openAllowanceModal(emp)}>
                                                     <Settings2 className="w-3.5 h-3.5 mr-1" /> Allowances
                                                 </Button>
@@ -287,7 +287,7 @@ export default function SalaryConfiguration() {
                 </CardContent>
             </Card>
 
-            {/* Modal Cập nhật lương */}
+            {/* Update Salary Modal */}
             <Dialog open={isUpdateModalOpen} onOpenChange={setIsUpdateModalOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
@@ -344,7 +344,7 @@ export default function SalaryConfiguration() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            {/* Modal Quản lý Phụ cấp / Khấu trừ */}
+            {/* Allowance / Deduction Management Modal */}
             <Dialog open={isAllowanceModalOpen} onOpenChange={setIsAllowanceModalOpen}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
@@ -355,7 +355,7 @@ export default function SalaryConfiguration() {
                     </DialogHeader>
 
                     <div className="space-y-6 py-2">
-                        {/* Danh sách đang áp dụng */}
+                        {/* Currently applied list */}
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase text-neutral-500">Currently Applied</Label>
                             {configLoading ? (
@@ -383,7 +383,7 @@ export default function SalaryConfiguration() {
                             )}
                         </div>
 
-                        {/* Form thêm mới */}
+                        {/* Add new form */}
                         <div className="bg-neutral-50 p-4 rounded-lg border space-y-4">
                             <Label className="text-xs font-bold uppercase text-neutral-500">Add New Item</Label>
                             <div className="grid grid-cols-2 gap-3">
@@ -411,7 +411,7 @@ export default function SalaryConfiguration() {
                     </div>
                 </DialogContent>
             </Dialog>
-            {/* Modal Lịch sử thay đổi lương */}
+            {/* Salary Change History Modal */}
             <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}>
                 <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
@@ -440,7 +440,7 @@ export default function SalaryConfiguration() {
                                                 <div className="font-bold text-slate-900 text-sm">
                                                     {formatCurrency(item.new_salary)}/h
                                                     <span className="text-xs font-normal text-slate-500 ml-1">
-                                                        {['MANAGER', 'SUPER_ADMIN'].includes(selectedEmp?.users?.role_code) ? '/tháng' : '/h'}
+                                                        {['MANAGER', 'SUPER_ADMIN'].includes(selectedEmp?.users?.role_code) ? '/month' : '/h'}
                                                     </span>
                                                 </div>
                                                 <time className="text-xs font-medium text-amber-600">
@@ -450,7 +450,7 @@ export default function SalaryConfiguration() {
                                             <div className="text-xs text-slate-500 mb-2">
                                                 Old salary: {formatCurrency(item.old_salary)}
                                                 <span className="ml-1">
-                                                    {['MANAGER', 'SUPER_ADMIN'].includes(selectedEmp?.users?.role_code) ? '/tháng' : '/h'}
+                                                    {['MANAGER', 'SUPER_ADMIN'].includes(selectedEmp?.users?.role_code) ? '/month' : '/h'}
                                                 </span>
                                             </div>
                                             <div className="text-sm text-slate-700 mb-2">
@@ -472,7 +472,7 @@ export default function SalaryConfiguration() {
                     </div>
                 </DialogContent>
             </Dialog>
-            {/* Modal Cấu hình Luật Phạt Hệ Thống */}
+            {/* System Penalty Rule Config Modal */}
             <Dialog open={isRuleModalOpen} onOpenChange={setIsRuleModalOpen}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>

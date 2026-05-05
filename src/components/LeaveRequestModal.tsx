@@ -54,8 +54,8 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
             const res = await axiosInstance.get('/leaves/me');
             setHistory(res.data || []);
         } catch (error: any) {
-            console.error("Lỗi lấy lịch sử:", error);
-            toast({ title: "Lỗi", description: "Không thể tải lịch sử xin nghỉ", variant: "destructive" });
+            console.error("Error fetching history:", error);
+            toast({ title: "Error", description: "Cannot load leave history", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -65,7 +65,7 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
         e.preventDefault();
 
         if (!formData.start_date || !formData.end_date) {
-            toast({ title: "Lỗi", description: "Vui lòng chọn ngày bắt đầu và kết thúc", variant: "destructive" });
+            toast({ title: "Error", description: "Please select start and end dates", variant: "destructive" });
             return;
         }
 
@@ -75,22 +75,22 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
 
         if (formData.type_code === 'SICK' && diffInHours < 6) {
             toast({
-                title: "Lỗi thời gian",
-                description: "Nghỉ ốm phải được báo trước ít nhất 6 tiếng.",
+                title: "Time error",
+                description: "Sick leave must be reported at least 6 hours in advance.",
                 variant: "destructive"
             });
             return;
         } else if (formData.type_code !== 'SICK' && diffInHours < 24) {
             toast({
-                title: "Lỗi thời gian",
-                description: "Nghỉ phép thông thường phải được báo trước ít nhất 24 tiếng.",
+                title: "Time error",
+                description: "Standard leave must be reported at least 24 hours in advance.",
                 variant: "destructive"
             });
             return;
         }
 
         if (formData.type_code === 'SICK' && !file) {
-            toast({ title: "Thiếu bằng chứng", description: "Vui lòng tải lên ảnh giấy khám bệnh/giấy tờ liên quan.", variant: "destructive" });
+            toast({ title: "Missing evidence", description: "Please upload medical certificate/related documents.", variant: "destructive" });
             return;
         }
 
@@ -120,7 +120,7 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
                 evidence_url
             });
 
-            toast({ title: "Thành công", description: "Đã gửi đơn xin nghỉ phép!" });
+            toast({ title: "Success", description: "Leave request submitted!" });
 
             // Reset form và chuyển sang tab lịch sử
             setFormData({ type_code: 'STANDARD', start_date: '', end_date: '', reason: '' });
@@ -128,10 +128,10 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
             setActiveTab('history');
 
         } catch (error: any) {
-            console.error("Lỗi khi gửi đơn:", error);
+            console.error("Error submitting request:", error);
             toast({
-                title: "Thất bại",
-                description: error.response?.data?.message || "Có lỗi xảy ra khi gửi đơn.",
+                title: "Failed",
+                description: error.response?.data?.message || "An error occurred while submitting.",
                 variant: "destructive"
             });
         } finally {
@@ -141,9 +141,9 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'APPROVED': return <Badge className="bg-green-100 text-green-700 hover:bg-green-100"><CheckCircle2 className="w-3 h-3 mr-1" /> Đã duyệt</Badge>;
-            case 'REJECTED': return <Badge variant="destructive" className="bg-red-100 text-red-700 hover:bg-red-100"><XCircle className="w-3 h-3 mr-1" /> Từ chối</Badge>;
-            default: return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><Clock className="w-3 h-3 mr-1" /> Chờ duyệt</Badge>;
+            case 'APPROVED': return <Badge className="bg-green-100 text-green-700 hover:bg-green-100"><CheckCircle2 className="w-3 h-3 mr-1" /> Approved</Badge>;
+            case 'REJECTED': return <Badge variant="destructive" className="bg-red-100 text-red-700 hover:bg-red-100"><XCircle className="w-3 h-3 mr-1" /> Rejected</Badge>;
+            default: return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>;
         }
     };
 
@@ -151,43 +151,43 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>Quản lý nghỉ phép</DialogTitle>
+                    <DialogTitle>Leave Management</DialogTitle>
                     <DialogDescription>
-                        Tạo đơn xin nghỉ mới hoặc theo dõi trạng thái các đơn đã gửi.
+                        Create a new leave request or track the status of submitted requests.
                     </DialogDescription>
                 </DialogHeader>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-2">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="create">Tạo đơn xin nghỉ</TabsTrigger>
-                        <TabsTrigger value="history">Lịch sử của tôi</TabsTrigger>
+                        <TabsTrigger value="create">Create Request</TabsTrigger>
+                        <TabsTrigger value="history">My History</TabsTrigger>
                     </TabsList>
 
                     {/* TAB: TẠO ĐƠN */}
                     <TabsContent value="create">
                         <form onSubmit={handleSubmit} className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label>Loại nghỉ phép</Label>
+                                <Label>Leave Type</Label>
                                 <Select
                                     value={formData.type_code}
                                     onValueChange={(val) => setFormData({ ...formData, type_code: val })}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Chọn loại phép" />
+                                        <SelectValue placeholder="Select leave type" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="STANDARD">Nghỉ phép thông thường</SelectItem>
-                                        <SelectItem value="SICK">Nghỉ ốm (Cần giấy tờ)</SelectItem>
+                                        <SelectItem value="STANDARD">Standard Leave</SelectItem>
+                                        <SelectItem value="SICK">Sick Leave (Requires document)</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-neutral-500">
-                                    *Hệ thống sẽ tự động tính toán số ngày Phép Năm (có lương) còn lại của bạn.
+                                    *The system will automatically calculate your remaining paid Annual Leave days.
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Từ ngày</Label>
+                                    <Label>From Date</Label>
                                     <Input
                                         type="date"
                                         required
@@ -196,7 +196,7 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Đến ngày</Label>
+                                    <Label>To Date</Label>
                                     <Input
                                         type="date"
                                         required
@@ -207,9 +207,9 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Lý do (Không bắt buộc)</Label>
+                                <Label>Reason (Optional)</Label>
                                 <Input
-                                    placeholder="Vd: Về quê có việc gia đình..."
+                                    placeholder="Ex: Going home for family matters..."
                                     value={formData.reason}
                                     onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                                 />
@@ -220,7 +220,7 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
                                 <div className="space-y-2 p-3 bg-blue-50 border border-blue-100 rounded-md">
                                     <Label className="text-blue-800 flex items-center gap-2">
                                         <UploadCloud className="w-4 h-4" />
-                                        Bằng chứng (Giấy khám bệnh / Đơn thuốc)
+                                        Evidence (Medical Certificate / Prescription)
                                     </Label>
                                     <Input
                                         type="file"
@@ -232,7 +232,7 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
                             )}
 
                             <Button type="submit" className="w-full mt-4" disabled={loading}>
-                                {loading ? "Đang gửi..." : "Gửi đơn xin nghỉ"}
+                                {loading ? "Submitting..." : "Submit Leave Request"}
                             </Button>
                         </form>
                     </TabsContent>
@@ -241,9 +241,9 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
                     <TabsContent value="history">
                         <div className="py-4 space-y-3 max-h-[350px] overflow-y-auto pr-2">
                             {loading && history.length === 0 ? (
-                                <p className="text-center text-sm text-neutral-500 py-4">Đang tải lịch sử...</p>
+                                <p className="text-center text-sm text-neutral-500 py-4">Loading history...</p>
                             ) : history.length === 0 ? (
-                                <p className="text-center text-sm text-neutral-500 py-4">Bạn chưa có đơn xin nghỉ nào.</p>
+                                <p className="text-center text-sm text-neutral-500 py-4">You have no leave requests.</p>
                             ) : (
                                 history.map((item) => (
                                     <div key={item.request_id} className="p-3 border rounded-lg bg-neutral-50 space-y-2">
@@ -251,7 +251,7 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
                                             <div>
                                                 <h4 className="font-semibold text-sm flex items-center gap-2">
                                                     <FileText className="w-4 h-4 text-neutral-500" />
-                                                    {item.type_code === 'SICK' ? 'Nghỉ ốm' : 'Nghỉ thông thường'}
+                                                    {item.type_code === 'SICK' ? 'Sick Leave' : 'Standard Leave'}
                                                 </h4>
                                                 <div className="text-xs text-neutral-500 flex items-center gap-1 mt-1">
                                                     <Calendar className="w-3 h-3" />
@@ -262,7 +262,7 @@ export default function LeaveRequestModal({ open, onOpenChange }: LeaveRequestMo
                                         </div>
                                         {item.reason && (
                                             <div className="text-xs text-neutral-600 bg-white p-2 rounded border">
-                                                <span className="font-medium">Lý do:</span> {item.reason}
+                                                <span className="font-medium">Reason:</span> {item.reason}
                                             </div>
                                         )}
                                     </div>

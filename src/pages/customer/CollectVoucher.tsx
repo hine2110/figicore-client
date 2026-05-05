@@ -25,7 +25,7 @@ export default function CollectVoucher() {
 
         if (!promotionId) {
             setState('error');
-            setErrorMessage('Liên kết voucher không hợp lệ.');
+            setErrorMessage('Invalid voucher link.');
             return;
         }
 
@@ -45,8 +45,8 @@ export default function CollectVoucher() {
                                 <Loader2 className="w-10 h-10 text-violet-600 animate-spin" />
                             </div>
                             <div className="text-center">
-                                <h2 className="text-xl font-bold text-slate-800">Đang lấy voucher...</h2>
-                                <p className="text-slate-500 mt-1 text-sm">Chỉ một giây thôi nhé!</p>
+                                <h2 className="text-xl font-bold text-slate-800">Collecting voucher...</h2>
+                                <p className="text-slate-500 mt-1 text-sm">Just a second!</p>
                             </div>
                         </div>
                     )}
@@ -59,8 +59,8 @@ export default function CollectVoucher() {
                                 <div className="absolute inset-0 opacity-10"
                                     style={{ backgroundImage: 'radial-gradient(circle at 30% 70%, white 1px, transparent 1px), radial-gradient(circle at 70% 30%, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
                                 <CheckCircle2 className="w-16 h-16 text-white mx-auto mb-3 drop-shadow-lg" />
-                                <h2 className="text-2xl font-black text-white drop-shadow">Lấy voucher thành công! 🎉</h2>
-                                <p className="text-emerald-100 mt-1 text-sm">Voucher đã được thêm vào ví của bạn.</p>
+                                <h2 className="text-2xl font-black text-white drop-shadow">Voucher collected successfully! 🎉</h2>
+                                <p className="text-emerald-100 mt-1 text-sm">The voucher has been added to your wallet.</p>
                             </div>
 
                             {/* Ticket cutout */}
@@ -71,7 +71,7 @@ export default function CollectVoucher() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <TicketPercent className="w-5 h-5 text-emerald-500" />
-                                            <span className="text-xs text-slate-400 uppercase tracking-widest font-semibold">Mã voucher</span>
+                                            <span className="text-xs text-slate-400 uppercase tracking-widest font-semibold">Voucher Code</span>
                                         </div>
                                         <div className="border-b-2 border-dashed border-emerald-200 flex-1 mx-3" />
                                         <span className="font-black text-lg text-emerald-700 tracking-wider font-mono">
@@ -88,7 +88,7 @@ export default function CollectVoucher() {
                                     onClick={() => navigate('/customer/profile?tab=vouchers')}
                                 >
                                     <TicketPercent className="w-4 h-4 mr-2" />
-                                    Xem Ví Voucher
+                                    View Voucher Wallet
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -96,7 +96,7 @@ export default function CollectVoucher() {
                                     onClick={() => navigate('/customer/home')}
                                 >
                                     <ShoppingBag className="w-4 h-4 mr-2" />
-                                    Tiếp tục mua sắm
+                                    Continue Shopping
                                 </Button>
                             </div>
                         </div>
@@ -107,8 +107,8 @@ export default function CollectVoucher() {
                         <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-red-100">
                             <div className="bg-gradient-to-r from-red-500 to-rose-500 px-8 pt-10 pb-14 text-center">
                                 <AlertCircle className="w-16 h-16 text-white mx-auto mb-3 drop-shadow-lg" />
-                                <h2 className="text-2xl font-black text-white drop-shadow">Không thể lấy voucher</h2>
-                                <p className="text-red-100 mt-1 text-sm">Vui lòng kiểm tra lại điều kiện.</p>
+                                <h2 className="text-2xl font-black text-white drop-shadow">Failed to collect voucher</h2>
+                                <p className="text-red-100 mt-1 text-sm">Please check the conditions again.</p>
                             </div>
 
                             <div className="px-8 py-6">
@@ -122,7 +122,7 @@ export default function CollectVoucher() {
                                         className="w-full h-12 bg-slate-900 hover:bg-black font-bold rounded-xl"
                                         onClick={() => navigate('/customer/profile?tab=vouchers')}
                                     >
-                                        Xem Ví Voucher của tôi
+                                        View My Voucher Wallet
                                     </Button>
                                     <Button
                                         variant="ghost"
@@ -130,7 +130,7 @@ export default function CollectVoucher() {
                                         onClick={() => navigate('/customer/home')}
                                     >
                                         <ShoppingBag className="w-4 h-4 mr-2" />
-                                        Về trang mua sắm
+                                        Return to Shopping
                                     </Button>
                                 </div>
                             </div>

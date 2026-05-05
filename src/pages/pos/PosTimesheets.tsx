@@ -228,7 +228,7 @@ export default function PosTimesheets() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    {/* Điều kiện: Có ID & Khác PRESENT & (Đã checkout HOẶC Trạng thái là MISSING) */}
+                                                    {/* Condition: Has ID & Not PRESENT & (Checked out OR Status is MISSING) */}
                                                     {log.timesheet_id && log.status !== 'PRESENT' && (log.check_out_at !== null || log.status === 'MISSING') ? (
                                                         <Button
                                                             size="sm"

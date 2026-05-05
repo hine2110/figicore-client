@@ -19,14 +19,14 @@ interface RemoteScannerModalProps {
 
 const RemoteScannerModal: React.FC<RemoteScannerModalProps> = ({ open, onClose, roomId }) => {
     const { toast } = useToast();
-    // Tạo link tương đối hoặc tuyệt đối tùy môi trường, để an toàn trong dev dùng window.location.origin
+    // Create relative or absolute link depending on environment, for safety in dev use window.location.origin
     const url = `${window.location.origin}/remote-scanner?room=${roomId}`;
 
     const handleCopy = () => {
         navigator.clipboard.writeText(url);
         toast({
-            title: "Đã copy link",
-            description: "Gửi link này qua Zalo/Mess cho điện thoại nếu không quét được QR",
+            title: "Copied link",
+            description: "Send this link via Zalo/Mess to phone if cannot scan QR",
         });
     };
 
@@ -36,10 +36,10 @@ const RemoteScannerModal: React.FC<RemoteScannerModalProps> = ({ open, onClose, 
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Smartphone className="w-5 h-5 text-indigo-600" />
-                        Ghép nối Máy quét Điện thoại
+                        Pair Phone Scanner
                     </DialogTitle>
                     <DialogDescription>
-                        Dùng ứng dụng Camera trên điện thoại của bạn quét mã QR dưới đây để biến điện thoại thành máy tít mã vạch không dây.
+                        Use your phone's Camera app to scan the QR code below to turn your phone into a wireless barcode scanner.
                     </DialogDescription>
                 </DialogHeader>
 

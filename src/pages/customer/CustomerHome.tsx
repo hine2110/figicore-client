@@ -70,13 +70,13 @@ export default function CustomerHome() {
 
                 const getPrioritizedList = (data: any, maxCount: number) => {
                     const items = getList(data);
-                    // Lấy riêng các sp đang Sale (đã được Backend ưu tiên vị trí)
+                    // Separate sale items (already prioritized by backend)
                     const onSaleItems = items.filter((p: any) => p.product_variants?.some((v: any) => v.is_on_sale) || p.product_promotions);
-                    // Lọc các sp không Sale
+                    // Filter out non-sale items
                     const normalItems = items.filter((p: any) => !p.product_variants?.some((v: any) => v.is_on_sale) && !p.product_promotions);
                     
-                    // Ghép: Giữ nguyên Sale ở đầu, Shuffle mảng còn lại
-                    // Nếu muốn Sale cũng shuffle thì bọc shuffle(onSaleItems)
+                    // Merge: Keep sale items at the top, shuffle the rest
+                    // Wrap shuffle(onSaleItems) if sale items should be shuffled too
                     return [...onSaleItems, ...shuffle(normalItems)].slice(0, maxCount);
                 };
 
@@ -126,17 +126,17 @@ export default function CustomerHome() {
                 
                 toast({
                     title: "Voucher Collected! 🎉",
-                    description: `Mã: ${code}. Voucher đã được thêm vào ví của bạn.`,
+                    description: `Code: ${code}. The voucher has been added to your wallet.`,
                     duration: 5000,
                 });
 
                 // 🔄 Refresh the available vouchers list
                 queryClient.invalidateQueries({ queryKey: ['collectible_vouchers'] });
             } catch (err: any) {
-                const msg = err?.response?.data?.message || 'Không thể lấy voucher. Vui lòng thử lại sau.';
+                const msg = err?.response?.data?.message || 'Cannot collect voucher. Please try again later.';
                 toast({
                     variant: "destructive",
-                    title: "Lỗi nhận voucher",
+                    title: "Failed to collect voucher",
                     description: msg,
                 });
             } finally {

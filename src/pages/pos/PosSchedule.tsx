@@ -141,10 +141,10 @@ export default function PosSchedule() {
     const getAbsoluteTime = (dateStr: string, timeStr: string) => {
         if (!dateStr || !timeStr) return null;
 
-        // Lấy phần ngày (YYYY-MM-DD)
+        // Get date part (YYYY-MM-DD)
         const datePart = dayjs(dateStr).tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD');
 
-        // Lấy phần giờ. Xử lý linh hoạt cả trường hợp giờ trả về là "13:00:00" hoặc ISO String
+        // Get time part. Flexibly handle '13:00:00' or ISO String
         let timePart = '';
         if (timeStr.includes('T')) {
             timePart = dayjs(timeStr).tz('Asia/Ho_Chi_Minh').format('HH:mm:ss');
@@ -165,13 +165,13 @@ export default function PosSchedule() {
 
         const now = currentTime;
 
-        // Giới hạn mở: Trước giờ bắt đầu ca 15 phút
+        // Open limit: 15 minutes before shift start
         const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
 
-        // Giới hạn đóng: Sau giờ kết thúc ca 15 phút
+        // Close limit: 15 minutes after shift end
         const windowEnd = new Date(end.getTime() + 15 * 60 * 1000);
 
-        // Nút bấm chỉ được kích hoạt (true) khi thời gian hiện tại nằm giữa 2 mốc này
+        // Button is only active (true) when current time is between these 2 marks
         return now >= windowStart && now <= windowEnd;
     };
 
@@ -219,7 +219,7 @@ export default function PosSchedule() {
     const getTimeFromIso = (isoString?: string | null) => {
         if (!isoString) return '--:--';
         try {
-            // Đọc chuỗi ISO và tự động cộng múi giờ địa phương (GMT+7)
+            // Read ISO string and automatically add local timezone (GMT+7)
             const dateObj = new Date(isoString);
 
             const hours = String(dateObj.getHours()).padStart(2, '0');
@@ -238,7 +238,7 @@ export default function PosSchedule() {
         const start = getAbsoluteTime(date, shiftStart);
         if (!start) return null;
 
-        // Giả sử bạn vẫn muốn đếm ngược nếu sớm hơn 15 phút
+        // Assume you still want countdown if earlier than 15 mins
         const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
 
         if (currentTime < windowStart) {
@@ -247,7 +247,7 @@ export default function PosSchedule() {
             const seconds = Math.floor((diff % 60000) / 1000);
             return (
                 <span className="text-xs text-orange-600 font-mono ml-2">
-                    Mở trong {minutes}:{seconds.toString().padStart(2, '0')}
+                    Opens in {minutes}:{seconds.toString().padStart(2, '0')}
                 </span>
             );
         }
@@ -255,7 +255,7 @@ export default function PosSchedule() {
     };
 
     const activeShift = schedules.find(s => {
-        // Đồng chuẩn ngày theo Calendar
+        // Standardize date by Calendar
         const todayStr = dayjs().tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD');
         const isToday = typeof s.date === 'string' && s.date.startsWith(todayStr);
         if (!isToday) return false;
@@ -324,7 +324,7 @@ export default function PosSchedule() {
                                 }}
                             >
                                 <ScanFace className="w-5 h-5 mr-2" />
-                                {activeShift.timesheets?.[0]?.check_in_at ? '📸 Chấm công ra ca' : '📸 Chấm công vào ca'}
+                                {activeShift.timesheets?.[0]?.check_in_at ? '📸 Check-out shift' : '📸 Check-in shift'}
                             </Button>
                         </div>
                     )}
@@ -476,7 +476,7 @@ export default function PosSchedule() {
 
                         {schedules.length === 0 && (
                             <div className="text-center py-10 text-neutral-500 border rounded-lg bg-neutral-50">
-                                Bạn không có ca làm nào trong {viewMode === 'week' ? 'tuần' : 'tháng'} này.
+                                You have no shifts this {viewMode === 'week' ? 'week' : 'month'} 
                             </div>
                         )}
                     </div>

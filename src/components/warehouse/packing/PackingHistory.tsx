@@ -186,7 +186,7 @@ export function PackingHistory({ history, isLoading, stats }: PackingHistoryProp
                                             <div className="col-span-2">
                                                 <div className="flex flex-col gap-1.5">
                                                     <span className="text-base font-black text-neutral-900">
-                                                        {Number(order.total_amount).toLocaleString()}đ
+                                                        {Number(order.total_amount).toLocaleString()} VND
                                                     </span>
                                                     <div className="flex items-center gap-2">
                                                         <Badge variant="outline" className="text-[9px] h-4 font-bold border-neutral-200 px-1.5 text-neutral-500 uppercase">

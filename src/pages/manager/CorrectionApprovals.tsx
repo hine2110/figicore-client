@@ -83,12 +83,12 @@ export default function CorrectionApprovals() {
     const handleOpenReview = (item: Correction, action: 'APPROVED' | 'REJECTED') => {
         setSelectedItem(item);
         setReviewAction(action);
-        // Khởi tạo form
+        // Initialize form
         setManagerNote('');
         if (action === 'APPROVED') {
-            // Mặc định lấy số giờ cũ hoặc gợi ý số giờ chuẩn nếu có thể (tạm thời để trống hoặc lấy giờ hiện tại)
+            // Default to old hours or suggest standard hours if possible (temporarily leave empty or get current time)
             setAdjustedHours(item.timesheets.real_work_hours ? item.timesheets.real_work_hours.toString() : '');
-            setAdjustedStatus('COMPLETED'); // Mặc định khi sếp duyệt thì ca đó thường sẽ về COMPLETED
+            setAdjustedStatus('COMPLETED'); // Default to COMPLETED when manager approves
         }
         setReviewModalOpen(true);
     };
@@ -103,7 +103,7 @@ export default function CorrectionApprovals() {
 
         setSubmitLoading(true);
         try {
-            // Chuẩn bị payload theo ReviewCorrectionDto
+            // Prepare payload based on ReviewCorrectionDto
             const payload: any = {
                 status_code: reviewAction,
                 manager_note: managerNote || undefined
@@ -120,8 +120,8 @@ export default function CorrectionApprovals() {
             fetchCorrections();
         } catch (error: any) {
             toast({
-                title: "Thất bại",
-                description: error.response?.data?.message || "Có lỗi xảy ra khi xử lý.",
+                title: "Failed",
+                description: error.response?.data?.message || "An error occurred during processing.",
                 variant: "destructive"
             });
         } finally {
@@ -156,7 +156,7 @@ export default function CorrectionApprovals() {
                     </div>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                         <SelectTrigger className="w-[180px] bg-white">
-                            <SelectValue placeholder="Lọc" />
+                            <SelectValue placeholder="Filter" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="PENDING">Pending</SelectItem>
@@ -169,7 +169,7 @@ export default function CorrectionApprovals() {
                 </div>
             </Card>
 
-            {/* Bảng dữ liệu */}
+            {/* Data table */}
             <Card>
                 <CardContent className="p-0">
                     {loading ? (
@@ -236,7 +236,7 @@ export default function CorrectionApprovals() {
                 </CardContent>
             </Card>
 
-            {/* Modal Phê Duyệt / Từ Chối */}
+            {/* Approve / Reject Modal */}
             <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -307,7 +307,7 @@ export default function CorrectionApprovals() {
                 </DialogContent>
             </Dialog>
 
-            {/* Modal Xem Ảnh */}
+            {/* View Image Modal */}
             <Dialog open={evidenceModalOpen} onOpenChange={setEvidenceModalOpen}>
                 <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader><DialogTitle>Correction Evidence</DialogTitle></DialogHeader>

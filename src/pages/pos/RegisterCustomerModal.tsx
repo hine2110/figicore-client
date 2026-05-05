@@ -74,12 +74,12 @@ export default function RegisterCustomerModal({ open, onClose, onSuccess }: Regi
         setLoading(true);
         try {
             const response = await registerCustomer({
-                full_name: formData.full_name.trim() || 'Khách POS',
+                full_name: formData.full_name.trim() || 'POS Customer',
                 phone: formData.phone.trim()
             });
 
             // Backend returns existing user if phone already found
-            if (response.message?.includes('đã tồn tại') || response.message?.includes('existed')) {
+            if (response.message?.includes('already exists') || response.message?.includes('existed')) {
                 const existing = response.data as unknown as ExistingUser;
                 setExistingUser(existing);
                 setEditedName(existing.full_name || '');

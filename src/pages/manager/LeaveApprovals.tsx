@@ -49,7 +49,7 @@ export default function LeaveApprovals() {
     const { toast } = useToast();
     const [requests, setRequests] = useState<LeaveRequest[]>([]);
     const [loading, setLoading] = useState(false);
-    const [statusFilter, setStatusFilter] = useState<string>('PENDING'); // Mặc định mở lên xem đơn chờ duyệt
+    const [statusFilter, setStatusFilter] = useState<string>('PENDING'); // Default to showing pending requests
 
     // Evidence Modal State
     const [evidenceModalOpen, setEvidenceModalOpen] = useState(false);
@@ -58,7 +58,7 @@ export default function LeaveApprovals() {
     const fetchRequests = async () => {
         setLoading(true);
         try {
-            // Nếu chọn ALL thì không truyền param status
+            // If ALL is selected, do not pass status param
             const params = statusFilter === 'ALL' ? {} : { status: statusFilter };
             const res = await axiosInstance.get('/leaves', { params });
             setRequests(res.data || []);
@@ -83,7 +83,7 @@ export default function LeaveApprovals() {
             toast({ title: "Success", description: `Leave request has been ${actionName}d.` });
             fetchRequests(); // Refresh data
         } catch (error: any) {
-            console.error(`Lỗi ${actionName} đơn:`, error);
+            console.error(`Error ${actionName} request:`, error);
             toast({
                 title: "Failed",
                 description: error.response?.data?.message || `An error occurred while ${actionName}ing the request.`,
@@ -129,7 +129,7 @@ export default function LeaveApprovals() {
                 </div>
             </div>
 
-            {/* Bảng điều khiển (Filters) */}
+            {/* Control panel (Filters) */}
             <Card className="p-4 border-neutral-200 bg-neutral-50">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
@@ -153,7 +153,7 @@ export default function LeaveApprovals() {
                 </div>
             </Card>
 
-            {/* Bảng dữ liệu */}
+            {/* Data table */}
             <Card>
                 <CardHeader className="pb-3">
                     <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -186,7 +186,7 @@ export default function LeaveApprovals() {
                                 <TableBody>
                                     {requests.map((req) => (
                                         <TableRow key={req.request_id} className="hover:bg-neutral-50/50">
-                                            {/* Nhân viên */}
+                                            {/* Employee */}
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
@@ -203,12 +203,12 @@ export default function LeaveApprovals() {
                                                 </div>
                                             </TableCell>
 
-                                            {/* Loại phép */}
+                                            {/* Leave type */}
                                             <TableCell>
                                                 {getTypeLabel(req.type_code)}
                                             </TableCell>
 
-                                            {/* Thời gian (Chỉ Format để hiển thị) */}
+                                            {/* Time (Format for display only) */}
                                             <TableCell>
                                                 <div className="text-sm">
                                                     <span className="font-medium">{format(new Date(req.start_date), 'dd/MM/yyyy')}</span>
@@ -220,7 +220,7 @@ export default function LeaveApprovals() {
                                                 </div>
                                             </TableCell>
 
-                                            {/* Lý do & Evidence */}
+                                            {/* Reason & Evidence */}
                                             <TableCell className="max-w-[200px]">
                                                 <p className="text-sm text-neutral-700 truncate" title={req.reason || 'No reason provided'}>
                                                     {req.reason || <span className="italic text-neutral-400">No reason provided</span>}
@@ -238,7 +238,7 @@ export default function LeaveApprovals() {
                                                 )}
                                             </TableCell>
 
-                                            {/* Trạng thái */}
+                                            {/* Status */}
                                             <TableCell className="text-center">
                                                 {getStatusBadge(req.status_code)}
                                             </TableCell>
@@ -276,7 +276,7 @@ export default function LeaveApprovals() {
                 </CardContent>
             </Card>
 
-            {/* Modal Xem bằng chứng */}
+            {/* View Evidence Modal */}
             <Dialog open={evidenceModalOpen} onOpenChange={setEvidenceModalOpen}>
                 <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>

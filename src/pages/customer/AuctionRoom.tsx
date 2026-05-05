@@ -160,7 +160,7 @@ export default function CustomerAuctionRoom() {
 
     const formatPrice = (p: number | string | undefined | null) => {
         const value = Number(p);
-        if (isNaN(value)) return '0 đ';
+        if (isNaN(value)) return '0 VND';
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND', minimumFractionDigits: 0 }).format(value);
     };
 

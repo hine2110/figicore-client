@@ -4,7 +4,7 @@ import { io, Socket } from 'socket.io-client';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Smartphone, CheckCircle, AlertCircle, Zap, ZapOff } from 'lucide-react';
 
-// Hàm tạo tiếng bíp không cần file mp3
+// Function to create beep sound without mp3 file
 const playBeep = (type: 'success' | 'error') => {
     try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -30,7 +30,7 @@ const playBeep = (type: 'success' | 'error') => {
             osc.stop(ctx.currentTime + 0.3);
         }
     } catch (e) {
-        // Trình duyệt không hỗ trợ AudioContext
+        // Browser does not support AudioContext
     }
 };
 
@@ -92,10 +92,10 @@ export default function RemoteScanner() {
                 const html5QrCode = new Html5Qrcode(regionId);
                 scannerRef.current = html5QrCode;
                 
-                // Mở rộng vùng quét và tăng FPS để quét siêu nhạy
+                // Expand scan area and increase FPS for super sensitive scanning
                 const config = { 
                     fps: 20, 
-                    // Bỏ qrbox để camera quét toàn bộ khung hình, hoặc dùng giá trị lớn
+                    // Remove qrbox for camera to scan entire frame, or use large value
                     qrbox: { width: window.innerWidth > 400 ? 300 : 250, height: 150 },
                     aspectRatio: window.innerHeight / window.innerWidth
                 };
@@ -106,7 +106,7 @@ export default function RemoteScanner() {
                     (decodedText) => {
                         const cleanedBarcode = decodedText.trim();
                         
-                        // Chống quét trùng liên tục trong 2 giây
+                        // Prevent continuous duplicate scanning within 2 seconds
                         if (lastScannedRef.current === cleanedBarcode) {
                             return;
                         }
@@ -126,7 +126,7 @@ export default function RemoteScanner() {
                         setScanStatus('success');
                         setTimeout(() => setScanStatus('idle'), 1000);
 
-                        // Clear throttle sau 2 giây để có thể quét lại MỘT SẢN PHẨM NHIỀU LẦN
+                        // Clear throttle after 2 seconds to scan ONE PRODUCT MULTIPLE TIMES
                         if (throttleTimeoutRef.current) clearTimeout(throttleTimeoutRef.current);
                         throttleTimeoutRef.current = setTimeout(() => {
                             lastScannedRef.current = null;
@@ -135,7 +135,7 @@ export default function RemoteScanner() {
                     (error) => { /* ignore normal errors */ }
                 );
 
-                // Kiểm tra xem camera có hỗ trợ đèn Flash không
+                // Check if camera supports Flash
                 setTimeout(async () => {
                     try {
                         const capabilities = html5QrCode.getRunningTrackCapabilities();
@@ -170,7 +170,7 @@ export default function RemoteScanner() {
             });
             setIsTorchOn(newTorchState);
         } catch (err) {
-            console.error("Lỗi bật đèn flash:", err);
+            console.error("Error turning on flash:", err);
         }
     };
 
@@ -178,8 +178,8 @@ export default function RemoteScanner() {
         return (
             <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center p-6 text-center text-white">
                 <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
-                <h1 className="text-2xl font-bold mb-2">Lỗi kết nối</h1>
-                <p className="text-neutral-400">Không tìm thấy mã Room ID. Vui lòng quét mã QR trên màn hình máy tính.</p>
+                <h1 className="text-2xl font-bold mb-2">Connection error</h1>
+                <p className="text-neutral-400">Room ID not found. Please scan QR code on computer screen.</p>
             </div>
         );
     }
@@ -194,7 +194,7 @@ export default function RemoteScanner() {
                         <h1 className="text-white font-bold leading-tight">Figicore Scanner</h1>
                         <p className="text-xs text-neutral-300 flex items-center gap-1">
                             <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-500'}`}></span>
-                            {isConnected ? 'Đã kết nối máy tính' : 'Đang kết nối...'}
+                            {isConnected ? 'Connected to computer' : 'Connecting...'}
                         </p>
                     </div>
                 </div>

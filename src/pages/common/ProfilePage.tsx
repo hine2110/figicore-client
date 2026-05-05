@@ -82,7 +82,7 @@ export default function ProfilePage() {
             const res = await api.get('/payroll/my-history');
             setSalaryHistory(res.data || []);
         } catch (error) {
-            toast({ title: "Lỗi", description: "Error to load", variant: "destructive" });
+            toast({ title: "Error", description: "Failed to load", variant: "destructive" });
         } finally {
             setHistoryLoading(false);
         }
@@ -182,26 +182,26 @@ export default function ProfilePage() {
         if (!file) return;
 
         if (!file.type.startsWith("image/")) {
-            toast({ variant: "destructive", title: "Error", description: "Chỉ cho phép định dạng ảnh" });
+            toast({ variant: "destructive", title: "Error", description: "Only image formats are allowed" });
             return;
         }
 
         setQrUploading(true);
         try {
-            // SỬ DỤNG API UPLOAD CHUNG CỦA HỆ THỐNG
-            // LƯU Ý: Thay '/upload' bằng API upload ảnh thật của bạn (trả về { url: '...' })
+            // USE SYSTEM COMMON UPLOAD API
+            // NOTE: Replace '/upload' with your real image upload API (returns { url: '...' })
             const formData = new FormData();
             formData.append('file', file);
             const res = await api.post('/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            // Lấy url từ response và set thẳng vào Form Ngân hàng
+            // Get url from response and set directly to Bank Form
             const uploadedUrl = res.data.url || res.data.secure_url;
             bankForm.setValue('bank_qr_code_url', uploadedUrl);
-            toast({ title: "Success", description: "Đã tải ảnh QR lên thành công" });
+            toast({ title: "Success", description: "QR image uploaded successfully" });
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Error", description: "Lỗi tải ảnh lên" });
+            toast({ variant: "destructive", title: "Error", description: "Failed to upload image" });
         } finally {
             setQrUploading(false);
             if (qrFileInputRef.current) qrFileInputRef.current.value = "";
@@ -276,9 +276,9 @@ export default function ProfilePage() {
                 bank_account_name: values.bank_account_name?.toUpperCase()
             };
             await api.patch("/users/profile/bank-info", payload);
-            toast({ title: "Success", description: "Cập nhật thông tin nhận lương thành công." });
+            toast({ title: "Success", description: "Salary receiving info updated successfully." });
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Error", description: error.response?.data?.message || "Lỗi cập nhật ngân hàng" });
+            toast({ variant: "destructive", title: "Error", description: error.response?.data?.message || "Failed to update bank info" });
         }
     };
 
@@ -459,7 +459,7 @@ export default function ProfilePage() {
                             </Card>
                         </TabsContent>
 
-                        {/* Tab 3: Bank Details (Tự động duyệt) */}
+                        {/* Tab 3: Bank Details (Auto-approved) */}
                         {employeeInfo && (
                             <TabsContent value="bank">
                                 <Card>
@@ -475,15 +475,15 @@ export default function ProfilePage() {
                                                         <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="VD: Vietcombank, MBBank..." {...field} /></FormControl><FormMessage /></FormItem>
                                                     )} />
                                                     <FormField control={bankForm.control} name="bank_account_no" render={({ field }) => (
-                                                        <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="Số tài khoản..." className="font-mono" {...field} /></FormControl><FormMessage /></FormItem>
+                                                        <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="Account number..." className="font-mono" {...field} /></FormControl><FormMessage /></FormItem>
                                                     )} />
                                                 </div>
                                                 <FormField control={bankForm.control} name="bank_account_name" render={({ field }) => (
-                                                    <FormItem><FormLabel>Account Name</FormLabel><FormControl><Input placeholder="Tên in hoa không dấu (VD: NGUYEN VAN A)" {...field} /></FormControl><FormMessage /></FormItem>
+                                                    <FormItem><FormLabel>Account Name</FormLabel><FormControl><Input placeholder="Uppercase name (e.g. NGUYEN VAN A)" {...field} /></FormControl><FormMessage /></FormItem>
                                                 )} />
                                                 <FormField control={bankForm.control} name="bank_qr_code_url" render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="flex items-center gap-2"><QrCode className="w-4 h-4" /> Ảnh Mã QR Nhận Lương</FormLabel>
+                                                        <FormLabel className="flex items-center gap-2"><QrCode className="w-4 h-4" /> Salary QR Code Image</FormLabel>
                                                         <FormControl>
                                                             <div className="flex flex-col gap-3">
                                                                 <input type="file" ref={qrFileInputRef} className="hidden" accept="image/*" onChange={handleQrFileChange} />
@@ -497,11 +497,11 @@ export default function ProfilePage() {
                                                                         className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
                                                                     >
                                                                         {qrUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                                                                        {field.value ? "Thay đổi ảnh QR" : "Tải ảnh QR lên"}
+                                                                        {field.value ? "Change QR Image" : "Upload QR Image"}
                                                                     </Button>
                                                                     {field.value && (
                                                                         <Button type="button" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => bankForm.setValue('bank_qr_code_url', '')}>
-                                                                            Xóa ảnh
+                                                                            Delete Image
                                                                         </Button>
                                                                     )}
                                                                 </div>
@@ -524,7 +524,7 @@ export default function ProfilePage() {
                                             
                                         </Form>
 
-                                        {/* THÊM MỚI TẠI ĐÂY: Khu vực nút mở lịch sử lương */}
+                                        {/* NEW ADDITION: Salary history button area */}
                                         <div className="mt-8 pt-6 border-t border-slate-100">
                                             <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
                                                 <div>
@@ -604,7 +604,7 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            {/* Modal Lịch sử thay đổi lương tái sử dụng từ Manager */}
+            {/* Reused Salary Change History Modal from Manager */}
             <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}>
                 <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
@@ -617,12 +617,12 @@ export default function ProfilePage() {
                             <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-neutral-400" /></div>
                         ) : salaryHistory.length === 0 ? (
                             <div className="text-center py-8 text-neutral-500 bg-neutral-50 rounded-lg border border-dashed">
-                                Bạn chưa có bản ghi thay đổi lương nào.
+                                You have no salary change records.
                             </div>
                         ) : (
                             <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
                                 {salaryHistory.map((item, index) => {
-                                    // Xác định đơn vị lương dựa vào role_code
+                                    // Determine salary unit based on role_code
                                     const isFixedSalary = ['MANAGER', 'SUPER_ADMIN'].includes(profile?.role_code);
                                     
                                     return (
@@ -635,7 +635,7 @@ export default function ProfilePage() {
                                                     <div className="font-bold text-slate-900 text-sm">
                                                         {formatCurrency(item.new_salary)}
                                                         <span className="text-xs font-normal text-slate-500 ml-1">
-                                                            {isFixedSalary ? '/tháng' : '/h'}
+                                                            {isFixedSalary ? '/month' : '/h'}
                                                         </span>
                                                     </div>
                                                     <time className="text-xs font-medium text-amber-600">
@@ -645,7 +645,7 @@ export default function ProfilePage() {
                                                 <div className="text-xs text-slate-500 mb-2">
                                                     Old salary: {formatCurrency(item.old_salary)}
                                                     <span className="ml-1">
-                                                        {isFixedSalary ? '/tháng' : '/h'}
+                                                        {isFixedSalary ? '/month' : '/h'}
                                                     </span>
                                                 </div>
                                                 <div className="text-sm text-slate-700 mb-2">

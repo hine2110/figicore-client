@@ -38,9 +38,9 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
 
     const mapRoleCode = (vietnameseRole: string): string => {
         const role = vietnameseRole?.toLowerCase().trim();
-        if (role?.includes('quản lý') || role?.includes('manager')) return 'MANAGER';
+        if (role?.includes('manager') || role?.includes('manager')) return 'MANAGER';
         if (role?.includes('kho') || role?.includes('warehouse')) return 'STAFF_INVENTORY';
-        if (role?.includes('thu ngân') || role?.includes('pos') || role?.includes('bán hàng')) return 'STAFF_POS';
+        if (role?.includes('cashier') || role?.includes('pos') || role?.includes('sales')) return 'STAFF_POS';
         return 'STAFF_POS'; // Default
     };
 
@@ -61,11 +61,11 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
 
                 // Map fields
                 const mappedData: ImportData[] = jsonData.map((row: any) => ({
-                    full_name: row['Tên'] || row['Name'] || '',
-                    phone: row['Số điện thoại']?.toString() || row['Phone']?.toString() || '',
+                    full_name: row['Name'] || '',
+                    phone: row['Phone']?.toString() || '',
                     email: row['Email'] || '',
-                    role_code: mapRoleCode(row['Role'] || row['Chức vụ'] || ''),
-                    base_salary: Number(row['Lương'] || row['Salary'] || 0)
+                    role_code: mapRoleCode(row['Role'] || ''),
+                    base_salary: Number(row['Salary'] || 0)
                 })).filter(item => item.email && item.phone); // Basic filter
 
                 setPreviewData(mappedData);
@@ -127,7 +127,7 @@ export default function BulkImportSheet({ open, onOpenChange, onSuccess }: BulkI
                     <SheetDescription>
                         Upload Excel (.xlsx) file.
                         <br />
-                        Columns: Tên, Số điện thoại, Email, Chức vụ (Role), Lương (Salary).
+                        Columns: Name, Phone, Email, Role, Salary.
                     </SheetDescription>
                 </SheetHeader>
 

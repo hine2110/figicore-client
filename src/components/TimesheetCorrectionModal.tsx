@@ -56,8 +56,8 @@ export default function TimesheetCorrectionModal({ open, onOpenChange, timesheet
             const res = await axiosInstance.get('/timesheet-corrections/me');
             setHistory(res.data || []);
         } catch (error: any) {
-            console.error("Lỗi lấy lịch sử khiếu nại:", error);
-            toast({ title: "Lỗi", description: "Không thể tải lịch sử khiếu nại", variant: "destructive" });
+            console.error("Error fetching correction history:", error);
+            toast({ title: "Error", description: "Cannot load correction history", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -67,12 +67,12 @@ export default function TimesheetCorrectionModal({ open, onOpenChange, timesheet
         e.preventDefault();
 
         if (!timesheetId) {
-            toast({ title: "Lỗi", description: "Không tìm thấy thông tin ca làm.", variant: "destructive" });
+            toast({ title: "Error", description: "Shift information not found.", variant: "destructive" });
             return;
         }
 
         if (!reason.trim()) {
-            toast({ title: "Lỗi", description: "Vui lòng nhập lý do khiếu nại.", variant: "destructive" });
+            toast({ title: "Error", description: "Please enter correction reason.", variant: "destructive" });
             return;
         }
 
@@ -98,19 +98,19 @@ export default function TimesheetCorrectionModal({ open, onOpenChange, timesheet
                 evidence_url
             });
 
-            toast({ title: "Thành công", description: "Đã gửi yêu cầu khiếu nại!" });
+            toast({ title: "Success", description: "Correction request submitted!" });
 
             setReason('');
             setFile(null);
             setActiveTab('history');
 
         } catch (error: any) {
-            console.error("Lỗi khi gửi đơn:", error);
+            console.error("Error submitting request:", error);
             const errorMsg = Array.isArray(error.response?.data?.message)
                 ? error.response.data.message.join(', ')
-                : error.response?.data?.message || "Có lỗi xảy ra khi gửi đơn.";
+                : error.response?.data?.message || "An error occurred while submitting.";
 
-            toast({ title: "Thất bại", description: errorMsg, variant: "destructive" });
+            toast({ title: "Failed", description: errorMsg, variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -118,9 +118,9 @@ export default function TimesheetCorrectionModal({ open, onOpenChange, timesheet
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'APPROVED': return <Badge className="bg-green-100 text-green-700"><CheckCircle2 className="w-3 h-3 mr-1" /> Đã duyệt</Badge>;
-            case 'REJECTED': return <Badge variant="destructive" className="bg-red-100 text-red-700"><XCircle className="w-3 h-3 mr-1" /> Từ chối</Badge>;
-            default: return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><Clock className="w-3 h-3 mr-1" /> Chờ duyệt</Badge>;
+            case 'APPROVED': return <Badge className="bg-green-100 text-green-700"><CheckCircle2 className="w-3 h-3 mr-1" /> Approved</Badge>;
+            case 'REJECTED': return <Badge variant="destructive" className="bg-red-100 text-red-700"><XCircle className="w-3 h-3 mr-1" /> Rejected</Badge>;
+            default: return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>;
         }
     };
 
@@ -128,16 +128,16 @@ export default function TimesheetCorrectionModal({ open, onOpenChange, timesheet
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>Khiếu nại giờ làm (Timesheet)</DialogTitle>
+                    <DialogTitle>Timesheet Correction</DialogTitle>
                     <DialogDescription>
-                        Báo lỗi nếu ca làm của bạn bị tính sai giờ hoặc sai trạng thái.
+                        Report if your shift hours or status are incorrectly calculated.
                     </DialogDescription>
                 </DialogHeader>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-2">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="create">Gửi khiếu nại</TabsTrigger>
-                        <TabsTrigger value="history">Lịch sử của tôi</TabsTrigger>
+                        <TabsTrigger value="create">Submit Correction</TabsTrigger>
+                        <TabsTrigger value="history">My History</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="create">
@@ -146,15 +146,15 @@ export default function TimesheetCorrectionModal({ open, onOpenChange, timesheet
                                 <div className="p-3 bg-orange-50 border border-orange-100 rounded-md flex items-start gap-2 text-orange-800">
                                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                                     <div className="text-sm">
-                                        <span className="font-semibold">Ca làm đang chọn: </span>
+                                        <span className="font-semibold">Selected shift: </span>
                                         {shiftInfo}
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Lý do khiếu nại <span className="text-red-500">*</span></Label>
+                                    <Label>Correction reason <span className="text-red-500">*</span></Label>
                                     <Textarea
-                                        placeholder="Vd: Quên bấm check-out lúc 12:00, thực tế đã làm đủ ca..."
+                                        placeholder="Ex: Forgot to check-out at 12:00, actually completed the shift..."
                                         value={reason}
                                         onChange={(e) => setReason(e.target.value)}
                                         rows={3}
@@ -165,7 +165,7 @@ export default function TimesheetCorrectionModal({ open, onOpenChange, timesheet
                                 <div className="space-y-2">
                                     <Label className="flex items-center gap-2">
                                         <UploadCloud className="w-4 h-4 text-neutral-500" />
-                                        Bằng chứng (Hình ảnh tin nhắn xin phép sếp, v.v...)
+                                        Evidence (Image of permission message to manager, etc...)
                                     </Label>
                                     <Input
                                         type="file"
@@ -175,12 +175,12 @@ export default function TimesheetCorrectionModal({ open, onOpenChange, timesheet
                                 </div>
 
                                 <Button type="submit" className="w-full mt-4" disabled={loading}>
-                                    {loading ? "Đang gửi..." : "Gửi khiếu nại"}
+                                    {loading ? "Submitting..." : "Submit Correction"}
                                 </Button>
                             </form>
                         ) : (
                             <div className="py-10 text-center text-sm text-neutral-500">
-                                Vui lòng đóng cửa sổ này và chọn nút "Khiếu nại" tại một ca làm cụ thể trong bảng lịch sử.
+                                Please close this window and click the "Correction" button on a specific shift in the history table.
                             </div>
                         )}
                     </TabsContent>
@@ -188,30 +188,30 @@ export default function TimesheetCorrectionModal({ open, onOpenChange, timesheet
                     <TabsContent value="history">
                         <div className="py-4 space-y-3 max-h-[350px] overflow-y-auto pr-2">
                             {loading && history.length === 0 ? (
-                                <p className="text-center text-sm text-neutral-500 py-4">Đang tải lịch sử...</p>
+                                <p className="text-center text-sm text-neutral-500 py-4">Loading history...</p>
                             ) : history.length === 0 ? (
-                                <p className="text-center text-sm text-neutral-500 py-4">Bạn chưa có khiếu nại nào.</p>
+                                <p className="text-center text-sm text-neutral-500 py-4">You have no corrections.</p>
                             ) : (
                                 history.map((item) => (
                                     <div key={item.correction_id} className="p-3 border rounded-lg bg-neutral-50 space-y-2">
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <h4 className="font-semibold text-sm flex items-center gap-2">
-                                                    Ca {item.timesheets.work_schedules.shift_code}
+                                                    Shift {item.timesheets.work_schedules.shift_code}
                                                 </h4>
                                                 <div className="text-xs text-neutral-500 mt-1">
-                                                    Ngày: {format(new Date(item.timesheets.work_schedules.date), 'dd/MM/yyyy')}
+                                                    Date: {format(new Date(item.timesheets.work_schedules.date), 'dd/MM/yyyy')}
                                                 </div>
                                             </div>
                                             {getStatusBadge(item.status_code)}
                                         </div>
                                         <div className="text-xs text-neutral-600 bg-white p-2 rounded border">
-                                            <span className="font-medium">Lý do:</span> {item.reason}
+                                            <span className="font-medium">Reason:</span> {item.reason}
                                         </div>
                                         {item.manager_note && (
                                             <div className="text-xs text-blue-700 bg-blue-50 p-2 rounded border border-blue-100 flex gap-2 items-start">
                                                 <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" />
-                                                <span><span className="font-semibold">Sếp phản hồi:</span> {item.manager_note}</span>
+                                                <span><span className="font-semibold">Manager reply:</span> {item.manager_note}</span>
                                             </div>
                                         )}
                                     </div>

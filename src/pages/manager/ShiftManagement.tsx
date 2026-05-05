@@ -126,9 +126,9 @@ export default function ShiftManagement() {
     const getIsoDateTime = (dateStr: string, timeStr?: string) => {
         if (!dateStr || !timeStr) return undefined;
         try {
-            // Khởi tạo Date object. Trình duyệt sẽ tự hiểu đây là giờ Local (VD: GMT+7)
+            // Initialize Date object. Browser will understand this as Local time (VD: GMT+7)
             const date = new Date(`${dateStr}T${timeStr}:00`);
-            // Chuyển thành chuỗi ISO (sẽ tự động lùi về UTC để gửi lên server)
+            // Convert to ISO string (will automatically convert to UTC to send to server)
             return date.toISOString();
         } catch (e) {
             console.error("Invalid date/time conversion", e);
@@ -142,7 +142,7 @@ export default function ShiftManagement() {
         try {
             const dateObj = new Date(isoString);
 
-            // Lấy giờ và phút theo múi giờ địa phương của trình duyệt, thêm số 0 ở trước nếu cần
+            // Get local browser hours and minutes, padding with 0 if necessary
             const hours = String(dateObj.getHours()).padStart(2, '0');
             const minutes = String(dateObj.getMinutes()).padStart(2, '0');
 
@@ -566,7 +566,7 @@ export default function ShiftManagement() {
                 <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg flex items-center gap-3">
                     <ShieldAlert className="w-5 h-5 text-yellow-600 shrink-0" />
                     <p className="text-sm">
-                        Thời gian đăng ký lịch của Staff đang mở. Bạn chỉ có thể xếp lịch cho tuần kế tiếp bắt đầu từ <strong className="font-semibold">00:00 Thứ 7</strong>.
+                        Staff registration is currently open. You can only schedule for the upcoming week starting from <strong className="font-semibold">00:00 Saturday</strong>.
                     </p>
                 </div>
             )}

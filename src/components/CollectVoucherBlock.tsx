@@ -91,7 +91,7 @@ export default function CollectVoucherBlock() {
                                                 ? 'Free Shipping'
                                                 : v.discount_type === 'PERCENTAGE' 
                                                     ? `Discount ${v.discount_value}%` 
-                                                    : `Discount ${new Intl.NumberFormat('vi-VN').format(Number(v.discount_value))}đ`
+                                                    : `Discount ${new Intl.NumberFormat('en-US').format(Number(v.discount_value))} VND`
                                             }
                                         </h4>
                                         <div className="flex flex-col gap-0.5">
@@ -102,11 +102,11 @@ export default function CollectVoucherBlock() {
                                             )}
                                             {!isFreeShip && Number(v.max_discount_amount || 0) > 0 && (
                                                 <p className="text-[11px] text-orange-600 font-medium">
-                                                    Max {new Intl.NumberFormat('vi-VN').format(Number(v.max_discount_amount))}đ
+                                                    Max {new Intl.NumberFormat('en-US').format(Number(v.max_discount_amount))} VND
                                                 </p>
                                             )}
                                             <p className="text-[11px] text-slate-500">
-                                                Min order {new Intl.NumberFormat('vi-VN').format(Number(v.min_order_value || 0))}đ
+                                                Min order {new Intl.NumberFormat('en-US').format(Number(v.min_order_value || 0))} VND
                                             </p>
                                         </div>
                                     </div>

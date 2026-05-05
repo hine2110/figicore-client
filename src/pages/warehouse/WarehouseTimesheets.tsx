@@ -226,7 +226,7 @@ export default function WarehouseTimesheets() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    {/* Điều kiện: Có ID & Khác PRESENT & (Đã checkout HOẶC Trạng thái là MISSING) */}
+                                                    {/* Condition: Has ID & Not PRESENT & (Checked out OR Status is MISSING) */}
                                                     {log.timesheet_id && log.status !== 'PRESENT' && (log.check_out_at !== null || log.status === 'MISSING') ? (
                                                         <Button
                                                             size="sm"
@@ -234,10 +234,10 @@ export default function WarehouseTimesheets() {
                                                             className="text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100 h-8 text-xs"
                                                             onClick={() => handleOpenCorrection(log.timesheet_id as number, log.date, log.shift_name)}
                                                         >
-                                                            <AlertTriangle className="w-3 h-3 mr-1" /> Báo lỗi
+                                                            <AlertTriangle className="w-3 h-3 mr-1" /> Report Error
                                                         </Button>
                                                     ) : (
-                                                        <span className="text-xs text-neutral-400 italic">Không có lỗi</span>
+                                                        <span className="text-xs text-neutral-400 italic">No error</span>
                                                     )}
                                                 </TableCell>
                                             </TableRow>

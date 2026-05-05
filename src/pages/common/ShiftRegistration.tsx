@@ -27,7 +27,7 @@ export default function ShiftRegistration() {
     const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Bắt đầu bằng tuần TỚI (Next Week) vì lịch thường đăng ký cho tuần tới
+    // Start with NEXT week because schedules are usually registered for the upcoming week
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
         addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 7)
     );
@@ -121,7 +121,7 @@ export default function ShiftRegistration() {
     const renderShiftCell = (dayDate: Date, shiftCode: string) => {
         const dayStr = format(dayDate, 'yyyy-MM-dd');
         
-        // Cố gắng tìm nếu nhân viên đã có schedule ở ô này
+        // Try to find if employee already has a schedule in this cell
         const schedule = schedules.find(s => {
             if (!s.date) return false;
             const sDate = typeof s.date === 'string' ? s.date.substring(0, 10) : '';

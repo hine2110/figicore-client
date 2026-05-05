@@ -84,7 +84,7 @@ export const AvatarUploader: React.FC<AvatarUploaderProps> = ({
           if (
               Math.abs(imgCenterX - faceCenterX) > maxDist || 
               Math.abs(imgCenterY - faceCenterY) > maxDist || 
-              faceScale < 0.45 || // Yêu cầu dí sát mặt (Zoom cực đại) để lấp kín vòng tròn
+              faceScale < 0.45 || // Require close up to fill the circle
               faceScale > 0.85 ||
               detections[0].detection.score < 0.65 ||
               aspectRatio < 0.9 ||
@@ -153,29 +153,29 @@ export const AvatarUploader: React.FC<AvatarUploaderProps> = ({
         const box = detections[0].detection.box;
         const aspectRatio = box.height / box.width;
 
-        // Đảm bảo không bị che khuất quá lố. Aspect ratio nới lỏng để không bị nhầm lẫn với các góc bo tròn của FaceAPI
+        // Ensure it's not overly obscured. Aspect ratio is relaxed to avoid confusion with FaceAPI rounded corners
         if (detections[0].detection.score < 0.80 || aspectRatio < 0.9) {
            toast({
              variant: 'destructive',
-             title: 'Khuôn mặt không đạt chuẩn',
-             description: 'Khuôn mặt bị che khuất (bởi điện thoại, bề mặt), hoặc không đủ rõ nét. Vui lòng nhìn thẳng và đảm bảo chiếu sáng tốt.'
+             title: 'Invalid face',
+             description: 'Face is obscured (by phone, surface), or not clear enough. Please look straight and ensure good lighting.'
            });
            resetPreview();
            return;
         }
 
-        // --- PHÂN TÍCH HÀNH VI (BIOMETRIC POSE CHECK) ---
-        // Sử dụng 68 điểm landmark để đánh giá độ nghiêng và góc quay của đầu
+        // --- BEHAVIOR ANALYSIS (BIOMETRIC POSE CHECK) ---
+        // Use 68 landmarks to evaluate head tilt and rotation
         const positions = detections[0].landmarks.positions;
         
-        // 1. Góc nghiêng (Roll) - Kiểm tra 2 mắt có ngang nhau không
+        // 1. Tilt angle (Roll) - Check if 2 eyes are level
         const leftEyeY = (positions[36].y + positions[39].y) / 2;
         const rightEyeY = (positions[42].y + positions[45].y) / 2;
         const leftEyeX = (positions[36].x + positions[39].x) / 2;
         const rightEyeX = (positions[42].x + positions[45].x) / 2;
         const eyeSlope = Math.abs((rightEyeY - leftEyeY) / (rightEyeX - leftEyeX));
 
-        // 2. Góc quay ngang (Yaw) - So sánh khoảng cách từ mũi tới 2 mang tai
+        // 2. Horizontal rotation angle (Yaw) - Compare distance from nose to both ears
         const noseX = positions[30].x;
         const leftJawX = positions[0].x;
         const rightJawX = positions[16].x;
@@ -193,8 +193,8 @@ export const AvatarUploader: React.FC<AvatarUploaderProps> = ({
         if (eyeSlope > 0.25 || yawRatio < 0.5 || yawRatio > 2.0 || mouthOpenRatio > 0.15) {
            toast({
              variant: 'destructive',
-             title: 'Sai tư thế hoặc biểu cảm',
-             description: 'Cảnh báo chống gian lận: Bạn không được làm hành động lạ (nhắm mắt, há miệng, lè lưỡi) hoặc quay nghiêng đầu. Yêu cầu một khuôn mặt nghiêm chỉnh.'
+             title: 'Invalid pose or expression',
+             description: 'Anti-fraud warning: You must not do strange actions (close eyes, open mouth, stick out tongue) or tilt head. Require a serious face.'
            });
            resetPreview();
            return;
@@ -220,8 +220,8 @@ export const AvatarUploader: React.FC<AvatarUploaderProps> = ({
         ) {
             toast({
                 variant: 'destructive',
-                title: 'Ngoài khung định dạng',
-                description: 'Vui lòng đưa mặt vào phần trung tâm (ở giữa tâm khung viền xanh) để chụp.'
+                title: 'Out of format frame',
+                description: 'Please bring the face to the center (in the middle of the green frame center) to capture.'
             });
             resetPreview();
             return;

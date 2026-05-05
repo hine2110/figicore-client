@@ -4,15 +4,15 @@ import axios from 'axios';
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.figicore.com';
 
 /**
- * Axios Instance chuẩn cho toàn bộ ứng dụng.
- * Đã cấu hình sẵn:
+ * Standard Axios Instance for the whole application.
+ * Pre-configured:
  * - Base URL
  * - Timeout
- * - Headers mặc định
+ * - Default Headers
  */
 export const axiosInstance = axios.create({
     baseURL: BASE_URL,
-    timeout: 60000, // Tăng lên 60s để chờ model AI xử lý ảnh
+    timeout: 60000, // Increased to 60s to wait for AI model to process image
     headers: {
         'Content-Type': 'application/json',
     },
@@ -20,12 +20,12 @@ export const axiosInstance = axios.create({
 
 /**
  * Request Interceptor
- * Tự động đính kèm Bearer Token nếu có
+ * Automatically attach Bearer Token if available
  */
 axiosInstance.interceptors.request.use(
     (config) => {
-        // TODO: Lấy token từ storage thật khi implement login
-        // TODO: Lấy token từ storage thật khi implement login
+        // TODO: Get token from real storage when implementing login
+        // TODO: Get token from real storage when implementing login
         const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -39,41 +39,41 @@ axiosInstance.interceptors.request.use(
 
 /**
  * Response Interceptor
- * Xử lý lỗi tập trung (Global Error Handling)
+ * Global Error Handling
  */
 axiosInstance.interceptors.response.use(
     (response) => {
-        // Trả về data trực tiếp để clean code (tùy chọn)
+        // Return data directly to keep code clean (optional)
         return response;
     },
     async (error) => {
         const originalRequest = error.config;
 
-        // Xử lý lỗi 401 Unauthorized (Token hết hạn hoăc bị Ban)
+        // Handle 401 Unauthorized (Token expired or Banned)
         if (error.response?.status === 401 && !originalRequest._retry) {
 
-            // 1. SAFETY CHECK: Không redirect nếu đang ở trang Login (để hiển thị lỗi sai pass)
+            // 1. SAFETY CHECK: Do not redirect if on Login page (to show wrong pass error)
             const currentPath = window.location.pathname;
             if (!currentPath.includes('/guest/home') && !currentPath.includes('/guest/login')) {
                 // Added Logging to identify the culprit
                 console.warn(`[Auth] 401 Unauthorized detected at: ${originalRequest.url || 'unknown URL'}. Redirecting to login.`);
 
-                // 2. CLEANUP: Xóa mọi data xác thực
+                // 2. CLEANUP: Clear all auth data
                 localStorage.removeItem('accessToken');
                 localStorage.removeItem('user');
-                localStorage.removeItem('auth-storage'); // Xóa cache của Zustand Persist
+                localStorage.removeItem('auth-storage'); // Clear Zustand Persist cache
                 sessionStorage.removeItem('accessToken');
                 sessionStorage.removeItem('user');
 
-                // 3. FORCE REDIRECT: Đá về đúng trang Login của hệ thống
-                // Dùng replace để tránh quay lại trang lỗi khi bấm back
+                // 3. FORCE REDIRECT: Redirect to system Login page
+                // Use replace to avoid returning to error page when clicking back
                 window.location.replace('/guest/home');
-                return Promise.reject(error); // Reject để không chạy logic tiếp theo
+                return Promise.reject(error); // Reject to stop executing next logic
             }
 
         }
 
-        // Xử lý lỗi chung
+        // Handle general error
         if (error.response?.data?.message) {
             console.error('API Error:', error.response.data.message);
         }
