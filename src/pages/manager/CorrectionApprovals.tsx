@@ -193,7 +193,6 @@ export default function CorrectionApprovals() {
                                     <TableRow key={item.correction_id}>
                                         <TableCell>
                                             <div className="font-medium text-sm text-neutral-900">{item.employees?.users?.full_name}</div>
-                                            <div className="text-xs text-neutral-500">{item.employees?.users?.email}</div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="font-semibold text-sm">Shift {item.timesheets.work_schedules.shift_code}</div>
