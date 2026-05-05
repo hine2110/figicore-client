@@ -15,13 +15,18 @@ export const useSecurityCheck = (): UseSecurityCheckReturn => {
         // Log the full error for debugging
         console.error("API Error handled by useSecurityCheck:", error);
 
+        // Trích xuất message từ response của backend (nếu có)
+        const backendMessage = error?.response?.data?.message;
+
         if (error?.response?.status === 403) {
-            setAccessDeniedError("Access denied. Please go to the office to resolve this issue.");
+            // Nếu backend có gửi thông báo (chứa IP), dùng nó. Nếu không, dùng câu mặc định.
+            const errorMessage = backendMessage || "Access denied. Please go to the office to resolve this issue.";
+            setAccessDeniedError(errorMessage);
             return;
         }
 
         // For non-403 errors, show the standard toast
-        const message = error?.response?.data?.message || error?.message || "An unexpected error occurred";
+        const message = backendMessage || error?.message || "An unexpected error occurred";
         toast({
             title: "Error",
             description: message,

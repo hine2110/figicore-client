@@ -3,6 +3,7 @@ import api from './api';
 export interface AnalyticsData {
   totalOrders: number;
   totalRevenue: number;
+  totalRefunds: number;
   counts: {
     retail: number;
     livestream: number;
@@ -25,6 +26,7 @@ export interface ManagerStats {
   online: AnalyticsData;
   offline: AnalyticsData;
   totalRevenue: number;
+  totalRefunds: number;
   totalOrders: number;
   prevTotalRevenue: number;
   activeStaff: number;

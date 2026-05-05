@@ -312,9 +312,16 @@ export default function ProductDetail() {
     };
 
     // Determine Max Stock
-    const maxStock = product.type_code === 'RETAIL'
-        ? (selectedVariant?.stock_available || 0)
-        : (product.type_code === 'PREORDER' ? (product.product_variants?.[0]?.stock_available || 0) : 999);
+    const maxStock = (() => {
+        if (product.type_code === 'RETAIL') return selectedVariant?.stock_available || 0;
+        if (product.type_code === 'PREORDER') {
+            const config = selectedVariant?.product_preorder_configs || product.product_variants?.[0]?.product_preorder_configs;
+            const slots = Math.max(0, (config?.total_slots || 0) - (config?.sold_slots || 0));
+            const limit = config?.max_qty_per_user || 999;
+            return Math.min(slots, limit);
+        }
+        return 999; // BLINDBOX or others
+    })();
 
     // Handlers
     const handleQuantityChange = (delta: number) => {
@@ -812,10 +819,12 @@ export default function ProductDetail() {
                                                 const isSelected = selectedVariant?.variant_id === variant.variant_id;
 
                                                 let isSoldOut = false;
+                                                let isExpired = false;
                                                 if (product.type_code === 'PREORDER') {
                                                     const config = variant.product_preorder_configs;
                                                     const remaining = (config?.total_slots || 0) - (config?.sold_slots || 0);
-                                                    isSoldOut = remaining <= 0;
+                                                    isExpired = config?.booking_end_date ? new Date() > new Date(config.booking_end_date) : false;
+                                                    isSoldOut = remaining <= 0 || isExpired;
                                                 } else {
                                                     isSoldOut = variant.stock_available <= 0;
                                                 }
@@ -848,9 +857,9 @@ export default function ProductDetail() {
                                                             {variant.option_name}
                                                         </span>
 
-                                                        {/* Sold Out Label */}
+                                                        {/* Sold Out/Closed Label */}
                                                         {isSoldOut && (
-                                                            <span className="ml-2 text-[10px] font-bold text-red-500 uppercase tracking-wider">Sold Out</span>
+                                                            <span className="ml-2 text-[10px] font-bold text-red-500 uppercase tracking-wider">{isExpired ? 'Closed' : 'Sold Out'}</span>
                                                         )}
                                                     </button>
                                                 );
@@ -894,30 +903,37 @@ export default function ProductDetail() {
                                     </div>
 
                                     <div className={cn("grid gap-4", isPreorder ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
-                                        {isPreorder ? (
+                                        {isPreorder ? (() => {
+                                            const cfg = selectedVariant?.product_preorder_configs;
+                                            const isExpired = cfg?.booking_end_date ? new Date() > new Date(cfg.booking_end_date) : false;
+                                            const remaining = (cfg?.total_slots || 0) - (cfg?.sold_slots || 0);
+                                            const isDisabled = !selectedVariant || isExpired || remaining <= 0;
+
+                                            return (
                                             <>
                                                 {/* PRE-ORDER: Add to Cart (Amber Outline) */}
                                                 <Button
                                                     size="lg"
                                                     variant="outline"
-                                                    disabled={!selectedVariant} // Pre-order: Enable button even if stock=0 (slots managed by BE)
+                                                    disabled={isDisabled}
                                                     onClick={() => handleAddToCart()}
                                                     className="h-14 rounded-xl font-bold font-mono uppercase tracking-wide border-amber-500 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 bg-transparent transition-all"
                                                 >
-                                                    Add to Cart
+                                                    {isExpired ? 'Booking Closed' : 'Add to Cart'}
                                                 </Button>
 
                                                 {/* PRE-ORDER: Buy Now (Amber Solid) */}
                                                 <Button
                                                     size="lg"
                                                     onClick={handleBuyNow}
-                                                    disabled={!selectedVariant} // Pre-order: Enable button even if stock=0
+                                                    disabled={isDisabled}
                                                     className="w-full h-14 rounded-xl font-bold font-mono text-lg uppercase tracking-[0.1em] bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black shadow-[0_0_30px_-5px_rgba(245,158,11,0.4)] hover:shadow-[0_0_50px_-5px_rgba(245,158,11,0.6)] border-0 transition-all duration-300 hover:scale-[1.02]"
                                                 >
-                                                    Pre-Order Now
+                                                    {isExpired ? 'Closed' : 'Pre-Order Now'}
                                                 </Button>
                                             </>
-                                        ) : (
+                                            );
+                                        })() : (
                                             <>
                                                 {/* RETAIL: Add to Cart (Solid Dark) */}
                                                 <Button
